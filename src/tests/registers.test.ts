@@ -47,4 +47,36 @@ describe("Registers", () => {
       expect(registers.getF()).toBe(0xa0); // 1010 0000
     });
   });
+
+  describe("16-bit register pairs", () => {
+    it("should combine AF correctly", () => {
+      registers.setA(0x12); // 0001 0010
+      registers.setF(0x30); // 0011 0000
+      expect(registers.getAF()).toBe(0x1230); // 0001 0010 0011 0000
+    });
+
+    it("should split AF correctly", () => {
+      registers.setAF(0x1234);
+      expect(registers.getA()).toBe(0x12); // 0001 0010
+      expect(registers.getF()).toBe(0x30); // 0011 0000
+    });
+
+    it("should handle BC register pair", () => {
+      registers.setBC(0xabcd);
+      expect(registers.getB()).toBe(0xab);
+      expect(registers.getC()).toBe(0xcd);
+    });
+
+    it("should handle DE register pair", () => {
+      registers.setDE(0x1234);
+      expect(registers.getD()).toBe(0x12);
+      expect(registers.getE()).toBe(0x34);
+    });
+
+    it("should handle HL register pair", () => {
+      registers.setHL(0x5678);
+      expect(registers.getH()).toBe(0x56);
+      expect(registers.getL()).toBe(0x78);
+    });
+  });
 });

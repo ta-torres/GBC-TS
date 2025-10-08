@@ -75,7 +75,40 @@ export class Registers {
     this.l = value & 0xff;
   }
 
-  // get 16bit access and flag ops
+  //16bit access
+  getAF(): number {
+    return (this.a << 8) | this.f;
+  }
+  setAF(value: number): void {
+    this.a = (value >> 8) & 0xff;
+    // mask lower 4 bits only (A | F)
+    this.f = value & 0xf0;
+  }
+
+  getBC(): number {
+    return (this.b << 8) | this.c;
+  }
+  setBC(value: number): void {
+    this.b = (value >> 8) & 0xff;
+    this.c = value & 0xff;
+  }
+
+  getDE(): number {
+    return (this.d << 8) | this.e;
+  }
+  setDE(value: number): void {
+    this.d = (value >> 8) & 0xff;
+    this.e = value & 0xff;
+  }
+
+  getHL(): number {
+    return (this.h << 8) | this.l;
+  }
+  setHL(value: number): void {
+    this.h = (value >> 8) & 0xff;
+    this.l = value & 0xff;
+  }
+
   // reset to power on state
   reset(): void {
     this.a = 0x01;
