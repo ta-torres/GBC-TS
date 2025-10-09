@@ -1,7 +1,8 @@
 export class Registers {
   /* 
     https://gbdev.io/pandocs/Power_Up_Sequence.html
-  // https://gbdev.io/pandocs/CPU_Registers_and_Flags.html
+    https://gbdev.io/pandocs/CPU_Registers_and_Flags.html
+    https://www.w3schools.com/js/js_bitwise.asp
     */
   private a: number = 0x01; // accumulator
   private f: number = 0x00; // flags
@@ -107,6 +108,51 @@ export class Registers {
   setHL(value: number): void {
     this.h = (value >> 8) & 0xff;
     this.l = value & 0xff;
+  }
+
+  // flag ops
+  getZeroFlag(): boolean {
+    return (this.f & Registers.FLAG_Z) !== 0;
+  }
+  setZeroFlag(value: boolean): void {
+    if (value) {
+      this.f |= Registers.FLAG_Z;
+    } else {
+      this.f &= ~Registers.FLAG_Z;
+    }
+  }
+
+  getSubtractFlag(): boolean {
+    return (this.f & Registers.FLAG_N) !== 0;
+  }
+  setSubtractFlag(value: boolean): void {
+    if (value) {
+      this.f |= Registers.FLAG_N;
+    } else {
+      this.f &= ~Registers.FLAG_N;
+    }
+  }
+
+  getHalfCarryFlag(): boolean {
+    return (this.f & Registers.FLAG_H) !== 0;
+  }
+  setHalfCarryFlag(value: boolean): void {
+    if (value) {
+      this.f |= Registers.FLAG_H;
+    } else {
+      this.f &= ~Registers.FLAG_H;
+    }
+  }
+
+  getCarryFlag(): boolean {
+    return (this.f & Registers.FLAG_C) !== 0;
+  }
+  setCarryFlag(value: boolean): void {
+    if (value) {
+      this.f |= Registers.FLAG_C;
+    } else {
+      this.f &= ~Registers.FLAG_C;
+    }
   }
 
   // reset to power on state

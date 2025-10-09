@@ -79,4 +79,47 @@ describe("Registers", () => {
       expect(registers.getL()).toBe(0x78);
     });
   });
+
+  describe("flags", () => {
+    it("should set and clear Zero flag", () => {
+      registers.setZeroFlag(true);
+      expect(registers.getZeroFlag()).toBe(true);
+      expect(registers.getF()).toBe(0x80);
+
+      registers.setZeroFlag(false);
+      expect(registers.getZeroFlag()).toBe(false);
+      expect(registers.getF()).toBe(0x00);
+    });
+
+    it("should set and clear Subtract flag", () => {
+      registers.setSubtractFlag(true);
+      expect(registers.getSubtractFlag()).toBe(true);
+      expect(registers.getF()).toBe(0x40);
+    });
+
+    it("should set and clear Half-carry flag", () => {
+      registers.setHalfCarryFlag(true);
+      expect(registers.getHalfCarryFlag()).toBe(true);
+      expect(registers.getF()).toBe(0x20);
+    });
+
+    it("should set and clear Carry flag", () => {
+      registers.setCarryFlag(true);
+      expect(registers.getCarryFlag()).toBe(true);
+      expect(registers.getF()).toBe(0x10);
+    });
+
+    it("should handle multiple flags simultaneously", () => {
+      registers.setZeroFlag(true);
+      registers.setCarryFlag(true);
+
+      expect(registers.getZeroFlag()).toBe(true);
+      expect(registers.getCarryFlag()).toBe(true);
+      expect(registers.getF()).toBe(0x90);
+
+      registers.setZeroFlag(false);
+      expect(registers.getCarryFlag()).toBe(true);
+      expect(registers.getF()).toBe(0x10);
+    });
+  });
 });
