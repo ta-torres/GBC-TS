@@ -122,4 +122,22 @@ describe("Registers", () => {
       expect(registers.getF()).toBe(0x10);
     });
   });
+
+  describe("toString", () => {
+    it("should format register pairs and flags", () => {
+      registers.setA(0x01);
+      registers.setBC(0x0013);
+      registers.setDE(0x00d8);
+      registers.setHL(0x014d);
+
+      registers.setZeroFlag(true);
+      registers.setSubtractFlag(false);
+      registers.setHalfCarryFlag(true);
+      registers.setCarryFlag(false);
+
+      expect(registers.toString()).toBe(
+        "AF: 01a0 | BC: 0013 | DE: 00d8 | HL: 014d | Z flag: 1 | N flag: 0 | H flag: 1 | C flag: 0",
+      );
+    });
+  });
 });

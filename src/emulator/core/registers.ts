@@ -166,4 +166,17 @@ export class Registers {
     this.h = 0x01;
     this.l = 0x4d;
   }
+
+  toString(): string {
+    return [
+      `AF: ${this.getAF().toString(16).padStart(4, "0")}`,
+      `BC: ${this.getBC().toString(16).padStart(4, "0")}`,
+      `DE: ${this.getDE().toString(16).padStart(4, "0")}`,
+      `HL: ${this.getHL().toString(16).padStart(4, "0")}`,
+      `Z flag: ${this.getZeroFlag() ? "1" : "0"}`,
+      `N flag: ${this.getSubtractFlag() ? "1" : "0"}`,
+      `H flag: ${this.getHalfCarryFlag() ? "1" : "0"}`,
+      `C flag: ${this.getCarryFlag() ? "1" : "0"}`,
+    ].join(" | ");
+  }
 }
