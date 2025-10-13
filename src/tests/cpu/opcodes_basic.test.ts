@@ -1,0 +1,176 @@
+import { describe, it, expect } from "vitest";
+import { Cartridge } from "../../emulator/cartridge/cartridge";
+import { AddressBus } from "../../emulator/memory/addressBus";
+import { CPU } from "../../emulator/core/cpu";
+
+function makeROM(program: number[]): Uint8Array {
+  const rom = new Uint8Array(0x8000);
+
+  for (let i = 0; i < program.length; i++) {
+    rom[0x0100 + i] = program[i] & 0xff;
+  }
+
+  rom[0x0147] = 0x00;
+
+  let checksum = 0;
+  for (let i = 0x0134; i <= 0x014c; i++) {
+    checksum = checksum - rom[i] - 1;
+  }
+  rom[0x014d] = checksum & 0xff;
+
+  return rom;
+}
+
+function setupCPU(program: number[]): CPU {
+  const rom = makeROM(program);
+  const cart = new Cartridge();
+  cart.load(rom.buffer);
+  const bus = new AddressBus(cart);
+  const cpu = new CPU(bus);
+  return cpu;
+}
+
+describe("Opcodes", () => {
+  describe("NOP", () => {
+    it("increments PC by 1 and returns 4 cycles", () => {
+      const cpu = setupCPU([0x00]);
+      const start = cpu.getPC();
+      const cycles = cpu.step();
+      expect(cycles).toBe(4);
+      console.log(cpu.getPC().toString(16));
+      expect(cpu.getPC()).toBe((start + 1) & 0xffff);
+    });
+  });
+
+  describe("LD rr,nn", () => {
+    // LD BC,0x1234
+    it("LD BC,nn loads immediate 16-bit", () => {
+      const cpu = setupCPU([0x01, 0x34, 0x12]);
+      const cycles = cpu.step();
+      expect(cycles).toBe(12);
+      expect(cpu.registers.getBC()).toBe(0x1234);
+      expect(cpu.getPC()).toBe(0x0103);
+    });
+    // LD HL,0x5678
+    it("LD HL,nn loads immediate 16-bit", () => {
+      const cpu = setupCPU([0x21, 0x78, 0x56]);
+      cpu.step();
+      expect(cpu.registers.getHL()).toBe(0x5678);
+      expect(cpu.getPC()).toBe(0x0103);
+    });
+    // LD SP,0xFFFE
+    it("LD SP,nn loads immediate 16-bit", () => {
+      const cpu = setupCPU([0x31, 0xfe, 0xff]);
+      cpu.step();
+      expect(cpu.getSP()).toBe(0xfffe);
+      expect(cpu.getPC()).toBe(0x0103);
+    });
+  });
+
+  describe("LD r,n", () => {
+    it("LD A,n loads 8-bit immediate", () => {
+      const cpu = setupCPU([0x3e, 0x42]);
+      const cycles = cpu.step();
+      expect(cycles).toBe(8);
+      expect(cpu.registers.getA()).toBe(0x42);
+      expect(cpu.getPC()).toBe(0x0102);
+    });
+
+    it("LD B,n loads 8-bit immediate", () => {
+      const cpu = setupCPU([0x06, 0x99]);
+      cpu.step();
+      expect(cpu.registers.getB()).toBe(0x99);
+      expect(cpu.getPC()).toBe(0x0102);
+    });
+  });
+
+  describe("JR n", () => {
+    it("JR with positive offset", () => {
+      // JR +2 => to 0x0104
+      const cpu = setupCPU([0x18, 0x02]);
+      cpu.step();
+      expect(cpu.getPC()).toBe(0x0104);
+    });
+
+    it("JR with negative offset", () => {
+      // Program: JR -2, then a NOP at 0x0102 (we won't reach it in a single step)
+      const cpu = setupCPU([0x18, 0xfe, 0x00]); // 0xFE = -2
+      cpu.step();
+      // PC before JR points to 0x0102, then add -2 => 0x0100
+      expect(cpu.getPC()).toBe(0x0100);
+    });
+  });
+
+  describe("JP nn", () => {
+    it("JP to absolute address", () => {
+      // JP 0x0200
+      const cpu = setupCPU([0xc3, 0x00, 0x02]);
+      cpu.step();
+      expect(cpu.getPC()).toBe(0x0200);
+    });
+  });
+
+  describe("AND A,n", () => {
+    it("updates A and clears appropriate flags", () => {
+      const cpu = setupCPU([0xe6, 0x34]);
+
+      cpu.registers.setA(0xff);
+      cpu.registers.setZeroFlag(true);
+      cpu.registers.setSubtractFlag(true);
+      cpu.registers.setHalfCarryFlag(false);
+      cpu.registers.setCarryFlag(true);
+
+      //console.log(cpu.registers.toString());
+
+      const cycles = cpu.step();
+      //console.log(cpu.registers.toString());
+
+      expect(cpu.registers.getA()).toBe(0x34);
+      expect(cpu.getPC()).toBe(0x0102);
+      expect(cycles).toBe(8);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(true);
+      expect(cpu.registers.getCarryFlag()).toBe(false);
+    });
+
+    it("sets zero flag when result is zero", () => {
+      const cpu = setupCPU([0xe6, 0x0f]);
+
+      cpu.registers.setA(0xf0);
+      cpu.registers.setZeroFlag(false);
+
+      cpu.step();
+
+      expect(cpu.registers.getA()).toBe(0x00);
+      expect(cpu.registers.getZeroFlag()).toBe(true);
+    });
+  });
+
+  describe("CALL/RET 0xC9", () => {
+    it("CALL pushes return address and jumps; RET returns", () => {
+      // 0x0100: CALL 0x0200; 0x0103 next instr address for return
+      // 0x0200: RET
+      const program: number[] = [0xcd, 0x00, 0x02];
+      // place RET (0xc9) at 0x0200
+      const rom = makeROM(program);
+      rom[0x0200] = 0xc9;
+
+      const cart = new Cartridge();
+      cart.load(rom.buffer);
+      const bus = new AddressBus(cart);
+      const cpu = new CPU(bus);
+
+      // CALL
+      const cycles1 = cpu.step();
+      expect(cycles1).toBe(24);
+      expect(cpu.getPC()).toBe(0x0200);
+      expect(cpu.getSP()).toBe(0xfffc); // two bytes pushed
+
+      // RET
+      const cycles2 = cpu.step();
+      expect(cycles2).toBe(16);
+      expect(cpu.getPC()).toBe(0x0103);
+    });
+  });
+});
