@@ -31,10 +31,9 @@ export class CPU {
 
     const opcode = this.bus.read(this.pc);
 
-    console.log(
+    /* console.log(
       `PC: ${toHex16(this.pc)} | Opcode: ${toHex8(opcode)} | ${this.registers.toString()}`,
-    );
-
+    ); */
     const info = OPCODE_TABLE[opcode];
     if (!info) {
       throw new Error(
@@ -42,6 +41,7 @@ export class CPU {
           `Registers: ${this.registers.toString()}`,
       );
     }
+    //console.log(this.getRegisters().toString());
 
     // check and increase program counter
     this.pc = (this.pc + 1) & 0xffff;
@@ -83,5 +83,13 @@ export class CPU {
 
   getSP(): number {
     return this.sp;
+  }
+
+  getRegisters(): Registers {
+    return this.registers;
+  }
+
+  getInstruction(): string {
+    return this.bus.readInstruction(this.pc).toString(16);
   }
 }

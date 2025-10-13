@@ -173,4 +173,8 @@ export class AddressBus {
     this.hram.fill(0);
     this.ioRegisters.fill(0);
   }
+
+  readInstruction(address: number): number {
+    return this.read(address);
+  }
 }
