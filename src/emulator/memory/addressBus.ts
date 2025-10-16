@@ -4,12 +4,14 @@ import { MEMORY_MAP, IO_REGISTERS } from "../../types/memory";
 export class AddressBus {
   private cartridge: Cartridge;
   private wram: Uint8Array; // 0xC000-0xDFFF (8KB)
+  private vram: Uint8Array; // 0x8000-0x9FFF (8KB)
   private hram: Uint8Array; // 0xFF80-0xFFFE (127 bytes)
   private ioRegisters: Uint8Array; // 0xFF00-0xFF7F (128 bytes)
 
   constructor(cartridge: Cartridge) {
     this.cartridge = cartridge;
     this.wram = new Uint8Array(0x2000); // 8KB
+    this.vram = new Uint8Array(0x2000); // 8KB
     this.hram = new Uint8Array(0x7f); // 127 bytes
     this.ioRegisters = new Uint8Array(0x80);
 
@@ -29,7 +31,7 @@ export class AddressBus {
     // not done yet
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
-      return 0xff;
+      return this.vram[address - 0x8000];
     }
 
     // External RAM (0xA000-0xBFFF)
@@ -106,6 +108,7 @@ export class AddressBus {
     // todo: vram
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
+      this.vram[address - 0x8000] = value;
       return;
     }
 
@@ -170,8 +173,17 @@ export class AddressBus {
 
   reset(): void {
     this.wram.fill(0);
+    this.vram.fill(0);
     this.hram.fill(0);
     this.ioRegisters.fill(0);
+  }
+
+  getVRAMView(): Uint8Array {
+    return this.vram;
+  }
+
+  getIORegistersView(): Uint8Array {
+    return this.ioRegisters;
   }
 
   readInstruction(address: number): number {
