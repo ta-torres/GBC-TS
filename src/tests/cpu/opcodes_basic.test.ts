@@ -30,6 +30,15 @@ function setupCPU(program: number[]): CPU {
   return cpu;
 }
 
+function setupCPUWithBus(program: number[]): { cpu: CPU; bus: AddressBus } {
+  const rom = makeROM(program);
+  const cart = new Cartridge();
+  cart.load(rom.buffer);
+  const bus = new AddressBus(cart);
+  const cpu = new CPU(bus);
+  return { cpu, bus };
+}
+
 describe("Opcodes", () => {
   describe("NOP", () => {
     it("increments PC by 1 and returns 4 cycles", () => {
@@ -171,6 +180,46 @@ describe("Opcodes", () => {
       const cycles2 = cpu.step();
       expect(cycles2).toBe(16);
       expect(cpu.getPC()).toBe(0x0103);
+    });
+  });
+
+  describe("LD r,r' opcodes", () => {
+    it("LD B,C loads C into B", () => {
+      const cpu = setupCPU([0x41]);
+      cpu.registers.setB(0x00);
+      cpu.registers.setC(0x99);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.registers.getB()).toBe(0x99);
+      expect(cpu.registers.getC()).toBe(0x99);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("LD A,(HL) loads memory into A", () => {
+      const { cpu, bus } = setupCPUWithBus([0x7e]);
+      cpu.registers.setHL(0xc000);
+      cpu.registers.setA(0x00);
+      bus.write(0xc000, 0x5a);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(8);
+      expect(cpu.registers.getA()).toBe(0x5a);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("LD (HL),A stores A in memory", () => {
+      const { cpu, bus } = setupCPUWithBus([0x77]);
+      cpu.registers.setHL(0xc100);
+      cpu.registers.setA(0xab);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(8);
+      expect(bus.read(0xc100)).toBe(0xab);
+      expect(cpu.getPC()).toBe(0x0101);
     });
   });
 });

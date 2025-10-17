@@ -1,6 +1,7 @@
 import type { CPU } from "./cpu";
 import type { AddressBus } from "../memory/addressBus";
 import type { OpcodeInfo } from "../../types/instructions";
+import { getRegister, setRegister, REGISTER_NAMES } from "./instructions";
 
 export const OPCODE_TABLE: Record<number, OpcodeInfo<CPU>> = {};
 
@@ -102,6 +103,28 @@ register(0x3e, "LD A,n", 2, 8, (cpu, bus) => {
   cpu.registers.setA(n);
   return 8;
 });
+
+// LD r,r' (0x40-0x7F)
+for (let i = 0; i < 8; i++) {
+  for (let j = 0; j < 8; j++) {
+    if (i === 6 && j === 6) continue; // HALT 0x76
+
+    const opcode = 0x40 | (i << 3) | j;
+    const cycles = i === 6 || j === 6 ? 8 : 4;
+
+    register(
+      opcode,
+      `LD ${REGISTER_NAMES[i]},${REGISTER_NAMES[j]}`,
+      1,
+      cycles,
+      (cpu, bus) => {
+        const value = getRegister(cpu, bus, j);
+        setRegister(cpu, bus, i, value);
+        return cycles;
+      },
+    );
+  }
+}
 
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
