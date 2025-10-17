@@ -222,4 +222,60 @@ describe("Opcodes", () => {
       expect(cpu.getPC()).toBe(0x0101);
     });
   });
+
+  describe("ALU register opcodes", () => {
+    it("ADD A,C updates accumulator and clears N flag", () => {
+      const cpu = setupCPU([0x81]);
+      cpu.registers.setA(0x12);
+      cpu.registers.setC(0x34);
+      cpu.registers.setZeroFlag(true);
+      cpu.registers.setSubtractFlag(true);
+      cpu.registers.setHalfCarryFlag(true);
+      cpu.registers.setCarryFlag(true);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.registers.getA()).toBe(0x46);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(false);
+      expect(cpu.registers.getCarryFlag()).toBe(false);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("ADC A,(HL) adds with carry from memory", () => {
+      const { cpu, bus } = setupCPUWithBus([0x8e]);
+      cpu.registers.setHL(0xc200);
+      cpu.registers.setA(0xff);
+      cpu.registers.setCarryFlag(true);
+      bus.write(0xc200, 0x00);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(8);
+      expect(cpu.registers.getA()).toBe(0x00);
+      expect(cpu.registers.getZeroFlag()).toBe(true);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(true);
+      expect(cpu.registers.getCarryFlag()).toBe(true);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("CP A,E updates flags without modifying A", () => {
+      const cpu = setupCPU([0xbb]);
+      cpu.registers.setA(0x30);
+      cpu.registers.setE(0x40);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.registers.getA()).toBe(0x30);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(true);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(false);
+      expect(cpu.registers.getCarryFlag()).toBe(true);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+  });
 });

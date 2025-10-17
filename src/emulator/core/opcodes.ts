@@ -2,6 +2,7 @@ import type { CPU } from "./cpu";
 import type { AddressBus } from "../memory/addressBus";
 import type { OpcodeInfo } from "../../types/instructions";
 import { getRegister, setRegister, REGISTER_NAMES } from "./instructions";
+import { add8, sub8, and8, or8, xor8, cp8 } from "./alu";
 
 export const OPCODE_TABLE: Record<number, OpcodeInfo<CPU>> = {};
 
@@ -25,16 +26,6 @@ const read16 = (cpu: CPU, bus: AddressBus): number => {
   const high = read8(cpu, bus);
   return (high << 8) | low;
 };
-
-register(0xe6, "AND A,n", 2, 8, (cpu, bus) => {
-  const n = read8(cpu, bus);
-  cpu.registers.setA(cpu.registers.getA() & n);
-  cpu.registers.setZeroFlag(cpu.registers.getA() === 0);
-  cpu.registers.setSubtractFlag(false);
-  cpu.registers.setHalfCarryFlag(true);
-  cpu.registers.setCarryFlag(false);
-  return 8;
-});
 
 // 16-bit immediates
 register(0x01, "LD BC,nn", 3, 12, (cpu, bus) => {
@@ -125,6 +116,54 @@ for (let i = 0; i < 8; i++) {
     );
   }
 }
+
+// ALU operations (0x80-0xBF)
+const aluOps = [
+  { name: "ADD", fn: (cpu: CPU, val: number) => add8(cpu, val, false) },
+  { name: "ADC", fn: (cpu: CPU, val: number) => add8(cpu, val, true) },
+  { name: "SUB", fn: (cpu: CPU, val: number) => sub8(cpu, val, false) },
+  { name: "SBC", fn: (cpu: CPU, val: number) => sub8(cpu, val, true) },
+  { name: "AND", fn: and8 },
+  { name: "XOR", fn: xor8 },
+  { name: "OR", fn: or8 },
+  { name: "CP", fn: cp8 },
+];
+
+for (let opName = 0; opName < 8; opName++) {
+  for (let reg = 0; reg < 8; reg++) {
+    /*
+      0xA3 = 0b10 100 011
+      XX              | YYY                     | ZZZ
+      start row & col | index of operation << 3 | index of register
+      0x80            | 4 << 3                  | 3 => 0xA3
+      0b10 000 000    | 0b100 << 3              | 0b011
+    */
+    const opcode = 0x80 | (opName << 3) | reg;
+    const cycles = reg === 6 ? 8 : 4;
+
+    register(
+      opcode,
+      `${aluOps[opName].name} A,${REGISTER_NAMES[reg]}`,
+      1,
+      cycles,
+      (cpu, bus) => {
+        const value = getRegister(cpu, bus, reg);
+        aluOps[opName].fn(cpu, value);
+        return cycles;
+      },
+    );
+  }
+}
+
+// ALU n8 immediate (0xC6 - 0xF6) and (0xCE - 0xFE)
+// assign based on order in aluOps from left to right & up and down
+[0xc6, 0xce, 0xd6, 0xde, 0xe6, 0xee, 0xf6, 0xfe].forEach((opcode, i) => {
+  register(opcode, `${aluOps[i].name} A,n`, 2, 8, (cpu, bus) => {
+    const n = read8(cpu, bus);
+    aluOps[i].fn(cpu, n);
+    return 8;
+  });
+});
 
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
