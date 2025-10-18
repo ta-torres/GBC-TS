@@ -218,6 +218,75 @@ for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
   );
 }
 
+// 16-bit INC rr (0x03,0x13,0x23,0x33)
+// flags don't change
+{
+  const opcodes = [0x03, 0x13, 0x23, 0x33];
+  const names = ["BC", "DE", "HL", "SP"] as const;
+  const getters = [
+    (cpu: CPU) => cpu.registers.getBC(),
+    (cpu: CPU) => cpu.registers.getDE(),
+    (cpu: CPU) => cpu.registers.getHL(),
+    (cpu: CPU) => cpu.sp,
+  ];
+  const setters = [
+    (cpu: CPU, v: number) => cpu.registers.setBC(v & 0xffff),
+    (cpu: CPU, v: number) => cpu.registers.setDE(v & 0xffff),
+    (cpu: CPU, v: number) => cpu.registers.setHL(v & 0xffff),
+    (cpu: CPU, v: number) => {
+      cpu.sp = v & 0xffff;
+    },
+  ];
+
+  for (let registerPairIdx = 0; registerPairIdx < 4; registerPairIdx++) {
+    register(
+      opcodes[registerPairIdx],
+      `INC ${names[registerPairIdx]}`,
+      1,
+      8,
+      (cpu) => {
+        const val = (getters[registerPairIdx](cpu) + 1) & 0xffff;
+        setters[registerPairIdx](cpu, val);
+        return 8;
+      },
+    );
+  }
+}
+
+// 16-bit DEC rr (0x0B,0x1B,0x2B,0x3B)
+{
+  const opcodes = [0x0b, 0x1b, 0x2b, 0x3b];
+  const names = ["BC", "DE", "HL", "SP"] as const;
+  const getters = [
+    (cpu: CPU) => cpu.registers.getBC(),
+    (cpu: CPU) => cpu.registers.getDE(),
+    (cpu: CPU) => cpu.registers.getHL(),
+    (cpu: CPU) => cpu.sp,
+  ];
+  const setters = [
+    (cpu: CPU, v: number) => cpu.registers.setBC(v & 0xffff),
+    (cpu: CPU, v: number) => cpu.registers.setDE(v & 0xffff),
+    (cpu: CPU, v: number) => cpu.registers.setHL(v & 0xffff),
+    (cpu: CPU, v: number) => {
+      cpu.sp = v & 0xffff;
+    },
+  ];
+
+  for (let registerPairIdx = 0; registerPairIdx < 4; registerPairIdx++) {
+    register(
+      opcodes[registerPairIdx],
+      `DEC ${names[registerPairIdx]}`,
+      1,
+      8,
+      (cpu) => {
+        const val = (getters[registerPairIdx](cpu) - 1) & 0xffff;
+        setters[registerPairIdx](cpu, val);
+        return 8;
+      },
+    );
+  }
+}
+
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
   const offset = read8(cpu, bus);
