@@ -404,4 +404,24 @@ describe("Opcodes", () => {
       expect(cpu.getPC()).toBe(0x0101);
     });
   });
+
+  describe("ADD HL,rr", () => {
+    it("ADD HL,BC adds pairs and checks flags are set", () => {
+      const cpu = setupCPU([0x09]);
+      cpu.registers.setHL(0x0fff);
+      cpu.registers.setBC(0x0002);
+      cpu.registers.setZeroFlag(true);
+      cpu.registers.setSubtractFlag(true);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(8);
+      expect(cpu.registers.getHL()).toBe(0x1001);
+      expect(cpu.registers.getZeroFlag()).toBe(true);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(true);
+      expect(cpu.registers.getCarryFlag()).toBe(false);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+  });
 });

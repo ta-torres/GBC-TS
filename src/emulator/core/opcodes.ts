@@ -287,6 +287,35 @@ for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
   }
 }
 
+// ADD HL,rr (0x09,0x19,0x29,0x39)
+// Z - (doesnt change), N=0, H/C is set in add16
+{
+  const opcodes = [0x09, 0x19, 0x29, 0x39];
+  const names = ["BC", "DE", "HL", "SP"] as const;
+  const getters = [
+    (cpu: CPU) => cpu.registers.getBC(),
+    (cpu: CPU) => cpu.registers.getDE(),
+    (cpu: CPU) => cpu.registers.getHL(),
+    (cpu: CPU) => cpu.sp,
+  ];
+
+  for (let registerPairIdx = 0; registerPairIdx < 4; registerPairIdx++) {
+    register(
+      opcodes[registerPairIdx],
+      `ADD HL,${names[registerPairIdx]}`,
+      1,
+      8,
+      (cpu) => {
+        const hl = cpu.registers.getHL();
+        const val = getters[registerPairIdx](cpu) & 0xffff;
+        const result = add16(cpu, hl, val);
+        cpu.registers.setHL(result);
+        return 8;
+      },
+    );
+  }
+}
+
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
   const offset = read8(cpu, bus);
