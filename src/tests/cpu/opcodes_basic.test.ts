@@ -278,4 +278,66 @@ describe("Opcodes", () => {
       expect(cpu.getPC()).toBe(0x0101);
     });
   });
+
+  describe("INC r opcodes", () => {
+    it("INC B increments register and sets half-carry", () => {
+      const cpu = setupCPU([0x04]);
+      cpu.registers.setB(0x0f);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.registers.getB()).toBe(0x10);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(true);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("INC (HL) increments memory value", () => {
+      const { cpu, bus } = setupCPUWithBus([0x34]);
+      cpu.registers.setHL(0xc300);
+      bus.write(0xc300, 0x50);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(12);
+      expect(bus.read(0xc300)).toBe(0x51);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(false);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+  });
+
+  describe("DEC r opcodes", () => {
+    it("DEC D decrements register and sets half-carry", () => {
+      const cpu = setupCPU([0x15]);
+      cpu.registers.setD(0x10);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.registers.getD()).toBe(0x0f);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(true);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(true);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("DEC (HL) decrements memory value to zero", () => {
+      const { cpu, bus } = setupCPUWithBus([0x35]);
+      cpu.registers.setHL(0xc400);
+      bus.write(0xc400, 0x01);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(12);
+      expect(bus.read(0xc400)).toBe(0x00);
+      expect(cpu.registers.getZeroFlag()).toBe(true);
+      expect(cpu.registers.getSubtractFlag()).toBe(true);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(false);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+  });
 });

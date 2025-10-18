@@ -2,7 +2,7 @@ import type { CPU } from "./cpu";
 import type { AddressBus } from "../memory/addressBus";
 import type { OpcodeInfo } from "../../types/instructions";
 import { getRegister, setRegister, REGISTER_NAMES } from "./instructions";
-import { add8, sub8, and8, or8, xor8, cp8 } from "./alu";
+import { add8, sub8, and8, or8, xor8, cp8, inc8, dec8, add16 } from "./alu";
 
 export const OPCODE_TABLE: Record<number, OpcodeInfo<CPU>> = {};
 
@@ -164,6 +164,59 @@ for (let opName = 0; opName < 8; opName++) {
     return 8;
   });
 });
+
+// INC r (0x04,0x0C,0x14,0x1C,0x24,0x2C,0x34,0x3C)
+// assign based on order in REGISTER_NAMES from left to right & up and down
+for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
+  const opcode = 0x04 | (registerIdx << 3);
+  const isHL = registerIdx === 6;
+  const cycles = isHL ? 12 : 4;
+  register(
+    opcode,
+    `INC ${REGISTER_NAMES[registerIdx]}`,
+    1,
+    cycles,
+    (cpu, bus) => {
+      if (isHL) {
+        const addr = cpu.registers.getHL();
+        const v = bus.read(addr);
+        const res = inc8(cpu, v);
+        bus.write(addr, res);
+      } else {
+        const v = getRegister(cpu, bus, registerIdx);
+        const res = inc8(cpu, v);
+        setRegister(cpu, bus, registerIdx, res);
+      }
+      return cycles;
+    },
+  );
+}
+
+// DEC r (0x05,0x0D,0x15,0x1D,0x25,0x2D,0x35,0x3D)
+for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
+  const opcode = 0x05 | (registerIdx << 3);
+  const isHL = registerIdx === 6;
+  const cycles = isHL ? 12 : 4;
+  register(
+    opcode,
+    `DEC ${REGISTER_NAMES[registerIdx]}`,
+    1,
+    cycles,
+    (cpu, bus) => {
+      if (isHL) {
+        const addr = cpu.registers.getHL();
+        const v = bus.read(addr);
+        const res = dec8(cpu, v);
+        bus.write(addr, res);
+      } else {
+        const v = getRegister(cpu, bus, registerIdx);
+        const res = dec8(cpu, v);
+        setRegister(cpu, bus, registerIdx, res);
+      }
+      return cycles;
+    },
+  );
+}
 
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
