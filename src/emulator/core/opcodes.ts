@@ -316,6 +316,43 @@ for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
   }
 }
 
+// PUSH/POP rr (BC,DE,HL,AF)
+{
+  // PUSH rr (0xC5,0xD5,0xE5,0xF5)
+  const pushOpcodes = [0xc5, 0xd5, 0xe5, 0xf5];
+  const pushNames = ["BC", "DE", "HL", "AF"] as const;
+  const pushGetters = [
+    (cpu: CPU) => cpu.registers.getBC(),
+    (cpu: CPU) => cpu.registers.getDE(),
+    (cpu: CPU) => cpu.registers.getHL(),
+    (cpu: CPU) => cpu.registers.getAF(),
+  ];
+  for (let i = 0; i < 4; i++) {
+    register(pushOpcodes[i], `PUSH ${pushNames[i]}`, 1, 16, (cpu) => {
+      cpu.push(pushGetters[i](cpu));
+      return 16;
+    });
+  }
+
+  // POP rr (0xC1,0xD1,0xE1,0xF1)
+  const popOpcodes = [0xc1, 0xd1, 0xe1, 0xf1];
+  const popNames = ["BC", "DE", "HL", "AF"] as const;
+  const popSetters = [
+    (cpu: CPU, v: number) => cpu.registers.setBC(v & 0xffff),
+    (cpu: CPU, v: number) => cpu.registers.setDE(v & 0xffff),
+    (cpu: CPU, v: number) => cpu.registers.setHL(v & 0xffff),
+    // F is masked in setAF
+    (cpu: CPU, v: number) => cpu.registers.setAF(v & 0xffff),
+  ];
+  for (let i = 0; i < 4; i++) {
+    register(popOpcodes[i], `POP ${popNames[i]}`, 1, 12, (cpu) => {
+      const v = cpu.pop();
+      popSetters[i](cpu, v);
+      return 12;
+    });
+  }
+}
+
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
   const offset = read8(cpu, bus);

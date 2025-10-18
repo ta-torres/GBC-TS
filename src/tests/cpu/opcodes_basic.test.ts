@@ -424,4 +424,67 @@ describe("Opcodes", () => {
       expect(cpu.getPC()).toBe(0x0101);
     });
   });
+
+  describe("PUSH rr opcodes", () => {
+    it("PUSH BC pushes register pair to stack", () => {
+      const { cpu, bus } = setupCPUWithBus([0xc5]);
+      cpu.registers.setBC(0x1234);
+      const initialSP = cpu.getSP();
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(16);
+      expect(cpu.getSP()).toBe(initialSP - 2);
+      expect(bus.read(initialSP - 1)).toBe(0x12); // high byte
+      expect(bus.read(initialSP - 2)).toBe(0x34); // low byte
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("PUSH HL pushes register pair to stack", () => {
+      const { cpu, bus } = setupCPUWithBus([0xe5]);
+      cpu.registers.setHL(0xabcd);
+      const initialSP = cpu.getSP();
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(16);
+      expect(cpu.getSP()).toBe(initialSP - 2);
+      expect(bus.read(initialSP - 1)).toBe(0xab); // high byte
+      expect(bus.read(initialSP - 2)).toBe(0xcd); // low byte
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+  });
+
+  describe("POP rr opcodes", () => {
+    it("POP DE pops stack into register pair", () => {
+      const { cpu, bus } = setupCPUWithBus([0xd1]);
+      const initialSP = cpu.getSP();
+      bus.write(initialSP, 0x78); // low byte
+      bus.write(initialSP + 1, 0x56); // high byte
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(12);
+      expect(cpu.registers.getDE()).toBe(0x5678);
+      // APPLY MASKING FOR TEST
+      expect(cpu.getSP()).toBe((initialSP + 2) & 0xffff);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("POP AF pops stack into register pair and masks F", () => {
+      const { cpu, bus } = setupCPUWithBus([0xf1]);
+      const initialSP = cpu.getSP();
+      bus.write(initialSP, 0xff); // low byte (F register)
+      bus.write(initialSP + 1, 0x42); // high byte (A register)
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(12);
+      expect(cpu.registers.getA()).toBe(0x42);
+      expect(cpu.registers.getF()).toBe(0xf0); // F masked to upper nibble
+      // APPLY MASKING FOR TEST
+      expect(cpu.getSP()).toBe((initialSP + 2) & 0xffff);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+  });
 });
