@@ -8,7 +8,8 @@ export class CPU {
   private bus: AddressBus;
   public pc: number;
   public sp: number;
-  //private ime: boolean;
+  private ime: boolean = false;
+  private imeScheduled: boolean;
   private halted: boolean;
 
   constructor(bus: AddressBus) {
@@ -18,7 +19,8 @@ export class CPU {
     // post-boot state
     this.pc = 0x0100; // start of cartridge
     this.sp = 0xfffe; // top of stack
-    //this.ime = false;
+    void this.ime;
+    this.imeScheduled = false;
     this.halted = false;
   }
 
@@ -30,6 +32,11 @@ export class CPU {
     }
 
     const opcode = this.bus.read(this.pc);
+
+    if (this.imeScheduled) {
+      this.ime = true;
+      this.imeScheduled = false;
+    }
 
     /* console.log(
       `PC: ${toHex16(this.pc)} | Opcode: ${toHex8(opcode)} | ${this.registers.toString()}`,
@@ -73,7 +80,8 @@ export class CPU {
     this.registers.reset();
     this.pc = 0x0100;
     this.sp = 0xfffe;
-    //this.ime = false;
+    this.ime = false;
+    this.imeScheduled = false;
     this.halted = false;
   }
 
