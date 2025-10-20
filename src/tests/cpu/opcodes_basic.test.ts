@@ -487,4 +487,42 @@ describe("Opcodes", () => {
       expect(cpu.getPC()).toBe(0x0101);
     });
   });
+
+  describe("LD (memory) and SP", () => {
+    it("LD (nn),SP stores SP at 16-bit address", () => {
+      const { cpu, bus } = setupCPUWithBus([0x08, 0x00, 0xc6]);
+      cpu.sp = 0xfffe;
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(20);
+      expect(bus.read(0xc600)).toBe(0xfe);
+      expect(bus.read(0xc601)).toBe(0xff);
+      expect(cpu.getPC()).toBe(0x0103);
+    });
+
+    it("LD (HL+),A stores A and increments HL", () => {
+      const { cpu, bus } = setupCPUWithBus([0x22]);
+      cpu.registers.setHL(0xc500);
+      cpu.registers.setA(0x99);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(8);
+      expect(bus.read(0xc500)).toBe(0x99);
+      expect(cpu.registers.getHL()).toBe(0xc501);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("LDH A,(n) loads from high memory", () => {
+      const { cpu, bus } = setupCPUWithBus([0xf0, 0x44]);
+      bus.write(0xff44, 0xab);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(12);
+      expect(cpu.registers.getA()).toBe(0xab);
+      expect(cpu.getPC()).toBe(0x0102);
+    });
+  });
 });

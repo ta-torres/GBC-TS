@@ -95,6 +95,80 @@ register(0x3e, "LD A,n", 2, 8, (cpu, bus) => {
   return 8;
 });
 
+// LD (a16),SP (0x08)
+register(0x08, "LD (nn),SP", 3, 20, (cpu, bus) => {
+  // little-endian shift to get low byte first from SP
+  const nn = read16(cpu, bus);
+  const low = cpu.sp & 0xff; // mask 0-7
+  // shift right 8 positions to access 8-15 then mask
+  const high = (cpu.sp >> 8) & 0xff;
+  bus.write(nn, low); // nn 0xFE
+  bus.write((nn + 1) & 0xffff, high); // nn + 1 0xFF
+  // 0xC600 = 0xFE
+  // 0xC601 = 0xFF
+  return 20;
+});
+
+// LD (HL+),A and LD A,(HL+) (0x22, 0x2A)
+register(0x22, "LD (HL+),A", 1, 8, (cpu, bus) => {
+  const addr = cpu.registers.getHL();
+  bus.write(addr, cpu.registers.getA());
+  cpu.registers.setHL((addr + 1) & 0xffff);
+  return 8;
+});
+
+register(0x2a, "LD A,(HL+)", 1, 8, (cpu, bus) => {
+  const addr = cpu.registers.getHL();
+  const val = bus.read(addr);
+  cpu.registers.setA(val);
+  cpu.registers.setHL((addr + 1) & 0xffff);
+  return 8;
+});
+
+// LD (HL-),A and LD A,(HL-) (0x32, 0x3A)
+register(0x32, "LD (HL-),A", 1, 8, (cpu, bus) => {
+  const addr = cpu.registers.getHL();
+  bus.write(addr, cpu.registers.getA());
+  cpu.registers.setHL((addr - 1) & 0xffff);
+  return 8;
+});
+
+register(0x3a, "LD A,(HL-)", 1, 8, (cpu, bus) => {
+  const addr = cpu.registers.getHL();
+  const val = bus.read(addr);
+  cpu.registers.setA(val);
+  cpu.registers.setHL((addr - 1) & 0xffff);
+  return 8;
+});
+
+// LDH (n),A and LDH A,(n) (0xE0, 0xF0)
+register(0xe0, "LDH (n),A", 2, 12, (cpu, bus) => {
+  const n = read8(cpu, bus);
+  const addr = 0xff00 | n;
+  bus.write(addr, cpu.registers.getA());
+  return 12;
+});
+
+register(0xf0, "LDH A,(n)", 2, 12, (cpu, bus) => {
+  const n = read8(cpu, bus);
+  const addr = 0xff00 | n;
+  cpu.registers.setA(bus.read(addr));
+  return 12;
+});
+
+// LD (nn),A and LD A,(nn) (0xEA, 0xFA)
+register(0xea, "LD (nn),A", 3, 16, (cpu, bus) => {
+  const nn = read16(cpu, bus);
+  bus.write(nn, cpu.registers.getA());
+  return 16;
+});
+
+register(0xfa, "LD A,(nn)", 3, 16, (cpu, bus) => {
+  const nn = read16(cpu, bus);
+  cpu.registers.setA(bus.read(nn));
+  return 16;
+});
+
 // LD r,r' (0x40-0x7F)
 for (let i = 0; i < 8; i++) {
   for (let j = 0; j < 8; j++) {
