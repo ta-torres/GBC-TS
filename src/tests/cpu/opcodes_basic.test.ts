@@ -524,5 +524,29 @@ describe("Opcodes", () => {
       expect(cpu.registers.getA()).toBe(0xab);
       expect(cpu.getPC()).toBe(0x0102);
     });
+
+    it("LD (BC),A stores A at address in BC", () => {
+      const { cpu, bus } = setupCPUWithBus([0x02]);
+      cpu.registers.setBC(0xc700);
+      cpu.registers.setA(0x5a);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(8);
+      expect(bus.read(0xc700)).toBe(0x5a);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("LD A,(DE) loads from address in DE", () => {
+      const { cpu, bus } = setupCPUWithBus([0x1a]);
+      cpu.registers.setDE(0xc702);
+      bus.write(0xc702, 0x7b);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(8);
+      expect(cpu.registers.getA()).toBe(0x7b);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
   });
 });

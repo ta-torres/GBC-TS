@@ -109,6 +109,27 @@ register(0x08, "LD (nn),SP", 3, 20, (cpu, bus) => {
   return 20;
 });
 
+// memory ops (02-0A | 12-1A)
+register(0x02, "LD (BC),A", 1, 8, (cpu, bus) => {
+  bus.write(cpu.registers.getBC(), cpu.registers.getA());
+  return 8;
+});
+
+register(0x0a, "LD A,(BC)", 1, 8, (cpu, bus) => {
+  cpu.registers.setA(bus.read(cpu.registers.getBC()));
+  return 8;
+});
+
+register(0x12, "LD (DE),A", 1, 8, (cpu, bus) => {
+  bus.write(cpu.registers.getDE(), cpu.registers.getA());
+  return 8;
+});
+
+register(0x1a, "LD A,(DE)", 1, 8, (cpu, bus) => {
+  cpu.registers.setA(bus.read(cpu.registers.getDE()));
+  return 8;
+});
+
 // LD (HL+),A and LD A,(HL+) (0x22, 0x2A)
 register(0x22, "LD (HL+),A", 1, 8, (cpu, bus) => {
   const addr = cpu.registers.getHL();
