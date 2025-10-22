@@ -30,11 +30,37 @@ export class Interrupts {
 
   getPriorityInterrupt(): InterruptType | null {
     // priority from 0 to 4
+    const pending = this.getPendingInterrupt();
+    if (pending & InterruptType.VBLANK) return InterruptType.VBLANK;
+    if (pending & InterruptType.LCD_STAT) return InterruptType.LCD_STAT;
+    if (pending & InterruptType.TIMER) return InterruptType.TIMER;
+    if (pending & InterruptType.SERIAL) return InterruptType.SERIAL;
+    if (pending & InterruptType.JOYPAD) return InterruptType.JOYPAD;
+
     return null;
   }
 
-  // clear flag
-  // get and set ie/if
+  clearInterrupt(type: InterruptType): void {
+    this.if &= ~type;
+  }
+
+  getIE(): number {
+    return this.ie;
+  }
+
+  setIE(value: number): void {
+    // only lower 5 bits are used (00011111)
+    this.ie = value & 0x1f;
+  }
+
+  getIF(): number {
+    // 11100000
+    return this.if | 0xe0;
+  }
+
+  setIF(value: number): void {
+    this.if = value & 0x1f;
+  }
 
   reset(): void {
     this.ie = 0x00;
