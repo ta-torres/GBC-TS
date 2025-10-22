@@ -190,6 +190,13 @@ register(0xfa, "LD A,(nn)", 3, 16, (cpu, bus) => {
   return 16;
 });
 
+register(0x36, "LD (HL),n", 2, 12, (cpu, bus) => {
+  // read immediate and write to HL address
+  const n = read8(cpu, bus);
+  bus.write(cpu.registers.getHL(), n);
+  return 12;
+});
+
 // LD r,r' (0x40-0x7F)
 for (let i = 0; i < 8; i++) {
   for (let j = 0; j < 8; j++) {
