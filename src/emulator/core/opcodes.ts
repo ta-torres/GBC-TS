@@ -197,6 +197,25 @@ register(0x36, "LD (HL),n", 2, 12, (cpu, bus) => {
   return 12;
 });
 
+/* LDH (or LD [$FF00+C], A) 
+Copies value in A into the byte at address 0xFF00 + C (IO registers/HRAM)
+
+0xFF00-0xFF7F: Port/Mode registers, control register, sound register
+0xFF80-0xFFFE: Working & Stack RAM (127 bytes)
+0xFFFF: Interrupt Enable Register
+*/
+register(0xe2, "LDH (C),A", 1, 8, (cpu, bus) => {
+  const addr = 0xff00 | cpu.registers.getC();
+  bus.write(addr, cpu.registers.getA());
+  return 8;
+});
+
+register(0xf2, "LDH A,(C)", 1, 8, (cpu, bus) => {
+  const addr = 0xff00 | cpu.registers.getC();
+  cpu.registers.setA(bus.read(addr));
+  return 8;
+});
+
 // LD r,r' (0x40-0x7F)
 for (let i = 0; i < 8; i++) {
   for (let j = 0; j < 8; j++) {
