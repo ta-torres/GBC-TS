@@ -548,5 +548,45 @@ describe("Opcodes", () => {
       expect(cpu.registers.getA()).toBe(0x7b);
       expect(cpu.getPC()).toBe(0x0101);
     });
+
+    it("ADD SP,e (0xE8) applies signed offset and sets H and C", () => {
+      const cpu = setupCPU([0xe8, 0x01]);
+      cpu.sp = 0x00ff;
+      cpu.registers.setZeroFlag(true);
+      cpu.registers.setSubtractFlag(true);
+      cpu.registers.setHalfCarryFlag(false);
+      cpu.registers.setCarryFlag(false);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(16);
+      expect(cpu.getSP()).toBe(0x0100);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(true);
+      expect(cpu.registers.getCarryFlag()).toBe(true);
+      expect(cpu.getPC()).toBe(0x0102);
+    });
+
+    it("LD HL,SP+e (0xF8) uses signed offset, updates HL, leaves SP, sets H only", () => {
+      const cpu = setupCPU([0xf8, 0x01]);
+      cpu.sp = 0x000f;
+      cpu.registers.setZeroFlag(true);
+      cpu.registers.setSubtractFlag(true);
+      cpu.registers.setHalfCarryFlag(false);
+      cpu.registers.setCarryFlag(true);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(12);
+      // sp + 0x01 = 0x10
+      expect(cpu.registers.getHL()).toBe(0x0010);
+      expect(cpu.getSP()).toBe(0x000f);
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(true);
+      expect(cpu.registers.getCarryFlag()).toBe(false);
+      expect(cpu.getPC()).toBe(0x0102);
+    });
   });
 });

@@ -216,6 +216,57 @@ register(0xf2, "LDH A,(C)", 1, 8, (cpu, bus) => {
   return 8;
 });
 
+// SP ops
+register(0xe8, "ADD SP,e", 2, 16, (cpu, bus) => {
+  // suma desplazamiento con signo de 8 bits a SP (16 bits) y almacena el resultado en SP
+  // H y C se calculan con XOR (A ^ B ^ C) y se enmascara (& 0x10 o & 0x100)
+  const imm8 = read8(cpu, bus);
+  const e8Signed = imm8 < 0x80 ? imm8 : imm8 - 0x100; // [-128..127]
+  const sp16 = cpu.sp & 0xffff;
+  const result16 = (sp16 + e8Signed) & 0xffff;
+
+  // 16 bit para calculo de H/C con XOR
+  const e8Signed16 = e8Signed & 0xffff;
+
+  cpu.registers.setZeroFlag(false);
+  cpu.registers.setSubtractFlag(false);
+
+  /* 
+  En el z80 original, para sumas de 8 bits, el half carry se activa si hay un carry desde el bit 3 al 4 (en la mitad baja del byte)
+  En esta instrucción (que suma 16 bits pero con offset de 8 bits) el game boy usa la misma regla, considerando solo los 8 bits bajos de SP 
+    XOR (A ^ B ^ sum) combina los tres valores y deja un 1 en los bits donde el carry ocurrió
+    Se enmascara (& 0x10 o & 0x100) para quedarse solo con el resto de bit 3 → 4 (Half-Carry) o 7 → 8 (Carry).
+  */
+  cpu.registers.setHalfCarryFlag(((sp16 ^ e8Signed16 ^ result16) & 0x10) !== 0);
+  cpu.registers.setCarryFlag(((sp16 ^ e8Signed16 ^ result16) & 0x100) !== 0);
+
+  cpu.sp = result16;
+
+  return 16;
+});
+
+register(0xf8, "LD HL,SP+e", 2, 12, (cpu, bus) => {
+  // igual que ADD SP,e pero guarda el resultado en HL, SP no se modifica
+  const imm8 = read8(cpu, bus);
+  const e8Signed = imm8 < 0x80 ? imm8 : imm8 - 0x100;
+  const sp16 = cpu.sp & 0xffff;
+  const result16 = (sp16 + e8Signed) & 0xffff;
+  const e8Signed16 = e8Signed & 0xffff;
+
+  cpu.registers.setZeroFlag(false);
+  cpu.registers.setSubtractFlag(false);
+  cpu.registers.setHalfCarryFlag(((sp16 ^ e8Signed16 ^ result16) & 0x10) !== 0);
+  cpu.registers.setCarryFlag(((sp16 ^ e8Signed16 ^ result16) & 0x100) !== 0);
+  cpu.registers.setHL(result16);
+
+  return 12;
+});
+
+register(0xf9, "LD SP,HL", 1, 8, (cpu) => {
+  cpu.sp = cpu.registers.getHL() & 0xffff;
+  return 8;
+});
+
 // LD r,r' (0x40-0x7F)
 for (let i = 0; i < 8; i++) {
   for (let j = 0; j < 8; j++) {
