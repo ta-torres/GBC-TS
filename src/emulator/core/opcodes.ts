@@ -686,6 +686,32 @@ for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
   });
 }
 
+// RST (0xc7 - 0xff)
+// writes PC to stack and jumps program counter to 1 of 8 addresses
+const rstTable = [
+  { opcode: 0xc7, address: 0x00 },
+  { opcode: 0xcf, address: 0x08 },
+  { opcode: 0xd7, address: 0x10 },
+  { opcode: 0xdf, address: 0x18 },
+  { opcode: 0xe7, address: 0x20 },
+  { opcode: 0xef, address: 0x28 },
+  { opcode: 0xf7, address: 0x30 },
+  { opcode: 0xff, address: 0x38 },
+];
+for (const { opcode, address } of rstTable) {
+  register(
+    opcode,
+    `RST ${address.toString(16).toUpperCase().padStart(2, "0")}h`,
+    1,
+    16,
+    (cpu) => {
+      cpu.push(cpu.pc);
+      cpu.pc = address;
+      return 16;
+    },
+  );
+}
+
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
   const offset = read8(cpu, bus);

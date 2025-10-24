@@ -655,4 +655,36 @@ describe("Opcodes", () => {
       expect(cpu.getPC()).toBe(0x3333);
     });
   });
+
+  describe("RST 00h", () => {
+    it("RST 00h pushes PC and jumps to 0x0000", () => {
+      // SP: 0xFFFE -> 0xFFFD -> 0xFFFC
+      // read high (sp - 1) then low (sp - 2)
+      const { cpu, bus } = setupCPUWithBus([0xc7]);
+      const initialSP = cpu.getSP();
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(16);
+      expect(cpu.getPC()).toBe(0x0000);
+      expect(cpu.getSP()).toBe(initialSP - 2);
+
+      expect(bus.read(initialSP - 1)).toBe(0x01);
+      expect(bus.read(initialSP - 2)).toBe(0x01);
+    });
+
+    it("RST 28h pushes PC and jumps to 0x0028", () => {
+      const { cpu, bus } = setupCPUWithBus([0xef]);
+      const initialSP = cpu.getSP();
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(16);
+      expect(cpu.getPC()).toBe(0x0028);
+      expect(cpu.getSP()).toBe(initialSP - 2);
+
+      expect(bus.read(initialSP - 1)).toBe(0x01);
+      expect(bus.read(initialSP - 2)).toBe(0x01);
+    });
+  });
 });
