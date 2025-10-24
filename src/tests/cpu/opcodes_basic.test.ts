@@ -589,4 +589,70 @@ describe("Opcodes", () => {
       expect(cpu.getPC()).toBe(0x0102);
     });
   });
+
+  describe("Conditional control flow", () => {
+    it("JR NZ,n jumps with signed negative offset when Z=0", () => {
+      const cpu = setupCPU([0x20, 0xfe]);
+      cpu.registers.setZeroFlag(false);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(12);
+      expect(cpu.getPC()).toBe(0x0100);
+    });
+
+    it("JP (HL) jumps to address in HL", () => {
+      const cpu = setupCPU([0xe9]);
+      cpu.registers.setHL(0x2345);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.getPC()).toBe(0x2345);
+    });
+
+    it("JP Z,nn jumps when Z=1", () => {
+      const cpu = setupCPU([0xca, 0x78, 0x56]);
+      cpu.registers.setZeroFlag(true);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(16);
+      expect(cpu.getPC()).toBe(0x5678);
+    });
+
+    it("CALL C,nn pushes return and jumps when C=1", () => {
+      const cpu = setupCPU([0xdc, 0x00, 0x02]);
+      cpu.registers.setCarryFlag(true);
+      const initialSP = cpu.getSP();
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(24);
+      expect(cpu.getPC()).toBe(0x0200);
+      expect(cpu.getSP()).toBe((initialSP - 2) & 0xffff);
+    });
+
+    it("RET NZ returns when Z=0", () => {
+      const cpu = setupCPU([0xc0]);
+      cpu.registers.setZeroFlag(false);
+      cpu.push(0x2222);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(20);
+      expect(cpu.getPC()).toBe(0x2222);
+      expect(cpu.getSP()).toBe(0xfffe);
+    });
+
+    it("RETI pops into PC", () => {
+      const cpu = setupCPU([0xd9]);
+      cpu.push(0x3333);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(16);
+      expect(cpu.getPC()).toBe(0x3333);
+    });
+  });
 });

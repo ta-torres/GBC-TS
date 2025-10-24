@@ -525,6 +525,167 @@ for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
   }
 }
 
+// jr jp call ret reti
+{
+  const negateZero = (cpu: CPU) => !cpu.registers.getZeroFlag();
+  const zero = (cpu: CPU) => cpu.registers.getZeroFlag();
+  const negateCarry = (cpu: CPU) => !cpu.registers.getCarryFlag();
+  const carry = (cpu: CPU) => cpu.registers.getCarryFlag();
+
+  // JR cc,n
+  register(0x20, "JR NZ,n", 2, 8, (cpu, bus) => {
+    const off = read8(cpu, bus);
+    if (negateZero(cpu)) {
+      const signed = off < 0x80 ? off : off - 0x100;
+      cpu.pc = (cpu.pc + signed) & 0xffff;
+      return 12;
+    }
+    return 8;
+  });
+  register(0x28, "JR Z,n", 2, 8, (cpu, bus) => {
+    const off = read8(cpu, bus);
+    if (zero(cpu)) {
+      const signed = off < 0x80 ? off : off - 0x100;
+      cpu.pc = (cpu.pc + signed) & 0xffff;
+      return 12;
+    }
+    return 8;
+  });
+  register(0x30, "JR NC,n", 2, 8, (cpu, bus) => {
+    const off = read8(cpu, bus);
+    if (negateCarry(cpu)) {
+      const signed = off < 0x80 ? off : off - 0x100;
+      cpu.pc = (cpu.pc + signed) & 0xffff;
+      return 12;
+    }
+    return 8;
+  });
+  register(0x38, "JR C,n", 2, 8, (cpu, bus) => {
+    const off = read8(cpu, bus);
+    if (carry(cpu)) {
+      const signed = off < 0x80 ? off : off - 0x100;
+      cpu.pc = (cpu.pc + signed) & 0xffff;
+      return 12;
+    }
+    return 8;
+  });
+
+  // JP (HL)
+  register(0xe9, "JP (HL)", 1, 4, (cpu) => {
+    cpu.pc = cpu.registers.getHL() & 0xffff;
+    return 4;
+  });
+
+  // JP cc,nn
+  register(0xc2, "JP NZ,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (negateZero(cpu)) {
+      cpu.pc = nn & 0xffff;
+      return 16;
+    }
+    return 12;
+  });
+  register(0xca, "JP Z,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (zero(cpu)) {
+      cpu.pc = nn & 0xffff;
+      return 16;
+    }
+    return 12;
+  });
+  register(0xd2, "JP NC,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (negateCarry(cpu)) {
+      cpu.pc = nn & 0xffff;
+      return 16;
+    }
+    return 12;
+  });
+  register(0xda, "JP C,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (carry(cpu)) {
+      cpu.pc = nn & 0xffff;
+      return 16;
+    }
+    return 12;
+  });
+
+  // CALL cc,nn
+  register(0xc4, "CALL NZ,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (negateZero(cpu)) {
+      cpu.push(cpu.pc);
+      cpu.pc = nn & 0xffff;
+      return 24;
+    }
+    return 12;
+  });
+  register(0xcc, "CALL Z,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (zero(cpu)) {
+      cpu.push(cpu.pc);
+      cpu.pc = nn & 0xffff;
+      return 24;
+    }
+    return 12;
+  });
+  register(0xd4, "CALL NC,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (negateCarry(cpu)) {
+      cpu.push(cpu.pc);
+      cpu.pc = nn & 0xffff;
+      return 24;
+    }
+    return 12;
+  });
+  register(0xdc, "CALL C,nn", 3, 12, (cpu, bus) => {
+    const nn = read16(cpu, bus);
+    if (carry(cpu)) {
+      cpu.push(cpu.pc);
+      cpu.pc = nn & 0xffff;
+      return 24;
+    }
+    return 12;
+  });
+
+  // RET cc
+  register(0xc0, "RET NZ", 1, 8, (cpu) => {
+    if (negateZero(cpu)) {
+      cpu.pc = cpu.pop() & 0xffff;
+      return 20;
+    }
+    return 8;
+  });
+  register(0xc8, "RET Z", 1, 8, (cpu) => {
+    if (zero(cpu)) {
+      cpu.pc = cpu.pop() & 0xffff;
+      return 20;
+    }
+    return 8;
+  });
+  register(0xd0, "RET NC", 1, 8, (cpu) => {
+    if (negateCarry(cpu)) {
+      cpu.pc = cpu.pop() & 0xffff;
+      return 20;
+    }
+    return 8;
+  });
+  register(0xd8, "RET C", 1, 8, (cpu) => {
+    if (carry(cpu)) {
+      cpu.pc = cpu.pop() & 0xffff;
+      return 20;
+    }
+    return 8;
+  });
+
+  // return from interrupt
+  register(0xd9, "RETI", 1, 16, (cpu) => {
+    const addr = cpu.pop();
+    cpu.pc = addr & 0xffff;
+    return 16;
+  });
+}
+
 // relative and absolute jumps
 register(0x18, "JR n", 2, 12, (cpu, bus) => {
   const offset = read8(cpu, bus);
