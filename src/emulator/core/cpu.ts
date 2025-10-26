@@ -32,6 +32,7 @@ export class CPU {
     }
 
     const opcode = this.bus.read(this.pc);
+    this.pc = (this.pc + 1) & 0xffff;
 
     if (this.imeScheduled) {
       this.ime = true;
@@ -50,8 +51,6 @@ export class CPU {
     }
     //console.log(this.getRegisters().toString());
 
-    // check and increase program counter
-    this.pc = (this.pc + 1) & 0xffff;
     const cycles = info.handler(this, this.bus);
     return cycles;
   }
