@@ -27,6 +27,17 @@ const read16 = (cpu: CPU, bus: AddressBus): number => {
   return (high << 8) | low;
 };
 
+// interrupts
+register(0xf3, "DI", 1, 4, (cpu) => {
+  cpu.disableIME();
+  return 4;
+});
+
+register(0xfb, "EI", 1, 4, (cpu) => {
+  cpu.scheduleIME();
+  return 4;
+});
+
 // 16-bit immediates
 register(0x01, "LD BC,nn", 3, 12, (cpu, bus) => {
   const nn = read16(cpu, bus);
