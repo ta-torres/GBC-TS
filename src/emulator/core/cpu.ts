@@ -100,4 +100,14 @@ export class CPU {
   getInstruction(): string {
     return this.bus.readInstruction(this.pc).toString(16);
   }
+
+  enableIME(): void {
+    this.ime = true;
+  }
+  disableIME(): void {
+    this.ime = false;
+  }
+  scheduleIME(): void {
+    this.imeScheduled = true;
+  }
 }
