@@ -682,6 +682,8 @@ for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
   register(0xd9, "RETI", 1, 16, (cpu) => {
     const addr = cpu.pop();
     cpu.pc = addr & 0xffff;
+    // pop from stack (RET) then enable interrupts
+    cpu.enableIME();
     return 16;
   });
 }
