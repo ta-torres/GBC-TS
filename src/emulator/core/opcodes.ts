@@ -536,6 +536,60 @@ for (let registerIdx = 0; registerIdx < 8; registerIdx++) {
   }
 }
 
+// non-cb rotate/shift
+register(0x07, "RLCA", 1, 4, (cpu) => {
+  // bit 7 (leftmost) becomes carry and bit 0 is added to the left (rotate left)
+  const a = cpu.registers.getA();
+  const carry = (a & 0x80) !== 0;
+  const result = ((a << 1) & 0xff) | (carry ? 1 : 0);
+  cpu.registers.setA(result);
+  cpu.registers.setZeroFlag(false);
+  cpu.registers.setSubtractFlag(false);
+  cpu.registers.setHalfCarryFlag(false);
+  cpu.registers.setCarryFlag(carry);
+  return 4;
+});
+
+register(0x0f, "RRCA", 1, 4, (cpu) => {
+  // bit 0 (rightmost) becomes carry and bit 7 is added to the right (rotate right)
+  const a = cpu.registers.getA();
+  const carry = (a & 0x01) !== 0;
+  const result = (a >>> 1) | (carry ? 0x80 : 0);
+  cpu.registers.setA(result & 0xff);
+  cpu.registers.setZeroFlag(false);
+  cpu.registers.setSubtractFlag(false);
+  cpu.registers.setHalfCarryFlag(false);
+  cpu.registers.setCarryFlag(carry);
+  return 4;
+});
+
+register(0x17, "RLA", 1, 4, (cpu) => {
+  // same as RLCA but uses the carry flag as the leftmost bit
+  const a = cpu.registers.getA();
+  const oldCarry = cpu.registers.getCarryFlag() ? 1 : 0;
+  const newCarry = (a & 0x80) !== 0;
+  const result = ((a << 1) & 0xff) | oldCarry;
+  cpu.registers.setA(result);
+  cpu.registers.setZeroFlag(false);
+  cpu.registers.setSubtractFlag(false);
+  cpu.registers.setHalfCarryFlag(false);
+  cpu.registers.setCarryFlag(newCarry);
+  return 4;
+});
+
+register(0x1f, "RRA", 1, 4, (cpu) => {
+  const a = cpu.registers.getA();
+  const oldCarry = cpu.registers.getCarryFlag() ? 1 : 0;
+  const newCarry = (a & 0x01) !== 0;
+  const result = (a >>> 1) | (oldCarry ? 0x80 : 0);
+  cpu.registers.setA(result & 0xff);
+  cpu.registers.setZeroFlag(false);
+  cpu.registers.setSubtractFlag(false);
+  cpu.registers.setHalfCarryFlag(false);
+  cpu.registers.setCarryFlag(newCarry);
+  return 4;
+});
+
 // jr jp call ret reti
 {
   const negateZero = (cpu: CPU) => !cpu.registers.getZeroFlag();

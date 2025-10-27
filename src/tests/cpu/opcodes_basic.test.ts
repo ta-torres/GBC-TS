@@ -687,4 +687,44 @@ describe("Opcodes", () => {
       expect(bus.read(initialSP - 2)).toBe(0x01);
     });
   });
+
+  describe("Rotate/shift A", () => {
+    it("RLCA rotates A left circular and sets carry from bit7", () => {
+      const cpu = setupCPU([0x07]);
+      cpu.registers.setA(0x85); // 1000 0101
+      cpu.registers.setZeroFlag(true);
+      cpu.registers.setSubtractFlag(true);
+      cpu.registers.setHalfCarryFlag(true);
+      cpu.registers.setCarryFlag(false);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.registers.getA()).toBe(0x0b); // 0000 1011
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(false);
+      expect(cpu.registers.getCarryFlag()).toBe(true);
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+
+    it("RRA rotates A right through carry and sets carry from bit0", () => {
+      const cpu = setupCPU([0x1f]);
+      cpu.registers.setA(0x01); // 0000 0001
+      cpu.registers.setCarryFlag(true); // old carry -> bit7
+      cpu.registers.setZeroFlag(true);
+      cpu.registers.setSubtractFlag(true);
+      cpu.registers.setHalfCarryFlag(true);
+
+      const cycles = cpu.step();
+
+      expect(cycles).toBe(4);
+      expect(cpu.registers.getA()).toBe(0x80); // 1000 0000
+      expect(cpu.registers.getZeroFlag()).toBe(false);
+      expect(cpu.registers.getSubtractFlag()).toBe(false);
+      expect(cpu.registers.getHalfCarryFlag()).toBe(false);
+      expect(cpu.registers.getCarryFlag()).toBe(true); // from bit0 of original A
+      expect(cpu.getPC()).toBe(0x0101);
+    });
+  });
 });
