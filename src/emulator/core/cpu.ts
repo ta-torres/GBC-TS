@@ -2,6 +2,7 @@ import { Registers } from "./registers";
 import { AddressBus } from "../memory/addressBus";
 import { OPCODE_TABLE } from "./opcodes";
 import { toHex16, toHex8 } from "../../utils/bitwise";
+import { Interrupts, InterruptType, INTERRUPT_ADDRESSES } from "./interrupts";
 
 export class CPU {
   public registers: Registers;
@@ -12,9 +13,12 @@ export class CPU {
   private imeScheduled: boolean;
   private halted: boolean;
 
+  private interrupts: Interrupts;
+
   constructor(bus: AddressBus) {
     this.registers = new Registers();
     this.bus = bus;
+    this.interrupts = new Interrupts();
 
     // post-boot state
     this.pc = 0x0100; // start of cartridge
@@ -25,9 +29,27 @@ export class CPU {
   }
 
   step(): number {
+    // handle interrupts before running current instruction
+    if (this.ime) {
+      const interrupt = this.interrupts.getPriorityInterrupt();
+      if (interrupt !== null) {
+        this.ime = false;
+        this.imeScheduled = false;
+        this.halted = false;
+        this.interrupts.clearInterrupt(interrupt as InterruptType);
+        this.push(this.pc);
+        this.pc = INTERRUPT_ADDRESSES[interrupt as InterruptType];
+        return 20;
+      }
+    }
+
     if (this.halted) {
-      // how does this interact with ime?
-      // default halt cycle
+      /*
+      https://gbdev.io/pandocs/halt.html#halt-bug
+      HALT bug: pc is not incremented after a HALT instruction when IME is disabled and an interrupt is pending
+      check for disabled IME and pending interrupt
+      return default halt cycle for now
+      */
       return 4;
     }
 
