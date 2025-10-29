@@ -51,11 +51,6 @@ export class CPU {
     const opcode = this.bus.read(this.pc);
     this.pc = (this.pc + 1) & 0xffff;
 
-    if (this.imeScheduled) {
-      this.ime = true;
-      this.imeScheduled = false;
-    }
-
     /* console.log(
       `PC: ${toHex16(this.pc)} | Opcode: ${toHex8(opcode)} | ${this.registers.toString()}`,
     ); */
@@ -69,6 +64,13 @@ export class CPU {
     //console.log(this.getRegisters().toString());
 
     const cycles = info.handler(this, this.bus);
+
+    // if IME is scheduled after running current instruction, enable IME for next step (EI delays by 1 instruction)
+    if (this.imeScheduled) {
+      this.ime = true;
+      this.imeScheduled = false;
+    }
+
     return cycles;
   }
 
