@@ -24,13 +24,13 @@ export class Interrupts {
     this.if |= type;
   }
 
-  getPendingInterrupt(): number {
+  getPending(): number {
     return this.ie & this.if;
   }
 
-  getPriorityInterrupt(): InterruptType | null {
+  getHighestPriority(): InterruptType | null {
     // priority from 0 to 4
-    const pending = this.getPendingInterrupt();
+    const pending = this.getPending();
     if (pending & InterruptType.VBLANK) return InterruptType.VBLANK;
     if (pending & InterruptType.LCD_STAT) return InterruptType.LCD_STAT;
     if (pending & InterruptType.TIMER) return InterruptType.TIMER;

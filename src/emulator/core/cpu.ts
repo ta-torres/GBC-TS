@@ -31,14 +31,9 @@ export class CPU {
   step(): number {
     // handle interrupts before running current instruction
     if (this.ime) {
-      const interrupt = this.interrupts.getPriorityInterrupt();
+      const interrupt = this.interrupts.getHighestPriority();
       if (interrupt !== null) {
-        this.ime = false;
-        this.imeScheduled = false;
-        this.halted = false;
-        this.interrupts.clearInterrupt(interrupt as InterruptType);
-        this.push(this.pc);
-        this.pc = INTERRUPT_ADDRESSES[interrupt as InterruptType];
+        this.handleInterrupt(interrupt);
         return 20;
       }
     }
@@ -75,6 +70,15 @@ export class CPU {
 
     const cycles = info.handler(this, this.bus);
     return cycles;
+  }
+
+  private handleInterrupt(type: InterruptType): void {
+    this.ime = false;
+    this.imeScheduled = false;
+    this.halted = false;
+    this.interrupts.clearInterrupt(type);
+    this.push(this.pc);
+    this.pc = INTERRUPT_ADDRESSES[type];
   }
 
   push(value: number): void {
