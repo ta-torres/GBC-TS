@@ -74,4 +74,13 @@ export class Timer {
     this.tac = value & 0x07;
     this.timaCycles = 0;
   }
+
+  reset(): void {
+    this.div = 0x00;
+    this.tima = 0x00;
+    this.tma = 0x00;
+    this.tac = 0x00;
+    this.divCycles = 0;
+    this.timaCycles = 0;
+  }
 }
