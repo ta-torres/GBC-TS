@@ -24,7 +24,7 @@ export class CPU {
     // post-boot state
     this.pc = 0x0100; // start of cartridge
     this.sp = 0xfffe; // top of stack
-    void this.ime;
+    this.ime = false;
     this.imeScheduled = false;
     this.halted = false;
   }
