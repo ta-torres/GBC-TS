@@ -10,6 +10,12 @@ function makeROM(program: number[]): Uint8Array {
   }
   rom[0x0147] = 0x00;
 
+  let checksum = 0;
+  for (let i = 0x0134; i <= 0x014c; i++) {
+    checksum = checksum - rom[i] - 1;
+  }
+  rom[0x014d] = checksum & 0xff;
+
   return rom;
 }
 
