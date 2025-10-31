@@ -13,6 +13,8 @@ export class CPU {
   private ime: boolean = false;
   private imeScheduled: boolean;
   private halted: boolean;
+  // @ts-expect-error unused
+  private stopped: boolean;
 
   private interrupts: Interrupts;
 
@@ -27,6 +29,7 @@ export class CPU {
     this.ime = false;
     this.imeScheduled = false;
     this.halted = false;
+    this.stopped = false;
   }
 
   step(): number {
@@ -124,6 +127,7 @@ export class CPU {
     this.ime = false;
     this.imeScheduled = false;
     this.halted = false;
+    this.stopped = false;
   }
 
   getPC(): number {
