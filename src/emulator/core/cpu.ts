@@ -1,6 +1,7 @@
 import { Registers } from "./registers";
 import { AddressBus } from "../memory/addressBus";
 import { OPCODE_TABLE } from "./opcodes";
+import { CB_OPCODE_TABLE } from "./opcodesCB";
 import { toHex16, toHex8 } from "../../utils/bitwise";
 import { Interrupts, InterruptType, INTERRUPT_ADDRESSES } from "./interrupts";
 
@@ -50,6 +51,19 @@ export class CPU {
 
     const opcode = this.bus.read(this.pc);
     this.pc = (this.pc + 1) & 0xffff;
+
+    if (opcode === 0xcb) {
+      const cbOpcode = this.bus.read(this.pc);
+      this.pc = (this.pc + 1) & 0xffff;
+
+      const cbInfo = CB_OPCODE_TABLE[cbOpcode];
+      if (!cbInfo) {
+        throw new Error(
+          `Unimplemented CB opcode: ${toHex8(cbOpcode)} at PC: ${toHex16(this.pc)}`,
+        );
+      }
+      return cbInfo.handler(this, this.bus);
+    }
 
     /* console.log(
       `PC: ${toHex16(this.pc)} | Opcode: ${toHex8(opcode)} | ${this.registers.toString()}`,
