@@ -20,7 +20,7 @@ export class GBEmulator {
     const interrupts = new Interrupts();
     const timer = new Timer(interrupts);
     this.bus = new AddressBus(this.cartridge, timer, interrupts);
-    this.cpu = new CPU(this.bus);
+    this.cpu = new CPU(this.bus, interrupts);
   }
 
   async loadROM(file: File): Promise<boolean> {

@@ -18,10 +18,10 @@ export class CPU {
 
   private interrupts: Interrupts;
 
-  constructor(bus: AddressBus) {
+  constructor(bus: AddressBus, interrupts: Interrupts) {
     this.registers = new Registers();
     this.bus = bus;
-    this.interrupts = new Interrupts();
+    this.interrupts = interrupts;
 
     // post-boot state
     this.pc = 0x0100; // start of cartridge

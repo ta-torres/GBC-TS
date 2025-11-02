@@ -30,7 +30,7 @@ function setupCPU(program: number[]): CPU {
   const interrupts = new Interrupts();
   const timer = new Timer(interrupts);
   const bus = new AddressBus(cart, timer, interrupts);
-  const cpu = new CPU(bus);
+  const cpu = new CPU(bus, interrupts);
   return cpu;
 }
 
@@ -41,7 +41,7 @@ function setupCPUWithBus(program: number[]): { cpu: CPU; bus: AddressBus } {
   const interrupts = new Interrupts();
   const timer = new Timer(interrupts);
   const bus = new AddressBus(cart, timer, interrupts);
-  const cpu = new CPU(bus);
+  const cpu = new CPU(bus, interrupts);
   return { cpu, bus };
 }
 
@@ -176,7 +176,7 @@ describe("Opcodes", () => {
       const interrupts = new Interrupts();
       const timer = new Timer(interrupts);
       const bus = new AddressBus(cart, timer, interrupts);
-      const cpu = new CPU(bus);
+      const cpu = new CPU(bus, interrupts);
 
       // CALL
       const cycles1 = cpu.step();
