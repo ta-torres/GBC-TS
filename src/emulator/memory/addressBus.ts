@@ -10,11 +10,10 @@ export class AddressBus {
   private hram: Uint8Array; // 0xFF80-0xFFFE (127 bytes)
   private ioRegisters: Uint8Array; // 0xFF00-0xFF7F (128 bytes)
 
-  // reminder to change this ugly mess by not making them optional anymore
-  private timer?: Timer;
-  private interrupts?: Interrupts;
+  private timer: Timer;
+  private interrupts: Interrupts;
 
-  constructor(cartridge: Cartridge, timer?: Timer, interrupts?: Interrupts) {
+  constructor(cartridge: Cartridge, timer: Timer, interrupts: Interrupts) {
     this.cartridge = cartridge;
     this.timer = timer;
     this.interrupts = interrupts;
@@ -87,25 +86,15 @@ export class AddressBus {
     ) {
       switch (address) {
         case IO_REGISTERS.DIV:
-          return this.timer
-            ? this.timer.readDIV()
-            : this.ioRegisters[address - 0xff00];
+          return this.timer.readDIV();
         case IO_REGISTERS.TIMA:
-          return this.timer
-            ? this.timer.readTIMA()
-            : this.ioRegisters[address - 0xff00];
+          return this.timer.readTIMA();
         case IO_REGISTERS.TMA:
-          return this.timer
-            ? this.timer.readTMA()
-            : this.ioRegisters[address - 0xff00];
+          return this.timer.readTMA();
         case IO_REGISTERS.TAC:
-          return this.timer
-            ? this.timer.readTAC()
-            : this.ioRegisters[address - 0xff00];
+          return this.timer.readTAC();
         case IO_REGISTERS.IF:
-          return this.interrupts
-            ? this.interrupts.getIF()
-            : this.ioRegisters[address - 0xff00];
+          return this.interrupts.getIF();
         default:
           return this.ioRegisters[address - 0xff00];
       }
@@ -118,7 +107,7 @@ export class AddressBus {
 
     // IE Register (0xFFFF)
     if (address === MEMORY_MAP.IE_REGISTER) {
-      return this.interrupts ? this.interrupts.getIE() : this.ioRegisters[0x7f]; // store IE at last IO index
+      return this.interrupts.getIE(); // store IE at last IO index
     }
 
     console.warn(`Read from unmapped address: 0x${address.toString(16)}`);
@@ -183,25 +172,20 @@ export class AddressBus {
     ) {
       switch (address) {
         case IO_REGISTERS.DIV:
-          return this.timer
-            ? (this.timer.writeDIV(value), undefined)
-            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+          this.timer.writeDIV(value);
+          return;
         case IO_REGISTERS.TIMA:
-          return this.timer
-            ? (this.timer.writeTIMA(value), undefined)
-            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+          this.timer.writeTIMA(value);
+          return;
         case IO_REGISTERS.TMA:
-          return this.timer
-            ? (this.timer.writeTMA(value), undefined)
-            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+          this.timer.writeTMA(value);
+          return;
         case IO_REGISTERS.TAC:
-          return this.timer
-            ? (this.timer.writeTAC(value), undefined)
-            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+          this.timer.writeTAC(value);
+          return;
         case IO_REGISTERS.IF:
-          return this.interrupts
-            ? (this.interrupts.setIF(value), undefined)
-            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+          this.interrupts.setIF(value);
+          return;
         default:
           this.ioRegisters[address - 0xff00] = value;
           return;
@@ -216,9 +200,8 @@ export class AddressBus {
 
     // IE Register (0xFFFF)
     if (address === MEMORY_MAP.IE_REGISTER) {
-      return this.interrupts
-        ? (this.interrupts.setIE(value), undefined)
-        : ((this.ioRegisters[0x7f] = value), undefined);
+      this.interrupts.setIE(value);
+      return;
     }
 
     console.warn(

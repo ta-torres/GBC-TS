@@ -3,6 +3,8 @@ import { CPU } from "./core/cpu";
 import { AddressBus } from "./memory/addressBus";
 import { loadROMFile } from "../utils/fileLoader";
 import { toHex16 } from "@/utils/bitwise";
+import { Interrupts } from "./core/interrupts";
+import { Timer } from "./core/timer";
 
 export class GBEmulator {
   private cartridge: Cartridge;
@@ -15,7 +17,9 @@ export class GBEmulator {
 
   constructor() {
     this.cartridge = new Cartridge();
-    this.bus = new AddressBus(this.cartridge);
+    const interrupts = new Interrupts();
+    const timer = new Timer(interrupts);
+    this.bus = new AddressBus(this.cartridge, timer, interrupts);
     this.cpu = new CPU(this.bus);
   }
 

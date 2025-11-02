@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { Cartridge } from "../../emulator/cartridge/cartridge";
 import { AddressBus } from "../../emulator/memory/addressBus";
 import { CPU } from "../../emulator/core/cpu";
+import { Interrupts } from "../../emulator/core/interrupts";
+import { Timer } from "../../emulator/core/timer";
 
 function makeROM(program: number[]): Uint8Array {
   const rom = new Uint8Array(0x8000);
@@ -25,7 +27,9 @@ function setupCPU(program: number[]): CPU {
   const rom = makeROM(program);
   const cart = new Cartridge();
   cart.load(rom.buffer);
-  const bus = new AddressBus(cart);
+  const interrupts = new Interrupts();
+  const timer = new Timer(interrupts);
+  const bus = new AddressBus(cart, timer, interrupts);
   const cpu = new CPU(bus);
   return cpu;
 }
@@ -34,7 +38,9 @@ function setupCPUWithBus(program: number[]): { cpu: CPU; bus: AddressBus } {
   const rom = makeROM(program);
   const cart = new Cartridge();
   cart.load(rom.buffer);
-  const bus = new AddressBus(cart);
+  const interrupts = new Interrupts();
+  const timer = new Timer(interrupts);
+  const bus = new AddressBus(cart, timer, interrupts);
   const cpu = new CPU(bus);
   return { cpu, bus };
 }
@@ -167,7 +173,9 @@ describe("Opcodes", () => {
 
       const cart = new Cartridge();
       cart.load(rom.buffer);
-      const bus = new AddressBus(cart);
+      const interrupts = new Interrupts();
+      const timer = new Timer(interrupts);
+      const bus = new AddressBus(cart, timer, interrupts);
       const cpu = new CPU(bus);
 
       // CALL
