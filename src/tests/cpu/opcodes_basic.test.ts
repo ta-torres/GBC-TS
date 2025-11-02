@@ -458,6 +458,7 @@ describe("Opcodes", () => {
   describe("POP rr opcodes", () => {
     it("POP DE pops stack into register pair", () => {
       const { cpu, bus } = setupCPUWithBus([0xd1]);
+      cpu.sp = 0xfffc;
       const initialSP = cpu.getSP();
       bus.write(initialSP, 0x78); // low byte
       bus.write(initialSP + 1, 0x56); // high byte
@@ -473,6 +474,7 @@ describe("Opcodes", () => {
 
     it("POP AF pops stack into register pair and masks F", () => {
       const { cpu, bus } = setupCPUWithBus([0xf1]);
+      cpu.sp = 0xfffc;
       const initialSP = cpu.getSP();
       bus.write(initialSP, 0xff); // low byte (F register)
       bus.write(initialSP + 1, 0x42); // high byte (A register)

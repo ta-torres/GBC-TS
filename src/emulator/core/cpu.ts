@@ -101,6 +101,7 @@ export class CPU {
   }
 
   push(value: number): void {
+    // handle overflow case when decrementing SP?
     // high byte first
     this.sp = (this.sp - 1) & 0xffff;
     this.bus.write(this.sp, (value >> 8) & 0xff);
@@ -110,6 +111,7 @@ export class CPU {
   }
 
   pop(): number {
+    // handle underflow case when SP=0xFFFF?
     // low first
     const low = this.bus.read(this.sp);
     this.sp = (this.sp + 1) & 0xffff;
