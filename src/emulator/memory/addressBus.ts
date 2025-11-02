@@ -1,5 +1,7 @@
 import { Cartridge } from "../cartridge/cartridge";
 import { MEMORY_MAP, IO_REGISTERS } from "../../types/memory";
+import { Timer } from "../core/timer";
+import { Interrupts } from "../core/interrupts";
 
 export class AddressBus {
   private cartridge: Cartridge;
@@ -8,8 +10,14 @@ export class AddressBus {
   private hram: Uint8Array; // 0xFF80-0xFFFE (127 bytes)
   private ioRegisters: Uint8Array; // 0xFF00-0xFF7F (128 bytes)
 
-  constructor(cartridge: Cartridge) {
+  // reminder to change this ugly mess by not making them optional anymore
+  private timer?: Timer;
+  private interrupts?: Interrupts;
+
+  constructor(cartridge: Cartridge, timer?: Timer, interrupts?: Interrupts) {
     this.cartridge = cartridge;
+    this.timer = timer;
+    this.interrupts = interrupts;
     this.wram = new Uint8Array(0x2000); // 8KB
     this.vram = new Uint8Array(0x2000); // 8KB
     this.hram = new Uint8Array(0x7f); // 127 bytes
@@ -77,7 +85,30 @@ export class AddressBus {
       address >= MEMORY_MAP.IO_REGISTERS.start &&
       address <= MEMORY_MAP.IO_REGISTERS.end
     ) {
-      return this.ioRegisters[address - 0xff00];
+      switch (address) {
+        case IO_REGISTERS.DIV:
+          return this.timer
+            ? this.timer.readDIV()
+            : this.ioRegisters[address - 0xff00];
+        case IO_REGISTERS.TIMA:
+          return this.timer
+            ? this.timer.readTIMA()
+            : this.ioRegisters[address - 0xff00];
+        case IO_REGISTERS.TMA:
+          return this.timer
+            ? this.timer.readTMA()
+            : this.ioRegisters[address - 0xff00];
+        case IO_REGISTERS.TAC:
+          return this.timer
+            ? this.timer.readTAC()
+            : this.ioRegisters[address - 0xff00];
+        case IO_REGISTERS.IF:
+          return this.interrupts
+            ? this.interrupts.getIF()
+            : this.ioRegisters[address - 0xff00];
+        default:
+          return this.ioRegisters[address - 0xff00];
+      }
     }
 
     // HRAM (0xFF80-0xFFFE)
@@ -87,7 +118,7 @@ export class AddressBus {
 
     // IE Register (0xFFFF)
     if (address === MEMORY_MAP.IE_REGISTER) {
-      return this.ioRegisters[0x7f]; // store IE at last IO index
+      return this.interrupts ? this.interrupts.getIE() : this.ioRegisters[0x7f]; // store IE at last IO index
     }
 
     console.warn(`Read from unmapped address: 0x${address.toString(16)}`);
@@ -150,8 +181,31 @@ export class AddressBus {
       address >= MEMORY_MAP.IO_REGISTERS.start &&
       address <= MEMORY_MAP.IO_REGISTERS.end
     ) {
-      this.ioRegisters[address - 0xff00] = value;
-      return;
+      switch (address) {
+        case IO_REGISTERS.DIV:
+          return this.timer
+            ? (this.timer.writeDIV(value), undefined)
+            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+        case IO_REGISTERS.TIMA:
+          return this.timer
+            ? (this.timer.writeTIMA(value), undefined)
+            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+        case IO_REGISTERS.TMA:
+          return this.timer
+            ? (this.timer.writeTMA(value), undefined)
+            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+        case IO_REGISTERS.TAC:
+          return this.timer
+            ? (this.timer.writeTAC(value), undefined)
+            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+        case IO_REGISTERS.IF:
+          return this.interrupts
+            ? (this.interrupts.setIF(value), undefined)
+            : ((this.ioRegisters[address - 0xff00] = value), undefined);
+        default:
+          this.ioRegisters[address - 0xff00] = value;
+          return;
+      }
     }
 
     // HRAM (0xFF80-0xFFFE)
@@ -162,8 +216,9 @@ export class AddressBus {
 
     // IE Register (0xFFFF)
     if (address === MEMORY_MAP.IE_REGISTER) {
-      this.ioRegisters[0x7f] = value;
-      return;
+      return this.interrupts
+        ? (this.interrupts.setIE(value), undefined)
+        : ((this.ioRegisters[0x7f] = value), undefined);
     }
 
     console.warn(
