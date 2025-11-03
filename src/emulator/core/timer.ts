@@ -9,9 +9,7 @@ export class Timer {
   private tma: number = 0x00;
   private tac: number = 0x00;
 
-  // @ts-expect-error unused
   private divCycles: number = 0;
-  // @ts-expect-error unused
   private timaCycles: number = 0;
 
   // @ts-expect-error unused
@@ -29,9 +27,47 @@ export class Timer {
     reset to 0?
   */
 
-  // @ts-expect-error unused
   step(cycles: number): void {
     // uhhh
+    // div aumenta cada 256 t-cycles
+    this.divCycles += cycles;
+    // si la cantidad de ciclos es mayor o igual a 256 reiniciar a 0? y aumentar div en 1
+    // hacer lo mismo con tima
+
+    // aumentar tima si tac es 1
+    if (this.isTimerEnabled()) {
+      this.timaCycles += cycles;
+      const frequency = this.getTimerFrequency();
+      console.log(frequency);
+    }
+  }
+
+  private isTimerEnabled(): boolean {
+    return (this.tac & 0x04) !== 0;
+  }
+
+  private getTimerFrequency(): number {
+    /* 
+    TIMA increment frequency
+    get cycles per increment threshold in T-cycles (M-cycles * 4)
+    00 - 1024
+    01 - 16
+    10 - 64
+    11 - 256
+    */
+    const frequency = this.tac & 0x03;
+    switch (frequency) {
+      case 0:
+        return 1024;
+      case 1:
+        return 16;
+      case 2:
+        return 64;
+      case 3:
+        return 256;
+      default:
+        return 1024;
+    }
   }
 
   readDIV(): number {
