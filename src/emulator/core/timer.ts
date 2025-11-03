@@ -40,7 +40,8 @@ export class Timer {
 
   writeDIV(value: number): void {
     // writing any value resets counter to 0 (cycles included?)
-    this.div = value & 0xff;
+    void value;
+    this.div = 0x00;
     this.divCycles = 0;
   }
 
