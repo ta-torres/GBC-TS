@@ -23,6 +23,8 @@ export class AddressBus {
     this.ioRegisters = new Uint8Array(0x80);
 
     // todo: initialize the rest of the IO registers
+    // JOYP (P1): default to 0xFF (no buttons pressed, no group selected)
+    this.ioRegisters[IO_REGISTERS.P1 - 0xff00] = 0xff;
     this.ioRegisters[IO_REGISTERS.LY - 0xff00] = 0x00;
   }
 
@@ -85,6 +87,11 @@ export class AddressBus {
       address <= MEMORY_MAP.IO_REGISTERS.end
     ) {
       switch (address) {
+        case IO_REGISTERS.P1: {
+          // no buttons pressed, lower nibble all 1s, bits 6-7 read as 1s
+          const selects = this.ioRegisters[IO_REGISTERS.P1 - 0xff00] & 0x30;
+          return 0xc0 | selects | 0x0f;
+        }
         case IO_REGISTERS.DIV:
           return this.timer.readDIV();
         case IO_REGISTERS.TIMA:
@@ -171,6 +178,12 @@ export class AddressBus {
       address <= MEMORY_MAP.IO_REGISTERS.end
     ) {
       switch (address) {
+        case IO_REGISTERS.P1: {
+          // store only selection bits (4-5), other bits are synthesized on read
+          const prev = this.ioRegisters[IO_REGISTERS.P1 - 0xff00] & ~0x30;
+          this.ioRegisters[IO_REGISTERS.P1 - 0xff00] = prev | (value & 0x30);
+          return;
+        }
         case IO_REGISTERS.DIV:
           this.timer.writeDIV(value);
           return;

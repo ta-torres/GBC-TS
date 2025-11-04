@@ -5,6 +5,7 @@ import { loadROMFile } from "../utils/fileLoader";
 import { toHex16 } from "@/utils/bitwise";
 import { Interrupts } from "./core/interrupts";
 import { Timer } from "./core/timer";
+import { IO_REGISTERS } from "../types/memory";
 
 export class GBEmulator {
   private cartridge: Cartridge;
@@ -81,9 +82,17 @@ export class GBEmulator {
       this.timer.step(cycles);
       this.ticks += cycles;
 
-      console.log(this.getCPUState());
-      // log instruction
-      console.log(this.cpu.getInstruction());
+      /* 
+        STUB IMPLEMENTATION REMOVE LATER
+      */
+      // ppu timing: update LY based on total cycles
+      const frameCycles = 70224; // 154 lines * 456 cycles per line
+      const lineCycles = 456;
+      const ly = Math.floor((this.ticks % frameCycles) / lineCycles) & 0xff;
+      this.bus.getIORegistersView()[IO_REGISTERS.LY - 0xff00] = ly;
+
+      //console.log(this.getCPUState());
+      //console.log(this.cpu.getInstruction());
     } catch (error) {
       console.error("CPU error:", error);
       this.stop();
