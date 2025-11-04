@@ -1,4 +1,3 @@
-// @ts-expect-error unused
 import { Interrupts, InterruptType } from "./interrupts";
 
 export class Timer {
@@ -12,7 +11,6 @@ export class Timer {
   private divCycles: number = 0;
   private timaCycles: number = 0;
 
-  // @ts-expect-error unused
   private interrupts: Interrupts;
 
   constructor(interrupts: Interrupts) {
@@ -33,12 +31,26 @@ export class Timer {
     this.divCycles += cycles;
     // si la cantidad de ciclos es mayor o igual a 256 reiniciar a 0? y aumentar div en 1
     // hacer lo mismo con tima
+    while (this.divCycles >= 256) {
+      this.div = (this.div + 1) & 0xff;
+      this.divCycles -= 256;
+    }
 
     // aumentar tima si tac es 1
-    if (this.isTimerEnabled()) {
-      this.timaCycles += cycles;
-      const frequency = this.getTimerFrequency();
-      console.log(frequency);
+    if (!this.isTimerEnabled()) return;
+
+    this.timaCycles += cycles;
+    const frequency = this.getTimerFrequency();
+
+    while (this.timaCycles >= frequency) {
+      this.timaCycles -= frequency;
+      this.tima = (this.tima + 1) & 0xff;
+
+      if (this.tima === 0xff) {
+        // si hay overflow cargar tma y pedir interrupcion de timer
+        this.tima = this.tma;
+        this.interrupts.requestInterrupt(InterruptType.TIMER);
+      }
     }
   }
 
