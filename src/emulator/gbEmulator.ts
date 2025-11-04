@@ -10,6 +10,8 @@ export class GBEmulator {
   private cartridge: Cartridge;
   private cpu: CPU;
   private bus: AddressBus;
+  private interrupts: Interrupts;
+  private timer: Timer;
 
   private running = false;
   private paused = false;
@@ -17,10 +19,11 @@ export class GBEmulator {
 
   constructor() {
     this.cartridge = new Cartridge();
-    const interrupts = new Interrupts();
-    const timer = new Timer(interrupts);
-    this.bus = new AddressBus(this.cartridge, timer, interrupts);
-    this.cpu = new CPU(this.bus, interrupts);
+    // use class fields instead of const for global scope access
+    this.interrupts = new Interrupts();
+    this.timer = new Timer(this.interrupts);
+    this.bus = new AddressBus(this.cartridge, this.timer, this.interrupts);
+    this.cpu = new CPU(this.bus, this.interrupts);
   }
 
   async loadROM(file: File): Promise<boolean> {
@@ -62,6 +65,8 @@ export class GBEmulator {
   reset(): void {
     this.cpu.reset();
     this.bus.reset();
+    this.timer.reset();
+    this.interrupts.reset();
     this.ticks = 0;
     this.running = false;
     this.paused = false;
@@ -72,6 +77,8 @@ export class GBEmulator {
     if (!this.cartridge.isLoaded()) return;
     try {
       const cycles = this.cpu.step();
+      // update timer based on t-cycles from opcodes
+      this.timer.step(cycles);
       this.ticks += cycles;
 
       console.log(this.getCPUState());
