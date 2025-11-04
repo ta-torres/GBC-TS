@@ -1,10 +1,12 @@
 import type { CartridgeHeader } from "../../types/cartridge";
-import { getRAMSize } from "../../types/cartridge";
+import { getRAMSize, CARTRIDGE_TYPE } from "../../types/cartridge";
+import type { MBC } from "./mbc";
 
 export class Cartridge {
   private rom: Uint8Array;
   private header: CartridgeHeader | null = null;
   private ram: Uint8Array | null = null;
+  private mbc: MBC | null = null;
 
   constructor() {
     this.rom = new Uint8Array(0);
@@ -20,6 +22,7 @@ export class Cartridge {
       }
 
       this.initializeRAM();
+      this.initializeMBC();
 
       /* console.log(`Loaded ROM: ${this.header!.title}`);
       console.log(`Type: 0x${this.header!.cartridgeType.toString(16)}`);
@@ -85,13 +88,47 @@ export class Cartridge {
     void this.ram?.length;
   }
 
+  private initializeMBC(): void {
+    const type = this.header!.cartridgeType;
+    switch (type) {
+      // type 1: rom only carts
+      case CARTRIDGE_TYPE.ROM_ONLY:
+      case CARTRIDGE_TYPE.ROM_RAM:
+      case CARTRIDGE_TYPE.ROM_RAM_BATTERY:
+        this.mbc = null;
+        break;
+      // type 2: mbc1 carts
+      case CARTRIDGE_TYPE.MBC1:
+      case CARTRIDGE_TYPE.MBC1_RAM:
+      case CARTRIDGE_TYPE.MBC1_RAM_BATTERY:
+        console.warn("MBC1 not implemented yet");
+        this.mbc = null;
+        break;
+      default:
+        console.warn(`Unsupported cartridge type: 0x${type.toString(16)}`);
+        this.mbc = null;
+    }
+  }
+
   read(address: number): number {
+    // try MBC
+    if (this.mbc) {
+      return this.mbc.read(address);
+    }
+
     // rom reads only
     if (address < 0x8000) {
       return this.rom[address] ?? 0xff;
     }
 
+    // RAM reads
     if (address >= 0xa000 && address < 0xc000) {
+      if (this.ram) {
+        const offset = address - 0xa000;
+        if (offset >= 0 && offset < this.ram.length) {
+          return this.ram[offset];
+        }
+      }
       return 0xff;
     }
 
@@ -102,12 +139,25 @@ export class Cartridge {
   }
 
   write(address: number, value: number): void {
-    void value;
+    // try MBC
+    if (this.mbc) {
+      this.mbc.write(address, value);
+      return;
+    }
+
+    // ROM writes are ignored
     if (address < 0x8000) {
       return;
     }
 
+    // RAM writes
     if (address >= 0xa000 && address < 0xc000) {
+      if (this.ram) {
+        const offset = address - 0xa000;
+        if (offset >= 0 && offset < this.ram.length) {
+          this.ram[offset] = value & 0xff;
+        }
+      }
       return;
     }
 
