@@ -617,6 +617,90 @@ register(0x3f, "CCF", 1, 4, (cpu) => {
   return 4;
 });
 
+/*
+https://rgbds.gbdev.io/docs/v1.0.0/gbz80.7#DAA
+# DAA
+Decimal Adjust Accumulator.
+
+Designed to be used after performing an arithmetic instruction (ADD, ADC, SUB, SBC) whose inputs were in Binary-Coded Decimal (BCD), adjusting the result to likewise be in BCD.
+
+The exact behavior of this instruction depends on the state of the subtract flag N:
+
+If the subtract flag N is set:
+  1. Initialize the adjustment to 0.
+  2. If the half-carry flag H is set, then add $6 to the adjustment.
+  3. If the carry flag is set, then add $60 to the adjustment.
+  4. Subtract the adjustment from A.
+
+If the subtract flag N is not set:
+  A. Initialize the adjustment to 0.
+  B. If the half-carry flag H is set or A & $F > $9, then add $6 to the adjustment.
+  C. If the carry flag is set or A > $99, then add $60 to the adjustment and set the carry flag.
+  D. Add the adjustment to A.
+
+Cycles: 4 (T-cycles)
+Bytes: 1
+
+Flags:
+  Z Set if result is 0.
+  H 0
+  C Set or unaffected depending on the operation.
+*/
+register(0x27, "DAA", 1, 4, (cpu) => {
+  // ajusta el resultado de una operacion aritmetica asegurando que el resultado sea un numero decimal valido (codificado en binario con 4 bits por digito)
+  const oldA = cpu.registers.getA();
+  const subtractFlag = cpu.registers.getSubtractFlag();
+  const halfCarryFlag = cpu.registers.getHalfCarryFlag();
+  const carryFlag = cpu.registers.getCarryFlag();
+
+  let adjust = 0;
+  let result = 0;
+
+  if (subtractFlag) {
+    if (halfCarryFlag) adjust += 0x06;
+    if (carryFlag) adjust += 0x60;
+
+    const subtract = oldA - adjust;
+    result = subtract & 0xff;
+
+    cpu.registers.setA(result);
+    cpu.registers.setZeroFlag(result === 0);
+    cpu.registers.setHalfCarryFlag(false);
+    // C is unaffected
+  } else {
+    if (halfCarryFlag || (oldA & 0x0f) > 0x09) adjust += 0x06;
+    if (carryFlag || oldA > 0x99) adjust += 0x60;
+
+    const sum = oldA + adjust;
+    result = sum & 0xff;
+
+    cpu.registers.setA(result);
+    cpu.registers.setZeroFlag(result === 0);
+    cpu.registers.setHalfCarryFlag(false);
+    cpu.registers.setCarryFlag(carryFlag || oldA > 0x99);
+  }
+
+  return 4;
+});
+/*
+N=1, A=0x15, H=1, C=0
+  Adjust (subtract): 
+    H=1 -> adjust += 0x06
+    C=0 -> no adjust
+  Result: 0x15 - 0x06 = 0x0F
+N=0, A=0x90, H=0, C=1
+  Adjust: 
+    H=0 || 0x90 & 0x0f > 0x09 = 0x00 > 0x09 = 0 -> no adjust
+      (0b1001 0000 & 0b0000 1111) = 0b0000 0000
+    C=1 || 0x90 > 0x99 = 0 -> adjust += 0x60
+  Result: 0x90 + 0x60 = 0xF0
+N=0, A=0x9A, H=0, C=0
+  Adjust: 
+    H=0 || 0x9A & 0x0f > 0x09 = 0x0A > 0x09 = 1 -> adjust += 0x06
+    C=0 || 0x9A > 0x99 = 1 -> adjust += 0x60
+  Result: 0x9A + 0x66 = 0x100 & 0xff = 0x00
+*/
+
 // jr jp call ret reti
 {
   const negateZero = (cpu: CPU) => !cpu.registers.getZeroFlag();
