@@ -590,6 +590,33 @@ register(0x1f, "RRA", 1, 4, (cpu) => {
   return 4;
 });
 
+// misc ops
+register(0x2f, "CPL", 1, 4, (cpu) => {
+  // ComPLement A, set N and H
+  const a = cpu.registers.getA();
+  cpu.registers.setA(~a & 0xff);
+  cpu.registers.setSubtractFlag(true);
+  cpu.registers.setHalfCarryFlag(true);
+  return 4;
+});
+
+register(0x37, "SCF", 1, 4, (cpu) => {
+  // Set Carry Flag, clear N and H
+  cpu.registers.setSubtractFlag(false);
+  cpu.registers.setHalfCarryFlag(false);
+  cpu.registers.setCarryFlag(true);
+  return 4;
+});
+
+register(0x3f, "CCF", 1, 4, (cpu) => {
+  // Complement Carry Flag, clear N and H
+  const carry = cpu.registers.getCarryFlag();
+  cpu.registers.setSubtractFlag(false);
+  cpu.registers.setHalfCarryFlag(false);
+  cpu.registers.setCarryFlag(!carry);
+  return 4;
+});
+
 // jr jp call ret reti
 {
   const negateZero = (cpu: CPU) => !cpu.registers.getZeroFlag();
