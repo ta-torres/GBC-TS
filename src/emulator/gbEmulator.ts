@@ -5,7 +5,7 @@ import { loadROMFile } from "../utils/fileLoader";
 import { toHex16 } from "@/utils/bitwise";
 import { Interrupts } from "./core/interrupts";
 import { Timer } from "./core/timer";
-import { IO_REGISTERS } from "../types/memory";
+import { PPU } from "./ppu/ppu";
 
 export class GBEmulator {
   private cartridge: Cartridge;
@@ -13,6 +13,7 @@ export class GBEmulator {
   private bus: AddressBus;
   private interrupts: Interrupts;
   private timer: Timer;
+  private ppu: PPU;
 
   private running = false;
   private paused = false;
@@ -25,6 +26,7 @@ export class GBEmulator {
     this.timer = new Timer(this.interrupts);
     this.bus = new AddressBus(this.cartridge, this.timer, this.interrupts);
     this.cpu = new CPU(this.bus, this.interrupts);
+    this.ppu = new PPU(this.bus.getIORegistersView());
   }
 
   async loadROM(file: File): Promise<boolean> {
@@ -80,16 +82,8 @@ export class GBEmulator {
       const cycles = this.cpu.step();
       // update timer based on t-cycles from opcodes
       this.timer.step(cycles);
+      this.ppu.step(cycles);
       this.ticks += cycles;
-
-      /* 
-        STUB IMPLEMENTATION REMOVE LATER
-      */
-      // ppu timing: update LY based on total cycles
-      const frameCycles = 70224; // 154 lines * 456 cycles per line
-      const lineCycles = 456;
-      const ly = Math.floor((this.ticks % frameCycles) / lineCycles) & 0xff;
-      this.bus.getIORegistersView()[IO_REGISTERS.LY - 0xff00] = ly;
 
       //console.log(this.getCPUState());
       //console.log(this.cpu.getInstruction());
@@ -129,5 +123,13 @@ export class GBEmulator {
     const sp = toHex16(this.cpu.getSP());
     const instruction = this.cpu.getInstruction();
     return `Instruction: ${instruction} | PC: ${pc} | SP: ${sp} | ${this.cpu.getRegisters().toString()}`;
+  }
+
+  getFramebuffer(): Uint32Array {
+    return this.ppu.getFramebuffer();
+  }
+
+  consumeFrameReady(): boolean {
+    return this.ppu.consumeFrameReady();
   }
 }

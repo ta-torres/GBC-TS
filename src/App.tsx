@@ -79,7 +79,9 @@ function App() {
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <GBScreen />
+            {emulatorRef.current && (
+              <GBScreen emulator={emulatorRef.current} />
+            )}
           </div>
           <div className="space-y-4">
             <EmuControllers
