@@ -26,7 +26,7 @@ export class GBEmulator {
     this.timer = new Timer(this.interrupts);
     this.bus = new AddressBus(this.cartridge, this.timer, this.interrupts);
     this.cpu = new CPU(this.bus, this.interrupts);
-    this.ppu = new PPU(this.bus.getIORegistersView());
+    this.ppu = new PPU(this.bus.getIORegistersView(), this.interrupts);
   }
 
   async loadROM(file: File): Promise<boolean> {

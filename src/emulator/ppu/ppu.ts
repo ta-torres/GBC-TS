@@ -1,4 +1,5 @@
 import { IO_REGISTERS } from "../../types/memory";
+import { Interrupts } from "../core/interrupts";
 
 // hblank, vblank, oam, transfer
 type PpuMode = 0 | 1 | 2 | 3;
@@ -13,6 +14,7 @@ const FRAME_DOTS = 70224;
 export class PPU {
   //   private vram: Uint8Array;
   private io: Uint8Array;
+  private interrupts: Interrupts;
   private framebuffer: Uint32Array;
   //private mode: PpuMode;
   private ly: number;
@@ -20,9 +22,10 @@ export class PPU {
   private frameReady: boolean;
   private frameDots: number;
 
-  constructor(io: Uint8Array) {
+  constructor(io: Uint8Array, interrupts: Interrupts) {
     // this.vram = vram;
     this.io = io;
+    this.interrupts = interrupts;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
     //this.mode = 2;
     this.ly = 0;
@@ -33,6 +36,7 @@ export class PPU {
     this.io[IO_REGISTERS.LY - 0xff00] = 0;
     this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
     this.setMode(2);
+    this.interrupts.getPending();
   }
 
   step(cycles: number): void {
@@ -45,6 +49,7 @@ export class PPU {
       return;
     }
 
+    this.interrupts.getPending();
     this.dotsInLine += cycles;
     this.frameDots += cycles;
 
