@@ -12,7 +12,10 @@ const DOTS_PER_LINE = 456;
 const FRAME_DOTS = 70224;
 
 export class PPU {
-  //   private vram: Uint8Array;
+  // @ts-expect-error todo
+  private vram: Uint8Array;
+  // @ts-expect-error todo
+  private oam: Uint8Array;
   private io: Uint8Array;
   private interrupts: Interrupts;
   private framebuffer: Uint32Array;
@@ -22,8 +25,14 @@ export class PPU {
   private frameReady: boolean;
   private frameDots: number;
 
-  constructor(io: Uint8Array, interrupts: Interrupts) {
-    // this.vram = vram;
+  constructor(
+    vram: Uint8Array,
+    oam: Uint8Array,
+    io: Uint8Array,
+    interrupts: Interrupts,
+  ) {
+    this.vram = vram;
+    this.oam = oam;
     this.io = io;
     this.interrupts = interrupts;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);

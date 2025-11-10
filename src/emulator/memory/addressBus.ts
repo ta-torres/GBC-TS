@@ -9,6 +9,7 @@ export class AddressBus {
   private vram: Uint8Array; // 0x8000-0x9FFF (8KB)
   private hram: Uint8Array; // 0xFF80-0xFFFE (127 bytes)
   private ioRegisters: Uint8Array; // 0xFF00-0xFF7F (128 bytes)
+  private oam: Uint8Array; // 0xFE00-0xFE9F (160 bytes)
 
   private timer: Timer;
   private interrupts: Interrupts;
@@ -21,6 +22,7 @@ export class AddressBus {
     this.vram = new Uint8Array(0x2000); // 8KB
     this.hram = new Uint8Array(0x7f); // 127 bytes
     this.ioRegisters = new Uint8Array(0x80);
+    this.oam = new Uint8Array(0xa0);
 
     // todo: initialize the rest of the IO registers
     // JOYP (P1): default to 0xFF (no buttons pressed, no group selected)
@@ -67,10 +69,9 @@ export class AddressBus {
       return this.wram[address - 0xe000];
     }
 
-    // not done yet
     // OAM (0xFE00-0xFE9F)
     if (address >= MEMORY_MAP.OAM.start && address <= MEMORY_MAP.OAM.end) {
-      return 0xff;
+      return this.oam[address - 0xfe00];
     }
 
     // Unusable (0xFEA0-0xFEFF)
@@ -166,9 +167,9 @@ export class AddressBus {
       return;
     }
 
-    // not done yet
     // OAM (0xFE00-0xFE9F)
     if (address >= MEMORY_MAP.OAM.start && address <= MEMORY_MAP.OAM.end) {
+      this.oam[address - 0xfe00] = value;
       return;
     }
 
@@ -227,6 +228,7 @@ export class AddressBus {
     this.vram.fill(0);
     this.hram.fill(0);
     this.ioRegisters.fill(0);
+    this.oam.fill(0);
   }
 
   getVRAMView(): Uint8Array {
@@ -235,6 +237,10 @@ export class AddressBus {
 
   getIORegistersView(): Uint8Array {
     return this.ioRegisters;
+  }
+
+  getOAMView(): Uint8Array {
+    return this.oam;
   }
 
   readInstruction(address: number): number {
