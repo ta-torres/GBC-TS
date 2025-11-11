@@ -1,5 +1,5 @@
 import { IO_REGISTERS } from "../../types/memory";
-import { Interrupts } from "../core/interrupts";
+import { Interrupts, InterruptType } from "../core/interrupts";
 
 // hblank, vblank, oam, transfer
 type PpuMode = 0 | 1 | 2 | 3;
@@ -7,14 +7,11 @@ type PpuMode = 0 | 1 | 2 | 3;
 const SCREEN_WIDTH = 160;
 const SCREEN_HEIGHT = 144;
 const DOTS_PER_LINE = 456;
-//const MODE2_DOTS = 80;
-//const MODE3_DOTS = 172;
-const FRAME_DOTS = 70224;
+const MODE2_DOTS = 80;
+const MODE3_DOTS = 172;
 
 export class PPU {
-  // @ts-expect-error todo
   private vram: Uint8Array;
-  // @ts-expect-error todo
   private oam: Uint8Array;
   private io: Uint8Array;
   private interrupts: Interrupts;
@@ -23,7 +20,6 @@ export class PPU {
   private ly: number;
   private dotsInLine: number;
   private frameReady: boolean;
-  private frameDots: number;
 
   constructor(
     vram: Uint8Array,
@@ -40,7 +36,6 @@ export class PPU {
     this.ly = 0;
     this.dotsInLine = 0;
     this.frameReady = false;
-    this.frameDots = 0;
 
     this.io[IO_REGISTERS.LY - 0xff00] = 0;
     this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
@@ -58,9 +53,19 @@ export class PPU {
       return;
     }
 
-    this.interrupts.getPending();
     this.dotsInLine += cycles;
-    this.frameDots += cycles;
+
+    if (this.ly < 144) {
+      if (this.dotsInLine < MODE2_DOTS) {
+        this.setMode(2);
+      } else if (this.dotsInLine < MODE2_DOTS + MODE3_DOTS) {
+        this.setMode(3);
+      } else if (this.dotsInLine < DOTS_PER_LINE) {
+        this.setMode(0);
+      }
+    } else {
+      this.setMode(1);
+    }
 
     if (this.dotsInLine >= DOTS_PER_LINE) {
       this.dotsInLine -= DOTS_PER_LINE;
@@ -68,21 +73,19 @@ export class PPU {
       // increment horizontal line counter and update ly register
       this.ly = (this.ly + 1) & 0xff;
       this.io[IO_REGISTERS.LY - 0xff00] = this.ly;
-
-      if (this.ly === 144)
+      if (this.ly === 144) {
         this.setMode(1); // enter VBlank
-      else if (this.ly > 153) {
-        // new frame
+
+        // move render pattern inside VBlank rendering and request VBlank interrupt
+        this.renderTestPattern();
+        this.frameReady = true;
+        this.interrupts.requestInterrupt(InterruptType.VBLANK);
+      } else if (this.ly > 153) {
         this.ly = 0;
         this.io[IO_REGISTERS.LY - 0xff00] = 0;
+        // hblank
         this.setMode(2);
       }
-    }
-
-    if (this.frameDots >= FRAME_DOTS) {
-      this.frameDots -= FRAME_DOTS;
-      this.renderTestPattern();
-      this.frameReady = true;
     }
   }
 
@@ -110,9 +113,10 @@ export class PPU {
   //renderScanlineBG
   private renderTestPattern(): void {
     // output to ABGR (0xAABBGGRR)
+    const tweak = (this.vram[0] ^ this.oam[0]) & 3;
     for (let y = 0; y < SCREEN_HEIGHT; y++) {
       for (let x = 0; x < SCREEN_WIDTH; x++) {
-        const band = Math.floor(x / 20) % 4;
+        const band = (Math.floor(x / 20) + tweak) % 4;
         let color: number;
 
         switch (band) {
