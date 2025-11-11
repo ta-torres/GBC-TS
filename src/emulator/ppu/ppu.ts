@@ -21,6 +21,11 @@ export class PPU {
   private dotsInLine: number;
   private frameReady: boolean;
 
+  // DEBUG
+  private debugTrace: boolean;
+  private debugFrameCounter: number;
+  private debugFrameSamples: { ly: number; stat: number; mode: number }[];
+
   constructor(
     vram: Uint8Array,
     oam: Uint8Array,
@@ -36,6 +41,11 @@ export class PPU {
     this.ly = 0;
     this.dotsInLine = 0;
     this.frameReady = false;
+
+    // DEBUG
+    this.debugTrace = false;
+    this.debugFrameCounter = 0;
+    this.debugFrameSamples = [];
 
     this.io[IO_REGISTERS.LY - 0xff00] = 0;
     this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
@@ -73,6 +83,26 @@ export class PPU {
       // increment horizontal line counter and update ly register
       this.ly = (this.ly + 1) & 0xff;
       this.io[IO_REGISTERS.LY - 0xff00] = this.ly;
+
+      // DEBUG
+      if (this.debugTrace) {
+        const statNow = this.io[IO_REGISTERS.STAT - 0xff00];
+        const modeNow = statNow & 0x03;
+        if (
+          this.ly === 0 ||
+          this.ly === 1 ||
+          this.ly === 2 ||
+          this.ly === 143 ||
+          this.ly === 144
+        ) {
+          this.debugFrameSamples.push({
+            ly: this.ly,
+            stat: statNow,
+            mode: modeNow,
+          });
+        }
+      }
+
       if (this.ly === 144) {
         this.setMode(1); // enter VBlank
 
@@ -80,11 +110,36 @@ export class PPU {
         this.renderTestPattern();
         this.frameReady = true;
         this.interrupts.requestInterrupt(InterruptType.VBLANK);
+
+        // DEBUG
+        if (this.debugTrace) {
+          if (this.debugFrameSamples.length > 0) {
+            const summary = this.debugFrameSamples
+              .map(
+                (s) =>
+                  `LY=${s.ly} STAT=${s.stat.toString(16).padStart(2, "0")} M${s.mode}`,
+              )
+              .join(" | ");
+            console.log(`[PPU] frame ${this.debugFrameCounter++}: ${summary}`);
+            this.debugFrameSamples = [];
+          }
+        }
       } else if (this.ly > 153) {
         this.ly = 0;
         this.io[IO_REGISTERS.LY - 0xff00] = 0;
         // hblank
         this.setMode(2);
+
+        // DEBUG
+        if (this.debugTrace) {
+          const statNow2 = this.io[IO_REGISTERS.STAT - 0xff00];
+          const modeNow2 = statNow2 & 0x03;
+          this.debugFrameSamples.push({
+            ly: this.ly,
+            stat: statNow2,
+            mode: modeNow2,
+          });
+        }
       }
     }
   }
@@ -97,6 +152,12 @@ export class PPU {
     const ready = this.frameReady;
     this.frameReady = false;
     return ready;
+  }
+
+  setDebugTrace(enabled: boolean): void {
+    this.debugTrace = enabled;
+    this.debugFrameSamples = [];
+    this.debugFrameCounter = 0;
   }
 
   private setMode(mode: PpuMode): void {
