@@ -288,6 +288,14 @@ export class PPU {
     return (this.io[IO_REGISTERS.LCDC - 0xff00] & 0x80) !== 0;
   }
 
+  private DMG_RGBA = [0xffffffff, 0xffaaaaaa, 0xff555555, 0xff000000];
+
+  private mapDMGPalette(bgp: number, color: 0 | 1 | 2 | 3): number {
+    const shift = color * 2;
+    const shade = (bgp >> shift) & 0x03;
+    return this.DMG_RGBA[shade];
+  }
+
   //renderScanlineBG
   private renderTestPattern(): void {
     // output to ABGR (0xAABBGGRR)
@@ -295,22 +303,8 @@ export class PPU {
     for (let y = 0; y < SCREEN_HEIGHT; y++) {
       for (let x = 0; x < SCREEN_WIDTH; x++) {
         const band = (Math.floor(x / 20) + tweak) % 4;
-        let color: number;
-
-        switch (band) {
-          case 0:
-            color = 0xffd0f8e0;
-            break;
-          case 1:
-            color = 0xff70c088;
-            break;
-          case 2:
-            color = 0xff566834;
-            break;
-          default:
-            color = 0xff201808;
-            break;
-        }
+        const bgp = this.io[IO_REGISTERS.BGP - 0xff00] || 0xe4;
+        const color = this.mapDMGPalette(bgp, band as 0 | 1 | 2 | 3);
         this.framebuffer[y * SCREEN_WIDTH + x] = color;
       }
     }
