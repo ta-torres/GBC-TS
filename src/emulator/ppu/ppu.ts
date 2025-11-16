@@ -18,6 +18,45 @@ const STAT_M1_IRQ = 0x10;
 const STAT_M2_IRQ = 0x20;
 const STAT_LYC_IRQ = 0x40;
 
+const TILE_BYTES = 16;
+
+const readTileDataIndex = (
+  io: Uint8Array,
+): { base: number; signedIndex: boolean } => {
+  const lcdc = io[IO_REGISTERS.LCDC - 0xff00];
+  const dataSelect = (lcdc & 0x10) !== 0;
+  return dataSelect
+    ? { base: 0x8000, signedIndex: false }
+    : { base: 0x9000, signedIndex: true };
+};
+
+const bgTileMapBase = (io: Uint8Array): number => {
+  const lcdc = io[IO_REGISTERS.LCDC - 0xff00];
+  return (lcdc & 0x08) !== 0 ? 0x9c00 : 0x9800;
+};
+
+const fetchTileRow = (
+  vram: Uint8Array,
+  tileBase: number,
+  tileIndex: number,
+  row: number,
+): { low: number; high: number } => {
+  const tileRowAddress = tileBase + tileIndex * TILE_BYTES + row * 2;
+  const lowTilePlaneByte = vram[tileRowAddress - 0x8000];
+  const highTilePlaneByte = vram[tileRowAddress - 0x8000 + 1];
+  return { low: lowTilePlaneByte, high: highTilePlaneByte };
+};
+
+const getBGPixelIndex = (
+  lowTilePlaneByte: number,
+  highTilePlaneByte: number,
+  bitIndex: number,
+): 0 | 1 | 2 | 3 => {
+  const bitPlane0 = (lowTilePlaneByte >> bitIndex) & 1;
+  const bitPlane1 = (highTilePlaneByte >> bitIndex) & 1;
+  return ((bitPlane1 << 1) | bitPlane0) as 0 | 1 | 2 | 3;
+};
+
 export class PPU {
   private vram: Uint8Array;
   private oam: Uint8Array;
@@ -90,6 +129,8 @@ export class PPU {
 
     this.dotsInLine += cycles;
 
+    const previousMode = this.mode;
+
     if (this.ly < 144) {
       if (this.dotsInLine < MODE2_DOTS) {
         this.setMode(2);
@@ -97,6 +138,9 @@ export class PPU {
         this.setMode(3);
       } else if (this.dotsInLine < DOTS_PER_LINE) {
         this.setMode(0);
+        if (previousMode === 3 && this.ly < 144) {
+          this.renderBackgroundLine();
+        }
       }
     } else {
       this.setMode(1);
@@ -134,7 +178,9 @@ export class PPU {
         this.setMode(1); // enter VBlank
 
         // move render pattern inside VBlank rendering and request VBlank interrupt
-        this.renderTestPattern();
+        /* if (this.debugTrace) {
+          this.renderTestPattern();
+        } */
         this.frameReady = true;
         this.interrupts.requestInterrupt(InterruptType.VBLANK);
 
@@ -296,7 +342,79 @@ export class PPU {
     return this.DMG_RGBA[shade];
   }
 
-  //renderScanlineBG
+  private renderBackgroundLine(): void {
+    // si BG está deshabilitado, rellenar scanline con color 0
+    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+    const bgEnabled = (lcdc & 0x01) !== 0;
+    if (!bgEnabled) {
+      const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
+      const backgroundColor = this.mapDMGPalette(bgPalette, 0);
+      const scanlineY = this.ly | 0;
+      const scanlineOffset = scanlineY * SCREEN_WIDTH;
+      for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
+        this.framebuffer[scanlineOffset + screenX] = backgroundColor;
+      }
+      return;
+    }
+
+    // mapea coordenadas de pantalla al espacio de BG y lee direcciones de tiles, tile map de BG, paleta BGP
+    const scrollX = this.io[IO_REGISTERS.SCX - 0xff00];
+    const scrollY = this.io[IO_REGISTERS.SCY - 0xff00];
+
+    const { base: tileDataBaseAddress, signedIndex } = readTileDataIndex(
+      this.io,
+    );
+    const bgTileMapBaseAddress = bgTileMapBase(this.io);
+    const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
+
+    // calcula qué fila de tiles de BG y qué fila interna del tile toca este LY
+    const bgY = (this.ly + scrollY) & 0xff;
+    const bgTileRowIndex = (bgY >> 3) & 31; // 32x32 tiles
+    const tileRowOffset = bgY & 7;
+
+    // recorre X en pantalla, agarra tile/píxel de BG y mapea a color
+    const scanlineOffset = this.ly * SCREEN_WIDTH;
+    for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
+      // mapea screenX de pantalla actual al espacio de BG
+      // selecciona columna de tile de BG e índice dentro del tile map
+      const bgX = (screenX + scrollX) & 0xff;
+
+      const bgTileColumnIndex = (bgX >> 3) & 31;
+      const tileMapIndex = bgTileRowIndex * 32 + bgTileColumnIndex;
+      const tileNumber =
+        this.vram[bgTileMapBaseAddress - 0x8000 + tileMapIndex];
+
+      // convierte número de tile en tile data index (address con/sin signo)
+      let tileIndex: number;
+      if (signedIndex) {
+        const tileNumberSigned = (tileNumber << 24) >> 24;
+        tileIndex = tileNumberSigned + 128;
+      } else {
+        tileIndex = tileNumber;
+      }
+
+      // obtiene los dos bytes de bitplanes para esta tile row
+      const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
+        this.vram,
+        tileDataBaseAddress,
+        tileIndex,
+        tileRowOffset,
+      );
+      // elige qué bit dentro de la fila corresponde a este píxel, fusiona bitplane a 2-bit y mapea a color final
+      const pixelBitIndex = 7 - (bgX & 7);
+
+      const paletteIndex = getBGPixelIndex(
+        lowTilePlaneByte,
+        highTilePlaneByte,
+        pixelBitIndex,
+      );
+      const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
+
+      this.framebuffer[scanlineOffset + screenX] = pixelColor;
+    }
+  }
+
+  // @ts-expect-error unused
   private renderTestPattern(): void {
     // output to ABGR (0xAABBGGRR)
     const tweak = (this.vram[0] ^ this.oam[0]) & 3;
