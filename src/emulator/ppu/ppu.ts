@@ -35,6 +35,11 @@ const bgTileMapBase = (io: Uint8Array): number => {
   return (lcdc & 0x08) !== 0 ? 0x9c00 : 0x9800;
 };
 
+const windowTileMapBase = (io: Uint8Array): number => {
+  const lcdc = io[IO_REGISTERS.LCDC - 0xff00];
+  return (lcdc & 0x40) !== 0 ? 0x9c00 : 0x9800;
+};
+
 const fetchTileRow = (
   vram: Uint8Array,
   tileBase: number,
@@ -67,6 +72,7 @@ export class PPU {
   private ly: number;
   private dotsInLine: number;
   private frameReady: boolean;
+  private windowScanline: number;
 
   // DEBUG
   private debugTrace: boolean;
@@ -101,6 +107,7 @@ export class PPU {
     this.ly = 0;
     this.dotsInLine = 0;
     this.frameReady = false;
+    this.windowScanline = 0;
 
     // DEBUG
     this.debugTrace = false;
@@ -138,8 +145,10 @@ export class PPU {
         this.setMode(3);
       } else if (this.dotsInLine < DOTS_PER_LINE) {
         this.setMode(0);
+        // only render bg once per scanline at the start of hblank
         if (previousMode === 3 && this.ly < 144) {
           this.renderBackgroundLine();
+          this.renderWindowLine();
         }
       }
     } else {
@@ -147,6 +156,8 @@ export class PPU {
     }
 
     if (this.dotsInLine >= DOTS_PER_LINE) {
+      const previousLy = this.ly;
+
       this.dotsInLine -= DOTS_PER_LINE;
 
       // increment horizontal line counter and update ly register
@@ -154,6 +165,15 @@ export class PPU {
       this.io[IO_REGISTERS.LY - 0xff00] = this.ly;
 
       this.evaluateLycAndCheckSTAT();
+
+      // update windowScanline once for every visible line in vertical
+      const lcdcWindow = this.io[IO_REGISTERS.LCDC - 0xff00];
+      const windowEnabled = (lcdcWindow & 0x20) !== 0;
+      const wy = this.io[IO_REGISTERS.WY - 0xff00];
+
+      if (windowEnabled && previousLy >= wy && previousLy < 144) {
+        this.windowScanline = (this.windowScanline + 1) & 0xff;
+      }
 
       // DEBUG
       if (this.debugTrace) {
@@ -202,6 +222,9 @@ export class PPU {
         this.io[IO_REGISTERS.LY - 0xff00] = 0;
 
         this.evaluateLycAndCheckSTAT();
+
+        // reset internal counter when reaching a new frame
+        this.windowScanline = 0;
 
         // hblank
         this.setMode(2);
@@ -403,6 +426,74 @@ export class PPU {
       // elige qué bit dentro de la fila corresponde a este píxel, fusiona bitplane a 2-bit y mapea a color final
       const pixelBitIndex = 7 - (bgX & 7);
 
+      const paletteIndex = getBGPixelIndex(
+        lowTilePlaneByte,
+        highTilePlaneByte,
+        pixelBitIndex,
+      );
+      const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
+
+      this.framebuffer[scanlineOffset + screenX] = pixelColor;
+    }
+  }
+
+  private renderWindowLine(): void {
+    // same as renderBackground but drawn on top (uses same readTileDataIndex)
+    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+    const windowEnabled = (lcdc & 0x20) !== 0;
+    if (!windowEnabled) return;
+
+    const wy = this.io[IO_REGISTERS.WY - 0xff00];
+    const wx = this.io[IO_REGISTERS.WX - 0xff00];
+    // LCDC bit 5
+    const windowXStart = (wx - 7) | 0;
+
+    // if current scanline LY is ABOVE the windows starting position WY (top to bottom) don't draw the window yet
+    // window starts being visible on scanline ly === wy
+    if (this.ly < wy) return;
+
+    // same as BG
+    const { base: tileDataBaseAddress, signedIndex } = readTileDataIndex(
+      this.io,
+    );
+    const windowTileMapBaseAddress = windowTileMapBase(this.io);
+    const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
+
+    // same as BG but use windowScanline instead of windowY (only count lines where the window is actually drawn)
+    const windowRowInPixels = this.windowScanline & 0xff;
+    const windowTileRowIndex = (windowRowInPixels >> 3) & 31;
+    const windowTileRowOffset = windowRowInPixels & 7;
+
+    // Same as BG but don't draw to negative framebuffer (skip off-screen pixels)
+    const scanlineOffset = this.ly * SCREEN_WIDTH;
+    for (
+      let screenX = Math.max(0, windowXStart);
+      screenX < SCREEN_WIDTH;
+      screenX += 1
+    ) {
+      const windowX = (screenX - windowXStart) & 0xff;
+
+      const windowTileColumnIndex = (windowX >> 3) & 31;
+      const tileMapIndex = windowTileRowIndex * 32 + windowTileColumnIndex;
+      const tileNumber =
+        this.vram[windowTileMapBaseAddress - 0x8000 + tileMapIndex];
+
+      let tileIndex: number;
+      if (signedIndex) {
+        const tileNumberSigned = (tileNumber << 24) >> 24;
+        tileIndex = tileNumberSigned + 128;
+      } else {
+        tileIndex = tileNumber;
+      }
+
+      const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
+        this.vram,
+        tileDataBaseAddress,
+        tileIndex,
+        windowTileRowOffset,
+      );
+
+      const pixelBitIndex = 7 - (windowX & 7);
       const paletteIndex = getBGPixelIndex(
         lowTilePlaneByte,
         highTilePlaneByte,
