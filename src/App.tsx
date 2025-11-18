@@ -10,6 +10,7 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
+  const lastDebugUpdateRef = useRef<number>(0);
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBEmulator();
@@ -67,7 +68,11 @@ function App() {
       if (emu && emu.isRunning() && !emu.isPaused()) {
         emu.runCycles(CYCLES_PER_FRAME);
 
-        updateDebugInfo();
+        const now = performance.now();
+        if (now - lastDebugUpdateRef.current > 250) {
+          lastDebugUpdateRef.current = now;
+          updateDebugInfo();
+        }
       }
       rafId = requestAnimationFrame(loop);
     };
