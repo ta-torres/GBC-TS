@@ -200,6 +200,18 @@ export class AddressBus {
         case IO_REGISTERS.IF:
           this.interrupts.setIF(value);
           return;
+        case IO_REGISTERS.DMA: {
+          /* copy 160 bytes from source page value << 8 to OAM
+          TODO: CPU is blocked during DMA?
+          https://gbdev.io/pandocs/OAM_DMA_Transfer.html
+          */
+          const srcBase = (value & 0xff) << 8;
+          for (let i = 0; i < 0xa0; i += 1) {
+            const byte = this.read((srcBase + i) & 0xffff);
+            this.write(0xfe00 + i, byte);
+          }
+          return;
+        }
         default:
           this.ioRegisters[address - 0xff00] = value;
           return;
