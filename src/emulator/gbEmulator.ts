@@ -98,6 +98,27 @@ export class GBEmulator {
     }
   }
 
+  runCycles(cyclesPerFrame: number): void {
+    /* 
+    154 scanlines/frame * 456 cycles/scanline = 70224 cycles/frame 
+    Each RAF iteration in App.tsx calls runCycles by one frame worth of cpu cycles (70224)
+    
+    stepInstruction adds t-cycles to ticks, which are used by runCycles to stop running the current frame once 70224 cycles have been consumed
+    */
+
+    if (!this.running || this.paused) return;
+
+    let remainingCycles = cyclesPerFrame;
+    while (remainingCycles > 0 && this.running && !this.paused) {
+      const ticks = this.ticks;
+      this.stepInstruction();
+      const cyclesSpent = this.ticks - ticks;
+      if (cyclesSpent <= 0) break;
+
+      remainingCycles -= cyclesSpent;
+    }
+  }
+
   runInstructions(count: number): void {
     for (let i = 0; i < count; i++) {
       if (!this.running) break;

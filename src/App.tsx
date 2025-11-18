@@ -60,16 +60,18 @@ function App() {
 
   useEffect(() => {
     let rafId = 0;
+    const CYCLES_PER_FRAME = 70224;
+
     const loop = () => {
       const emu = emulatorRef.current;
       if (emu && emu.isRunning() && !emu.isPaused()) {
-        for (let i = 0; i < 500; i++) {
-          emu.step();
-        }
+        emu.runCycles(CYCLES_PER_FRAME);
+
         updateDebugInfo();
       }
       rafId = requestAnimationFrame(loop);
     };
+
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
   }, []);
@@ -79,9 +81,7 @@ function App() {
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            {emulatorRef.current && (
-              <GBScreen emulator={emulatorRef.current} />
-            )}
+            {emulatorRef.current && <GBScreen emulator={emulatorRef.current} />}
           </div>
           <div className="space-y-4">
             <EmuControllers
