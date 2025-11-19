@@ -38,6 +38,11 @@ register(0xfb, "EI", 1, 4, (cpu) => {
   return 4;
 });
 
+register(0x76, "HALT", 1, 4, (cpu) => {
+  cpu.halt();
+  return 4;
+});
+
 // 16-bit immediates
 register(0x01, "LD BC,nn", 3, 12, (cpu, bus) => {
   const nn = read16(cpu, bus);

@@ -15,6 +15,7 @@ export class CPU {
   private halted: boolean;
   // @ts-expect-error unused
   private stopped: boolean;
+  private haltBug: boolean;
 
   private interrupts: Interrupts;
 
@@ -30,6 +31,7 @@ export class CPU {
     this.imeScheduled = false;
     this.halted = false;
     this.stopped = false;
+    this.haltBug = false;
   }
 
   step(): number {
@@ -49,11 +51,22 @@ export class CPU {
       check for disabled IME and pending interrupt
       return default halt cycle for now
       */
+
+      // wake from halted state if there is an interrupt, deal with interrupt only if IME is enabled
+      if (this.interrupts.getPending() !== 0) {
+        this.halted = false;
+        return 4;
+      }
       return 4;
     }
 
     const opcode = this.bus.read(this.pc);
-    this.pc = (this.pc + 1) & 0xffff;
+    if (this.haltBug) {
+      // read next byte twice
+      this.haltBug = false;
+    } else {
+      this.pc = (this.pc + 1) & 0xffff;
+    }
 
     if (opcode === 0xcb) {
       const cbOpcode = this.bus.read(this.pc);
@@ -130,6 +143,7 @@ export class CPU {
     this.imeScheduled = false;
     this.halted = false;
     this.stopped = false;
+    this.haltBug = false;
   }
 
   getPC(): number {
@@ -156,5 +170,20 @@ export class CPU {
   }
   scheduleIME(): void {
     this.imeScheduled = true;
+  }
+  enableHalt(): void {
+    this.halted = true;
+  }
+
+  halt(): void {
+    const pending = this.interrupts.getPending();
+    // don't enter HALT, skip next PC increment
+    if (!this.ime && pending !== 0) {
+      this.haltBug = true;
+      this.halted = false;
+      return;
+    }
+    // wait until an interrupt becomes pending (in this.halted)
+    this.halted = true;
   }
 }
