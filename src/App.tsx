@@ -1,6 +1,7 @@
 import "./App.css";
 import { useEffect, useRef, useState } from "react";
 import { GBEmulator } from "./emulator/gbEmulator";
+import type { JoypadButton } from "./emulator/input/joypad";
 import { GBScreen } from "./ui/components/GBScreen";
 import { EmuControllers } from "./ui/components/EmuControllers";
 import { DebugData } from "./ui/components/DebugData";
@@ -79,6 +80,48 @@ function App() {
 
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  useEffect(() => {
+    const keyToButton: Record<string, JoypadButton> = {
+      ArrowRight: "right",
+      ArrowLeft: "left",
+      ArrowUp: "up",
+      ArrowDown: "down",
+      KeyZ: "a",
+      KeyX: "b",
+      Enter: "start",
+      ShiftRight: "select",
+      ShiftLeft: "select",
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const emu = emulatorRef.current;
+      if (!emu) return;
+      const button = keyToButton[event.code];
+      if (!button) return;
+
+      event.preventDefault();
+      emu.pressButton(button);
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      const emu = emulatorRef.current;
+      if (!emu) return;
+      const button = keyToButton[event.code];
+      if (!button) return;
+
+      event.preventDefault();
+      emu.releaseButton(button);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, []);
 
   return (
