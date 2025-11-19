@@ -6,6 +6,8 @@ import { toHex16 } from "@/utils/bitwise";
 import { Interrupts } from "./core/interrupts";
 import { Timer } from "./core/timer";
 import { PPU } from "./ppu/ppu";
+import { Joypad } from "./input/joypad";
+import type { JoypadButton } from "./input/joypad";
 
 export class GBEmulator {
   private cartridge: Cartridge;
@@ -14,6 +16,7 @@ export class GBEmulator {
   private interrupts: Interrupts;
   private timer: Timer;
   private ppu: PPU;
+  private joypad: Joypad;
 
   private running = false;
   private paused = false;
@@ -25,6 +28,8 @@ export class GBEmulator {
     this.interrupts = new Interrupts();
     this.timer = new Timer(this.interrupts);
     this.bus = new AddressBus(this.cartridge, this.timer, this.interrupts);
+    this.joypad = new Joypad(this.interrupts);
+    this.bus.attachJoypad(this.joypad);
     this.cpu = new CPU(this.bus, this.interrupts);
     this.ppu = new PPU(
       this.bus.getVRAMView(),
@@ -75,6 +80,7 @@ export class GBEmulator {
     this.bus.reset();
     this.timer.reset();
     this.interrupts.reset();
+    this.joypad.reset();
     this.ticks = 0;
     this.running = false;
     this.paused = false;
@@ -157,5 +163,13 @@ export class GBEmulator {
 
   consumeFrameReady(): boolean {
     return this.ppu.consumeFrameReady();
+  }
+
+  pressButton(button: JoypadButton): void {
+    this.joypad.pressButton(button);
+  }
+
+  releaseButton(button: JoypadButton): void {
+    this.joypad.releaseButton(button);
   }
 }

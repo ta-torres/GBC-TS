@@ -2,6 +2,7 @@ import { Cartridge } from "../cartridge/cartridge";
 import { MEMORY_MAP, IO_REGISTERS } from "../../types/memory";
 import { Timer } from "../core/timer";
 import { Interrupts } from "../core/interrupts";
+import { Joypad } from "../input/joypad";
 
 export class AddressBus {
   private cartridge: Cartridge;
@@ -13,6 +14,7 @@ export class AddressBus {
 
   private timer: Timer;
   private interrupts: Interrupts;
+  private joypad?: Joypad;
 
   constructor(cartridge: Cartridge, timer: Timer, interrupts: Interrupts) {
     this.cartridge = cartridge;
@@ -28,6 +30,10 @@ export class AddressBus {
     // JOYP (P1): default to 0xFF (no buttons pressed, no group selected)
     this.ioRegisters[IO_REGISTERS.P1 - 0xff00] = 0xff;
     this.ioRegisters[IO_REGISTERS.LY - 0xff00] = 0x00;
+  }
+
+  attachJoypad(joypad: Joypad): void {
+    this.joypad = joypad;
   }
 
   read(address: number): number {
@@ -89,9 +95,17 @@ export class AddressBus {
     ) {
       switch (address) {
         case IO_REGISTERS.P1: {
-          // no buttons pressed, lower nibble all 1s, bits 6-7 read as 1s
-          const selects = this.ioRegisters[IO_REGISTERS.P1 - 0xff00] & 0x30;
-          return 0xc0 | selects | 0x0f;
+          const currentP1 = this.ioRegisters[IO_REGISTERS.P1 - 0xff00];
+          const selectBits = currentP1 & 0x30;
+          const lowerNibble = this.joypad
+            ? this.joypad.readP1LowerNibble(selectBits)
+            : 0x0f;
+          /* 
+          P1 = 11 XY ZZZZ
+          bits 7-6 always 1, bit 5 select buttons, bit 4 select d-pad, bits 3-0 depend on joypad
+          0 is active and 1 is not pressed
+          */
+          return 0xc0 | selectBits | (lowerNibble & 0x0f);
         }
         case IO_REGISTERS.DIV:
           return this.timer.readDIV();
