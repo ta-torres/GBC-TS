@@ -365,6 +365,13 @@ export class PPU {
     return this.DMG_RGBA[shade];
   }
 
+  // @ts-expect-error unused
+  private mapOBPPalette(obp: number, color: 0 | 1 | 2 | 3): number {
+    const shift = color * 2;
+    const shade = (obp >> shift) & 0x03;
+    return this.DMG_RGBA[shade];
+  }
+
   private renderBackgroundLine(): void {
     // si BG está deshabilitado, rellenar scanline con color 0
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
