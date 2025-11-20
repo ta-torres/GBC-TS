@@ -20,6 +20,14 @@ const STAT_LYC_IRQ = 0x40;
 
 const TILE_BYTES = 16;
 
+interface OAMEntry {
+  y: number;
+  x: number;
+  tile: number;
+  attribute: number;
+  index: number;
+}
+
 const readTileDataIndex = (
   io: Uint8Array,
 ): { base: number; signedIndex: boolean } => {
@@ -370,6 +378,42 @@ export class PPU {
     const shift = color * 2;
     const shade = (obp >> shift) & 0x03;
     return this.DMG_RGBA[shade];
+  }
+
+  private evalSpritesForScanline(): OAMEntry[] {
+    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+    const isTallSprite = (lcdc & 0x04) !== 0;
+    const ly = this.ly | 0;
+    const sprites: OAMEntry[] = [];
+
+    const spriteHeight = isTallSprite ? 16 : 8;
+
+    // max 10 sprites per line, 40 total
+    // prioritize in a scanline by OAM index (lower index) on ties
+    // push in index order
+    for (let i = 0; i < 40; i += 1) {
+      const base = i * 4;
+      const y = this.oam[base] - 16;
+      const x = this.oam[base + 1] - 8;
+      let tile = this.oam[base + 2];
+      const attribute = this.oam[base + 3];
+
+      // don't render on this scanline
+      if (ly < y || ly >= y + spriteHeight) {
+        continue;
+      }
+
+      // ignore lower bits for 8x16
+      if (isTallSprite) {
+        tile &= 0xfe;
+      }
+
+      sprites.push({ y, x, tile, attribute, index: i });
+
+      if (sprites.length === 10) break;
+    }
+
+    return sprites;
   }
 
   private renderBackgroundLine(): void {
