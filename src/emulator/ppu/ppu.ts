@@ -157,6 +157,7 @@ export class PPU {
         if (previousMode === 3 && this.ly < 144) {
           this.renderBackgroundLine();
           this.renderWindowLine();
+          this.renderSpritesForScanline();
         }
       }
     } else {
@@ -373,7 +374,6 @@ export class PPU {
     return this.DMG_RGBA[shade];
   }
 
-  // @ts-expect-error unused
   private mapOBPPalette(obp: number, color: 0 | 1 | 2 | 3): number {
     const shift = color * 2;
     const shade = (obp >> shift) & 0x03;
@@ -414,6 +414,93 @@ export class PPU {
     }
 
     return sprites;
+  }
+
+  private renderSpritesForScanline(): void {
+    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+    const isObjEnabled = (lcdc & 0x02) !== 0;
+    if (!isObjEnabled) return;
+
+    const sprites = this.evalSpritesForScanline();
+    if (sprites.length === 0) return;
+
+    const isTallSprite = (lcdc & 0x04) !== 0;
+    const spriteHeight = isTallSprite ? 16 : 8;
+
+    const obp0 = this.io[IO_REGISTERS.OBP0 - 0xff00];
+    const obp1 = this.io[IO_REGISTERS.OBP1 - 0xff00];
+    const bgp = this.io[IO_REGISTERS.BGP - 0xff00];
+    const bgColor0 = this.mapDMGPalette(bgp, 0);
+
+    const ly = this.ly | 0;
+    const scanlineOffset = ly * SCREEN_WIDTH;
+
+    const tileBaseAddress = 0x8000;
+
+    // render sprites in reverse priority order
+    // if two sprites overlap, sprite closer to the origin appears on top
+    for (let s = sprites.length - 1; s >= 0; s -= 1) {
+      const sprite = sprites[s];
+      const attribute = sprite.attribute;
+
+      // byte 3 attributes/flags
+      const priorityBehindBg = (attribute & 0x80) !== 0;
+      const yFlip = (attribute & 0x40) !== 0;
+      const xFlip = (attribute & 0x20) !== 0;
+      const useDMGPalette = (attribute & 0x10) !== 0;
+      const obp = useDMGPalette ? obp1 : obp0;
+
+      // read from row 0-7 or 0-15
+      let lineInSprite = ly - sprite.y;
+      if (yFlip) {
+        lineInSprite = spriteHeight - 1 - lineInSprite;
+      }
+
+      // lower half uses tileIndex+1 for 8x16 sprites
+      let tileIndex = sprite.tile;
+      if (isTallSprite && lineInSprite >= 8) {
+        tileIndex += 1;
+      }
+
+      const rowInTile = lineInSprite & 7; // wrap to 0-7
+
+      const { low, high } = fetchTileRow(
+        this.vram,
+        tileBaseAddress,
+        tileIndex,
+        rowInTile,
+      );
+
+      // draw 8 pixel columns for this sprite row
+      for (let x = 0; x < 8; x += 1) {
+        const screenX = sprite.x + x;
+        // dont render offscreen
+        if (screenX < 0 || screenX >= SCREEN_WIDTH) {
+          continue;
+        }
+
+        // palette bit depends on X flip, palette index = 0-3
+        const bitIndex = xFlip ? x : 7 - x;
+        const paletteIndex = getBGPixelIndex(low, high, bitIndex);
+        if (paletteIndex === 0) {
+          continue; // color 0 is transparent for sprites
+        }
+
+        // same as bg
+        const color = this.mapOBPPalette(obp, paletteIndex);
+        const bufIndex = scanlineOffset + screenX;
+
+        // don't draw over non‑transparent background colors
+        if (priorityBehindBg) {
+          const bgColor = this.framebuffer[bufIndex];
+          if (bgColor !== bgColor0) {
+            continue;
+          }
+        }
+
+        this.framebuffer[bufIndex] = color;
+      }
+    }
   }
 
   private renderBackgroundLine(): void {
