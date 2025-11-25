@@ -76,6 +76,7 @@ export class PPU {
   private io: Uint8Array;
   private interrupts: Interrupts;
   private framebuffer: Uint32Array;
+  private bgIndexLine: Uint8Array;
   private mode: PpuMode;
   private ly: number;
   private dotsInLine: number;
@@ -111,6 +112,7 @@ export class PPU {
     this.io = io;
     this.interrupts = interrupts;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
+    this.bgIndexLine = new Uint8Array(SCREEN_WIDTH);
     this.mode = 2;
     this.ly = 0;
     this.dotsInLine = 0;
@@ -429,8 +431,6 @@ export class PPU {
 
     const obp0 = this.io[IO_REGISTERS.OBP0 - 0xff00];
     const obp1 = this.io[IO_REGISTERS.OBP1 - 0xff00];
-    const bgp = this.io[IO_REGISTERS.BGP - 0xff00];
-    const bgColor0 = this.mapDMGPalette(bgp, 0);
 
     const ly = this.ly | 0;
     const scanlineOffset = ly * SCREEN_WIDTH;
@@ -492,8 +492,8 @@ export class PPU {
 
         // don't draw over non‑transparent background colors
         if (priorityBehindBg) {
-          const bgColor = this.framebuffer[bufIndex];
-          if (bgColor !== bgColor0) {
+          const bgIndex = this.bgIndexLine[screenX];
+          if (bgIndex !== 0) {
             continue;
           }
         }
@@ -514,6 +514,7 @@ export class PPU {
       const scanlineOffset = scanlineY * SCREEN_WIDTH;
       for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
         this.framebuffer[scanlineOffset + screenX] = backgroundColor;
+        this.bgIndexLine[screenX] = 0;
       }
       return;
     }
@@ -572,6 +573,7 @@ export class PPU {
       const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
+      this.bgIndexLine[screenX] = paletteIndex;
     }
   }
 
