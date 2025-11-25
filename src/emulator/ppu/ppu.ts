@@ -31,11 +31,13 @@ interface OAMEntry {
 const readTileDataIndex = (
   io: Uint8Array,
 ): { base: number; signedIndex: boolean } => {
+  // https://gbdev.io/pandocs/Tile_Data.html#vram-tile-data
+  // https://gbdev.io/pandocs/LCDC.html#ff40--lcdc-lcd-control
   const lcdc = io[IO_REGISTERS.LCDC - 0xff00];
   const dataSelect = (lcdc & 0x10) !== 0;
   return dataSelect
     ? { base: 0x8000, signedIndex: false }
-    : { base: 0x9000, signedIndex: true };
+    : { base: 0x8800, signedIndex: true };
 };
 
 const bgTileMapBase = (io: Uint8Array): number => {
@@ -642,6 +644,7 @@ export class PPU {
       const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
+      this.bgIndexLine[screenX] = paletteIndex;
     }
   }
 
