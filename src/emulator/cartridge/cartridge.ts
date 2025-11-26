@@ -1,6 +1,7 @@
 import type { CartridgeHeader } from "../../types/cartridge";
 import { getRAMSize, CARTRIDGE_TYPE } from "../../types/cartridge";
 import type { MBC } from "./mbc";
+import { MBC1 } from "./mbc1";
 
 export class Cartridge {
   private rom: Uint8Array;
@@ -101,8 +102,9 @@ export class Cartridge {
       case CARTRIDGE_TYPE.MBC1:
       case CARTRIDGE_TYPE.MBC1_RAM:
       case CARTRIDGE_TYPE.MBC1_RAM_BATTERY:
-        console.warn("MBC1 not implemented yet");
-        this.mbc = null;
+        this.mbc = new MBC1(this.rom, this.ram);
+        console.log("MBC1 initialized");
+        console.log(this.mbc);
         break;
       default:
         console.warn(`Unsupported cartridge type: 0x${type.toString(16)}`);
