@@ -157,6 +157,10 @@ export class GBEmulator {
     return `Instruction: ${instruction} | PC: ${pc} | SP: ${sp} | ${this.cpu.getRegisters().toString()}`;
   }
 
+  getTileViewerData(): { width: number; height: number; data: Uint8Array } {
+    return this.ppu.getTileViewerData();
+  }
+
   getFramebuffer(): Uint32Array {
     return this.ppu.getFramebuffer();
   }

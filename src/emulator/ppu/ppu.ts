@@ -266,6 +266,37 @@ export class PPU {
     return ready;
   }
 
+  getTileViewerData(): { width: number; height: number; data: Uint8Array } {
+    const tilesX = 16;
+    const tilesY = 12;
+    const width = tilesX * 8;
+    const height = tilesY * 8;
+    const data = new Uint8Array(width * height);
+
+    const { base: tileBase } = readTileDataIndex(this.io);
+    const maxTileCount = ((0x9800 - tileBase) / TILE_BYTES) | 0;
+    const totalTiles = Math.min(maxTileCount, tilesX * tilesY);
+
+    for (let tileIndex = 0; tileIndex < totalTiles; tileIndex += 1) {
+      const tileX = tileIndex % tilesX;
+      const tileY = (tileIndex / tilesX) | 0;
+
+      for (let row = 0; row < 8; row += 1) {
+        const { low, high } = fetchTileRow(this.vram, tileBase, tileIndex, row);
+
+        for (let col = 0; col < 8; col += 1) {
+          const bitIndex = 7 - col;
+          const colorIndex = getBGPixelIndex(low, high, bitIndex);
+          const x = tileX * 8 + col;
+          const y = tileY * 8 + row;
+          data[y * width + x] = colorIndex;
+        }
+      }
+    }
+
+    return { width, height, data };
+  }
+
   setDebugTrace(enabled: boolean): void {
     this.debugTrace = enabled;
     this.debugFrameSamples = [];

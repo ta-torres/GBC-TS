@@ -5,6 +5,7 @@ import type { JoypadButton } from "./emulator/input/joypad";
 import { GBScreen } from "./ui/components/GBScreen";
 import { EmuControllers } from "./ui/components/EmuControllers";
 import { DebugData } from "./ui/components/DebugData";
+import { TileViewer } from "./ui/components/TileViewer";
 
 function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
@@ -142,6 +143,7 @@ function App() {
               isRunning={isRunning}
             />
             <DebugData info={debugInfo} />
+            <TileViewer emulator={emulatorRef.current} />
           </div>
         </div>
       </div>
