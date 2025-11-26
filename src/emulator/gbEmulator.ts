@@ -161,6 +161,14 @@ export class GBEmulator {
     return this.ppu.getTileViewerData();
   }
 
+  getSpriteTileViewerData(): {
+    width: number;
+    height: number;
+    data: Uint8Array;
+  } {
+    return this.ppu.getSpriteTileViewerData();
+  }
+
   getFramebuffer(): Uint32Array {
     return this.ppu.getFramebuffer();
   }

@@ -6,6 +6,7 @@ import { GBScreen } from "./ui/components/GBScreen";
 import { EmuControllers } from "./ui/components/EmuControllers";
 import { DebugData } from "./ui/components/DebugData";
 import { TileViewer } from "./ui/components/TileViewer";
+import { SpriteViewer } from "./ui/components/SpriteViewer";
 
 function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
@@ -144,6 +145,7 @@ function App() {
             />
             <DebugData info={debugInfo} />
             <TileViewer emulator={emulatorRef.current} />
+            <SpriteViewer emulator={emulatorRef.current} />
           </div>
         </div>
       </div>
