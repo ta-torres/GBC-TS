@@ -2,7 +2,13 @@ import { IO_REGISTERS } from "../../types/memory";
 import { Interrupts, InterruptType } from "../core/interrupts";
 
 // hblank, vblank, oam, transfer
-type PpuMode = 0 | 1 | 2 | 3;
+const PpuMode = {
+  HBlank: 0,
+  VBlank: 1,
+  OAM: 2,
+  Transfer: 3,
+} as const;
+type PpuMode = (typeof PpuMode)[keyof typeof PpuMode];
 
 const SCREEN_WIDTH = 160;
 const SCREEN_HEIGHT = 144;
@@ -115,7 +121,7 @@ export class PPU {
     this.interrupts = interrupts;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
     this.bgIndexLine = new Uint8Array(SCREEN_WIDTH);
-    this.mode = 2;
+    this.mode = PpuMode.OAM;
     this.ly = 0;
     this.dotsInLine = 0;
     this.frameReady = false;
@@ -130,7 +136,7 @@ export class PPU {
 
     this.io[IO_REGISTERS.LY - 0xff00] = 0;
     this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
-    this.setMode(2);
+    this.setMode(PpuMode.OAM);
     // dont request interrupts on class init?
   }
 
@@ -140,7 +146,7 @@ export class PPU {
       this.dotsInLine = 0;
       this.frameReady = false;
       this.io[IO_REGISTERS.LY - 0xff00] = 0;
-      this.setMode(0);
+      this.setMode(PpuMode.HBlank);
       return;
     }
 
@@ -152,20 +158,20 @@ export class PPU {
 
     if (this.ly < 144) {
       if (this.dotsInLine < MODE2_DOTS) {
-        this.setMode(2);
+        this.setMode(PpuMode.OAM);
       } else if (this.dotsInLine < MODE2_DOTS + MODE3_DOTS) {
-        this.setMode(3);
+        this.setMode(PpuMode.Transfer);
       } else if (this.dotsInLine < DOTS_PER_LINE) {
-        this.setMode(0);
+        this.setMode(PpuMode.HBlank);
         // only render bg once per scanline at the start of hblank
-        if (previousMode === 3 && this.ly < 144) {
+        if (previousMode === PpuMode.Transfer && this.ly < 144) {
           this.renderBackgroundLine();
           this.renderWindowLine();
           this.renderSpritesForScanline();
         }
       }
     } else {
-      this.setMode(1);
+      this.setMode(PpuMode.VBlank);
     }
 
     if (this.dotsInLine >= DOTS_PER_LINE) {
@@ -208,7 +214,7 @@ export class PPU {
       }
 
       if (this.ly === 144) {
-        this.setMode(1); // enter VBlank
+        this.setMode(PpuMode.VBlank); // enter VBlank
 
         // move render pattern inside VBlank rendering and request VBlank interrupt
         /* if (this.debugTrace) {
@@ -239,8 +245,8 @@ export class PPU {
         // reset internal counter when reaching a new frame
         this.windowScanline = 0;
 
-        // hblank
-        this.setMode(2);
+        // oam
+        this.setMode(PpuMode.OAM);
 
         // DEBUG
         if (this.debugTrace) {
@@ -400,7 +406,7 @@ export class PPU {
     }
 
     // hblank
-    if (wantM0 && mode === 0) {
+    if (wantM0 && mode === PpuMode.HBlank) {
       if (!this.statInterruptSet.m0) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
         this.statInterruptSet.m0 = true;
@@ -410,7 +416,7 @@ export class PPU {
     }
 
     // vblank
-    if (wantM1 && mode === 1) {
+    if (wantM1 && mode === PpuMode.VBlank) {
       if (!this.statInterruptSet.m1) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
         this.statInterruptSet.m1 = true;
@@ -420,7 +426,7 @@ export class PPU {
     }
 
     // oam
-    if (wantM2 && mode === 2) {
+    if (wantM2 && mode === PpuMode.OAM) {
       if (!this.statInterruptSet.m2) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
         this.statInterruptSet.m2 = true;
