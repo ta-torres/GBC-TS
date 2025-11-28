@@ -6,18 +6,19 @@ export class MBC1 implements MBC {
 
   private ramEnabled = false;
   private romBankLow5 = 1;
-  private romBankHigh2 = 0;
   private ramBank = 0;
   private bankingMode = 0;
 
   private romBankMask: number;
   private ramBankMask: number;
+  private romBanks: number;
 
   constructor(rom: Uint8Array, ram: Uint8Array | null) {
     this.rom = rom;
     this.ram = ram;
 
     const romBanks = Math.max(1, Math.floor(this.rom.length / 0x4000));
+    this.romBanks = romBanks;
     this.romBankMask = romBanks - 1;
 
     const ramBanks = this.ram ? Math.floor(this.ram.length / 0x2000) : 0;
@@ -26,22 +27,66 @@ export class MBC1 implements MBC {
 
   private getROMBank0(): number {
     if (this.bankingMode === 0) return 0;
-    const bank = (this.romBankHigh2 << 5) & this.romBankMask;
+
+    if (this.romBanks <= 32) {
+      return 0;
+    }
+
+    if (this.romBanks <= 64) {
+      const bank = ((this.ramBank & 0x01) << 5) & this.romBankMask;
+      return bank;
+    }
+
+    const bank = ((this.ramBank & 0x03) << 5) & this.romBankMask;
     return bank;
   }
 
   private getROMBankN(): number {
-    const upper = this.bankingMode === 0 ? this.romBankHigh2 << 5 : 0;
-    let bank = (this.romBankLow5 | upper) & this.romBankMask;
+    let bank: number;
+
+    if (this.romBanks <= 32) {
+      bank = this.romBankLow5 & this.romBankMask;
+    } else if (this.romBanks <= 64) {
+      bank = (this.romBankLow5 & 0x1f) | ((this.ramBank & 0x01) << 5);
+    } else {
+      bank = (this.romBankLow5 & 0x1f) | ((this.ramBank & 0x03) << 5);
+    }
+
+    bank &= this.romBankMask;
+
     if ((bank & 0x1f) === 0) {
       bank = (bank + 1) & this.romBankMask;
     }
+
     return bank;
   }
 
   private calcRAMBank(): number {
     if (this.bankingMode === 0) return 0;
     return this.ramBank & this.ramBankMask;
+  }
+
+  private getRAMOffset(address: number): number | null {
+    if (!this.ram) return null;
+    const relative = address - 0xa000;
+    if (relative < 0) return null;
+    const size = this.ram.length;
+
+    if (size === 0) return null;
+
+    if (size <= 0x2000) {
+      return relative % size;
+    }
+
+    if (this.bankingMode === 0) {
+      if (relative >= size) return null;
+      return relative;
+    }
+
+    const bank = this.ramBank & this.ramBankMask;
+    const offset = bank * 0x2000 + relative;
+    if (offset >= size) return null;
+    return offset;
   }
 
   read(address: number): number {
@@ -61,8 +106,8 @@ export class MBC1 implements MBC {
 
     if (address >= 0xa000 && address < 0xc000) {
       if (!this.ramEnabled || !this.ram) return 0xff;
-      const bank = this.calcRAMBank();
-      const offset = bank * 0x2000 + (address - 0xa000);
+      const offset = this.getRAMOffset(address);
+      if (offset === null) return 0xff;
       return this.ram[offset] ?? 0xff;
     }
 
@@ -85,9 +130,7 @@ export class MBC1 implements MBC {
     }
 
     if (address < 0x6000) {
-      const v = value & 0x03;
-      this.romBankHigh2 = v;
-      this.ramBank = v;
+      this.ramBank = value & 0x03;
       return;
     }
 
@@ -98,11 +141,9 @@ export class MBC1 implements MBC {
 
     if (address >= 0xa000 && address < 0xc000) {
       if (!this.ramEnabled || !this.ram) return;
-      const bank = this.calcRAMBank();
-      const offset = bank * 0x2000 + (address - 0xa000);
-      if (offset >= 0 && offset < this.ram.length) {
-        this.ram[offset] = value & 0xff;
-      }
+      const offset = this.getRAMOffset(address);
+      if (offset === null) return;
+      this.ram[offset] = value & 0xff;
       return;
     }
   }
