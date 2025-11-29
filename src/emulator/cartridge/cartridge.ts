@@ -25,10 +25,11 @@ export class Cartridge {
       this.initializeRAM();
       this.initializeMBC();
 
-      /* console.log(`Loaded ROM: ${this.header!.title}`);
+      console.log(`Loaded ROM: ${this.header!.title}`);
       console.log(`Type: 0x${this.header!.cartridgeType.toString(16)}`);
       console.log(`ROM Size: ${this.rom.length} bytes`);
-      console.log(`RAM Size: ${this.ram?.length ?? 0} bytes`); */
+      console.log(`RAM Size: ${this.ram?.length ?? 0} bytes`);
+      console.log(this);
 
       return true;
     } catch (error) {

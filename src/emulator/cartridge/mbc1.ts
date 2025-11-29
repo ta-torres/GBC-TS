@@ -13,6 +13,8 @@ export class MBC1 implements MBC {
   private ramBankMask: number;
   private romBanks: number;
 
+  private debugRomReadCount = 0;
+
   constructor(rom: Uint8Array, ram: Uint8Array | null) {
     this.rom = rom;
     this.ram = ram;
@@ -95,13 +97,43 @@ export class MBC1 implements MBC {
     if (address < 0x4000) {
       const bank = this.getROMBank0();
       const offset = bank * 0x4000 + address;
-      return this.rom[offset] ?? 0xff;
+      const value = this.rom[offset] ?? 0xff;
+      if (
+        this.debugRomReadCount < 64 &&
+        address >= 0x0100 &&
+        address < 0x0120
+      ) {
+        console.log(
+          "MBC1 ROM0 read",
+          "addr=0x" + address.toString(16),
+          "bank=",
+          bank,
+          "val=0x" + value.toString(16),
+        );
+        this.debugRomReadCount += 1;
+      }
+      return value;
     }
 
     if (address < 0x8000) {
       const bank = this.getROMBankN();
       const offset = bank * 0x4000 + (address - 0x4000);
-      return this.rom[offset] ?? 0xff;
+      const value = this.rom[offset] ?? 0xff;
+      if (
+        this.debugRomReadCount < 64 &&
+        address >= 0x4000 &&
+        address < 0x4020
+      ) {
+        console.log(
+          "MBC1 ROMN read",
+          "addr=0x" + address.toString(16),
+          "bank=",
+          bank,
+          "val=0x" + value.toString(16),
+        );
+        this.debugRomReadCount += 1;
+      }
+      return value;
     }
 
     if (address >= 0xa000 && address < 0xc000) {
