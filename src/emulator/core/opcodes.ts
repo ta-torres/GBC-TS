@@ -6,6 +6,8 @@ import { add8, sub8, and8, or8, xor8, cp8, inc8, dec8, add16 } from "./alu";
 
 export const OPCODE_TABLE: Record<number, OpcodeInfo<CPU>> = {};
 
+let ldhDebugLogCount = 0;
+
 const register = (
   opcode: number,
   mnemonic: string,
@@ -189,7 +191,29 @@ register(0xe0, "LDH (n),A", 2, 12, (cpu, bus) => {
 register(0xf0, "LDH A,(n)", 2, 12, (cpu, bus) => {
   const n = read8(cpu, bus);
   const addr = 0xff00 | n;
-  cpu.registers.setA(bus.read(addr));
+  const value = bus.read(addr);
+  cpu.registers.setA(value);
+
+  if (ldhDebugLogCount < 64) {
+    const pc = cpu.pc & 0xffff;
+    if (pc >= 0x0100 && pc < 0x0300) {
+      const lcdc = bus.read(0xff40);
+      const ly = bus.read(0xff44);
+      const stat = bus.read(0xff41);
+
+      console.log(
+        "LDH A,(n) debug",
+        "PC=0x" + pc.toString(16),
+        "n=0x" + n.toString(16),
+        "addr=0x" + addr.toString(16),
+        "val=0x" + value.toString(16),
+        "LCDC=0x" + lcdc.toString(16),
+        "LY=0x" + ly.toString(16),
+        "STAT=0x" + stat.toString(16),
+      );
+      ldhDebugLogCount += 1;
+    }
+  }
   return 12;
 });
 
