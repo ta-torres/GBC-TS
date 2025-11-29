@@ -81,6 +81,7 @@ export class GBEmulator {
     this.timer.reset();
     this.interrupts.reset();
     this.joypad.reset();
+    this.ppu.reset();
     this.ticks = 0;
     this.running = false;
     this.paused = false;

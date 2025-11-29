@@ -140,6 +140,21 @@ export class PPU {
     // dont request interrupts on class init?
   }
 
+  reset(): void {
+    this.framebuffer.fill(0);
+    this.bgIndexLine.fill(0);
+    this.mode = PpuMode.OAM;
+    this.ly = 0;
+    this.dotsInLine = 0;
+    this.frameReady = false;
+    this.windowScanline = 0;
+    this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
+
+    this.io[IO_REGISTERS.LY - 0xff00] = 0;
+    this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
+    this.setMode(PpuMode.OAM);
+  }
+
   step(cycles: number): void {
     if (!this.lcdEnabled()) {
       this.ly = 0;
