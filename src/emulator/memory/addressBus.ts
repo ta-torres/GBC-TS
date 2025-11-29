@@ -28,11 +28,6 @@ export class AddressBus {
     this.hram = new Uint8Array(0x7f); // 127 bytes
     this.ioRegisters = new Uint8Array(0x80);
     this.oam = new Uint8Array(0xa0);
-
-    // todo: initialize the rest of the IO registers
-    // JOYP (P1): default to 0xFF (no buttons pressed, no group selected)
-    this.ioRegisters[IO_REGISTERS.P1 - 0xff00] = 0xff;
-    this.ioRegisters[IO_REGISTERS.LY - 0xff00] = 0x00;
   }
 
   attachJoypad(joypad: Joypad): void {
