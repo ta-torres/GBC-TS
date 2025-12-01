@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Registers } from "../emulator/core/registers";
+import { Registers } from "../core/registers";
 
 describe("Registers", () => {
   let registers: Registers;

@@ -1,8 +1,8 @@
 import { Cartridge } from "./cartridge/cartridge";
 import { CPU } from "./core/cpu";
 import { AddressBus } from "./memory/addressBus";
-import { loadROMFile } from "../utils/fileLoader";
-import { toHex16 } from "@/utils/bitwise";
+import { loadROMFile } from "./utils/fileLoader";
+import { toHex16 } from "@/emulator/utils/bitwise";
 import { Interrupts } from "./core/interrupts";
 import { Timer } from "./core/timer";
 import { PPU } from "./ppu/ppu";

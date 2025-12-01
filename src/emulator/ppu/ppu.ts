@@ -1,7 +1,6 @@
-import { IO_REGISTERS } from "../../types/memory";
+import { IO_REGISTERS } from "../types/memory";
 import { Interrupts, InterruptType } from "../core/interrupts";
 
-// hblank, vblank, oam, transfer
 const PpuMode = {
   HBlank: 0,
   VBlank: 1,
@@ -91,11 +90,6 @@ export class PPU {
   private frameReady: boolean;
   private windowScanline: number;
 
-  // DEBUG
-  private debugTrace: boolean;
-  private debugFrameCounter: number;
-  private debugFrameSamples: { ly: number; stat: number; mode: number }[];
-
   // cambiar a type alias?
   /*
   LCD_STAT interrupt
@@ -126,11 +120,6 @@ export class PPU {
     this.dotsInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
-
-    // DEBUG
-    this.debugTrace = false;
-    this.debugFrameCounter = 0;
-    this.debugFrameSamples = [];
 
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
 
@@ -209,48 +198,14 @@ export class PPU {
         this.windowScanline = (this.windowScanline + 1) & 0xff;
       }
 
-      // DEBUG
-      if (this.debugTrace) {
-        const statNow = this.io[IO_REGISTERS.STAT - 0xff00];
-        const modeNow = statNow & 0x03;
-        if (
-          this.ly === 0 ||
-          this.ly === 1 ||
-          this.ly === 2 ||
-          this.ly === 143 ||
-          this.ly === 144
-        ) {
-          this.debugFrameSamples.push({
-            ly: this.ly,
-            stat: statNow,
-            mode: modeNow,
-          });
-        }
-      }
-
       if (this.ly === 144) {
-        this.setMode(PpuMode.VBlank); // enter VBlank
+        this.setMode(PpuMode.VBlank);
 
-        // move render pattern inside VBlank rendering and request VBlank interrupt
         /* if (this.debugTrace) {
           this.renderTestPattern();
         } */
         this.frameReady = true;
         this.interrupts.requestInterrupt(InterruptType.VBLANK);
-
-        // DEBUG
-        if (this.debugTrace) {
-          if (this.debugFrameSamples.length > 0) {
-            const summary = this.debugFrameSamples
-              .map(
-                (s) =>
-                  `LY=${s.ly} STAT=${s.stat.toString(16).padStart(2, "0")} M${s.mode}`,
-              )
-              .join(" | ");
-            console.log(`[PPU] frame ${this.debugFrameCounter++}: ${summary}`);
-            this.debugFrameSamples = [];
-          }
-        }
       } else if (this.ly > 153) {
         this.ly = 0;
         this.io[IO_REGISTERS.LY - 0xff00] = 0;
@@ -260,224 +215,9 @@ export class PPU {
         // reset internal counter when reaching a new frame
         this.windowScanline = 0;
 
-        // oam
         this.setMode(PpuMode.OAM);
-
-        // DEBUG
-        if (this.debugTrace) {
-          const statNow2 = this.io[IO_REGISTERS.STAT - 0xff00];
-          const modeNow2 = statNow2 & 0x03;
-          this.debugFrameSamples.push({
-            ly: this.ly,
-            stat: statNow2,
-            mode: modeNow2,
-          });
-        }
       }
     }
-  }
-
-  getFramebuffer(): Uint32Array {
-    return this.framebuffer;
-  }
-
-  consumeFrameReady(): boolean {
-    const ready = this.frameReady;
-    this.frameReady = false;
-    return ready;
-  }
-
-  getTileViewerData(): { width: number; height: number; data: Uint8Array } {
-    const tilesX = 16;
-    const tilesY = 12;
-    const width = tilesX * 8;
-    const height = tilesY * 8;
-    const data = new Uint8Array(width * height);
-
-    const { base: tileBase } = readTileDataIndex(this.io);
-    const maxTileCount = ((0x9800 - tileBase) / TILE_BYTES) | 0;
-    const totalTiles = Math.min(maxTileCount, tilesX * tilesY);
-
-    for (let tileIndex = 0; tileIndex < totalTiles; tileIndex += 1) {
-      const tileX = tileIndex % tilesX;
-      const tileY = (tileIndex / tilesX) | 0;
-
-      for (let row = 0; row < 8; row += 1) {
-        const { low, high } = fetchTileRow(this.vram, tileBase, tileIndex, row);
-
-        for (let col = 0; col < 8; col += 1) {
-          const bitIndex = 7 - col;
-          const colorIndex = getBGPixelIndex(low, high, bitIndex);
-          const x = tileX * 8 + col;
-          const y = tileY * 8 + row;
-          data[y * width + x] = colorIndex;
-        }
-      }
-    }
-
-    return { width, height, data };
-  }
-
-  getSpriteTileViewerData(): {
-    width: number;
-    height: number;
-    data: Uint8Array;
-  } {
-    const tilesX = 8;
-    const tilesY = 5;
-    const width = tilesX * 8;
-    const height = tilesY * 8;
-    const data = new Uint8Array(width * height);
-
-    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
-    const isTallSprite = (lcdc & 0x04) !== 0;
-
-    const uniqueTiles: number[] = [];
-
-    for (let i = 0; i < 40; i += 1) {
-      const base = i * 4;
-      let tile = this.oam[base + 2];
-      if (isTallSprite) {
-        tile &= 0xfe;
-      }
-
-      if (!uniqueTiles.includes(tile)) {
-        uniqueTiles.push(tile);
-        if (uniqueTiles.length >= tilesX * tilesY) break;
-      }
-    }
-
-    const tileBaseAddress = 0x8000;
-    const totalTiles = uniqueTiles.length;
-
-    for (let index = 0; index < totalTiles; index += 1) {
-      const tileIndex = uniqueTiles[index];
-      const tileX = index % tilesX;
-      const tileY = (index / tilesX) | 0;
-
-      for (let row = 0; row < 8; row += 1) {
-        const { low, high } = fetchTileRow(
-          this.vram,
-          tileBaseAddress,
-          tileIndex,
-          row,
-        );
-
-        for (let col = 0; col < 8; col += 1) {
-          const bitIndex = 7 - col;
-          const colorIndex = getBGPixelIndex(low, high, bitIndex);
-          const x = tileX * 8 + col;
-          const y = tileY * 8 + row;
-          data[y * width + x] = colorIndex;
-        }
-      }
-    }
-
-    return { width, height, data };
-  }
-
-  setDebugTrace(enabled: boolean): void {
-    this.debugTrace = enabled;
-    this.debugFrameSamples = [];
-    this.debugFrameCounter = 0;
-  }
-
-  private evaluateLycAndCheckSTAT(): void {
-    /* 
-    syncs LYC = LY status into STAT and forwards that state to the STAT interrupt logic
-
-    read LYC and check if LYC == LY
-    set/clear STAT bit 2 (LYC flag) to mirror the result
-    check for STAT interrupts when LYC=LY is true and STAT bit 6 (LYC interrupt) is enabled
-    */
-    const statIdx = IO_REGISTERS.STAT - 0xff00;
-    const statBefore = this.io[statIdx];
-
-    const lyc = this.io[IO_REGISTERS.LYC - 0xff00];
-    const equal = this.ly === lyc;
-
-    const newStat =
-      (statBefore & (~STAT_LYC_FLAG & 0xff)) | (equal ? STAT_LYC_FLAG : 0);
-
-    this.io[statIdx] = newStat;
-    this.checkSTATInterrupts();
-  }
-
-  private checkSTATInterrupts(): void {
-    const statIdx = IO_REGISTERS.STAT - 0xff00;
-    const stat = this.io[statIdx];
-    const mode = stat & STAT_MODE_BITS;
-    const wantM0 = (stat & STAT_M0_IRQ) !== 0;
-    const wantM1 = (stat & STAT_M1_IRQ) !== 0;
-    const wantM2 = (stat & STAT_M2_IRQ) !== 0;
-    const wantLYC = (stat & STAT_LYC_IRQ) !== 0;
-
-    if (!this.lcdEnabled()) {
-      this.statInterruptSet.m0 = false;
-      this.statInterruptSet.m1 = false;
-      this.statInterruptSet.m2 = false;
-      this.statInterruptSet.lyc = false;
-      return;
-    }
-
-    // hblank
-    if (wantM0 && mode === PpuMode.HBlank) {
-      if (!this.statInterruptSet.m0) {
-        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
-        this.statInterruptSet.m0 = true;
-      }
-    } else {
-      this.statInterruptSet.m0 = false;
-    }
-
-    // vblank
-    if (wantM1 && mode === PpuMode.VBlank) {
-      if (!this.statInterruptSet.m1) {
-        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
-        this.statInterruptSet.m1 = true;
-      }
-    } else {
-      this.statInterruptSet.m1 = false;
-    }
-
-    // oam
-    if (wantM2 && mode === PpuMode.OAM) {
-      if (!this.statInterruptSet.m2) {
-        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
-        this.statInterruptSet.m2 = true;
-      }
-    } else {
-      this.statInterruptSet.m2 = false;
-    }
-
-    // LYC
-    const lyc = this.io[IO_REGISTERS.LYC - 0xff00];
-    const lyEqualsLYC = this.ly === lyc;
-    if (wantLYC && lyEqualsLYC) {
-      if (!this.statInterruptSet.lyc) {
-        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
-        this.statInterruptSet.lyc = true;
-      }
-    } else {
-      this.statInterruptSet.lyc = false;
-    }
-  }
-
-  private setMode(mode: PpuMode): void {
-    const idx = IO_REGISTERS.STAT - 0xff00;
-    const stat = this.io[idx];
-
-    if (this.mode !== mode) {
-      this.mode = mode;
-      this.io[idx] = (stat & (~STAT_MODE_BITS & 0xff)) | mode;
-      this.checkSTATInterrupts();
-      return;
-    }
-    this.io[idx] = (stat & (~STAT_MODE_BITS & 0xff)) | mode;
-  }
-
-  private lcdEnabled(): boolean {
-    return (this.io[IO_REGISTERS.LCDC - 0xff00] & 0x80) !== 0;
   }
 
   private DMG_RGBA = [0xffffffff, 0xffaaaaaa, 0xff555555, 0xff000000];
@@ -486,133 +226,6 @@ export class PPU {
     const shift = color * 2;
     const shade = (bgp >> shift) & 0x03;
     return this.DMG_RGBA[shade];
-  }
-
-  private mapOBPPalette(obp: number, color: 0 | 1 | 2 | 3): number {
-    const shift = color * 2;
-    const shade = (obp >> shift) & 0x03;
-    return this.DMG_RGBA[shade];
-  }
-
-  private evalSpritesForScanline(): OAMEntry[] {
-    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
-    const isTallSprite = (lcdc & 0x04) !== 0;
-    const ly = this.ly | 0;
-    const sprites: OAMEntry[] = [];
-
-    const spriteHeight = isTallSprite ? 16 : 8;
-
-    // max 10 sprites per line, 40 total
-    // prioritize in a scanline by OAM index (lower index) on ties
-    // push in index order
-    for (let i = 0; i < 40; i += 1) {
-      const base = i * 4;
-      const y = this.oam[base] - 16;
-      const x = this.oam[base + 1] - 8;
-      let tile = this.oam[base + 2];
-      const attribute = this.oam[base + 3];
-
-      // don't render on this scanline
-      if (ly < y || ly >= y + spriteHeight) {
-        continue;
-      }
-
-      // ignore lower bits for 8x16
-      if (isTallSprite) {
-        tile &= 0xfe;
-      }
-
-      sprites.push({ y, x, tile, attribute, index: i });
-
-      if (sprites.length === 10) break;
-    }
-
-    return sprites;
-  }
-
-  private renderSpritesForScanline(): void {
-    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
-    const isObjEnabled = (lcdc & 0x02) !== 0;
-    if (!isObjEnabled) return;
-
-    const sprites = this.evalSpritesForScanline();
-    if (sprites.length === 0) return;
-
-    const isTallSprite = (lcdc & 0x04) !== 0;
-    const spriteHeight = isTallSprite ? 16 : 8;
-
-    const obp0 = this.io[IO_REGISTERS.OBP0 - 0xff00];
-    const obp1 = this.io[IO_REGISTERS.OBP1 - 0xff00];
-
-    const ly = this.ly | 0;
-    const scanlineOffset = ly * SCREEN_WIDTH;
-
-    const tileBaseAddress = 0x8000;
-
-    // render sprites in reverse priority order
-    // if two sprites overlap, sprite closer to the origin appears on top
-    for (let s = sprites.length - 1; s >= 0; s -= 1) {
-      const sprite = sprites[s];
-      const attribute = sprite.attribute;
-
-      // byte 3 attributes/flags
-      const priorityBehindBg = (attribute & 0x80) !== 0;
-      const yFlip = (attribute & 0x40) !== 0;
-      const xFlip = (attribute & 0x20) !== 0;
-      const useDMGPalette = (attribute & 0x10) !== 0;
-      const obp = useDMGPalette ? obp1 : obp0;
-
-      // read from row 0-7 or 0-15
-      let lineInSprite = ly - sprite.y;
-      if (yFlip) {
-        lineInSprite = spriteHeight - 1 - lineInSprite;
-      }
-
-      // lower half uses tileIndex+1 for 8x16 sprites
-      let tileIndex = sprite.tile;
-      if (isTallSprite && lineInSprite >= 8) {
-        tileIndex += 1;
-      }
-
-      const rowInTile = lineInSprite & 7; // wrap to 0-7
-
-      const { low, high } = fetchTileRow(
-        this.vram,
-        tileBaseAddress,
-        tileIndex,
-        rowInTile,
-      );
-
-      // draw 8 pixel columns for this sprite row
-      for (let x = 0; x < 8; x += 1) {
-        const screenX = sprite.x + x;
-        // dont render offscreen
-        if (screenX < 0 || screenX >= SCREEN_WIDTH) {
-          continue;
-        }
-
-        // palette bit depends on X flip, palette index = 0-3
-        const bitIndex = xFlip ? x : 7 - x;
-        const paletteIndex = getBGPixelIndex(low, high, bitIndex);
-        if (paletteIndex === 0) {
-          continue; // color 0 is transparent for sprites
-        }
-
-        // same as bg
-        const color = this.mapOBPPalette(obp, paletteIndex);
-        const bufIndex = scanlineOffset + screenX;
-
-        // don't draw over non‑transparent background colors
-        if (priorityBehindBg) {
-          const bgIndex = this.bgIndexLine[screenX];
-          if (bgIndex !== 0) {
-            continue;
-          }
-        }
-
-        this.framebuffer[bufIndex] = color;
-      }
-    }
   }
 
   private renderBackgroundLine(): void {
@@ -755,6 +368,330 @@ export class PPU {
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
+    }
+  }
+
+  private mapOBPPalette(obp: number, color: 0 | 1 | 2 | 3): number {
+    const shift = color * 2;
+    const shade = (obp >> shift) & 0x03;
+    return this.DMG_RGBA[shade];
+  }
+
+  private evalSpritesForScanline(): OAMEntry[] {
+    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+    const isTallSprite = (lcdc & 0x04) !== 0;
+    const ly = this.ly | 0;
+    const sprites: OAMEntry[] = [];
+
+    const spriteHeight = isTallSprite ? 16 : 8;
+
+    // max 10 sprites per line, 40 total
+    // prioritize in a scanline by OAM index (lower index) on ties
+    // push in index order
+    for (let i = 0; i < 40; i += 1) {
+      const base = i * 4;
+      const y = this.oam[base] - 16;
+      const x = this.oam[base + 1] - 8;
+      let tile = this.oam[base + 2];
+      const attribute = this.oam[base + 3];
+
+      // don't render on this scanline
+      if (ly < y || ly >= y + spriteHeight) {
+        continue;
+      }
+
+      // ignore lower bits for 8x16
+      if (isTallSprite) {
+        tile &= 0xfe;
+      }
+
+      sprites.push({ y, x, tile, attribute, index: i });
+
+      if (sprites.length === 10) break;
+    }
+
+    return sprites;
+  }
+
+  private renderSpritesForScanline(): void {
+    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+    const isObjEnabled = (lcdc & 0x02) !== 0;
+    if (!isObjEnabled) return;
+
+    const sprites = this.evalSpritesForScanline();
+    if (sprites.length === 0) return;
+
+    const isTallSprite = (lcdc & 0x04) !== 0;
+    const spriteHeight = isTallSprite ? 16 : 8;
+
+    const obp0 = this.io[IO_REGISTERS.OBP0 - 0xff00];
+    const obp1 = this.io[IO_REGISTERS.OBP1 - 0xff00];
+
+    const ly = this.ly | 0;
+    const scanlineOffset = ly * SCREEN_WIDTH;
+
+    const tileBaseAddress = 0x8000;
+
+    // render sprites in reverse priority order
+    // if two sprites overlap, sprite closer to the origin appears on top
+    for (let s = sprites.length - 1; s >= 0; s -= 1) {
+      const sprite = sprites[s];
+      const attribute = sprite.attribute;
+
+      // byte 3 attributes/flags
+      const priorityBehindBg = (attribute & 0x80) !== 0;
+      const yFlip = (attribute & 0x40) !== 0;
+      const xFlip = (attribute & 0x20) !== 0;
+      const useDMGPalette = (attribute & 0x10) !== 0;
+      const obp = useDMGPalette ? obp1 : obp0;
+
+      // read from row 0-7 or 0-15
+      let lineInSprite = ly - sprite.y;
+      if (yFlip) {
+        lineInSprite = spriteHeight - 1 - lineInSprite;
+      }
+
+      // lower half uses tileIndex+1 for 8x16 sprites
+      let tileIndex = sprite.tile;
+      if (isTallSprite && lineInSprite >= 8) {
+        tileIndex += 1;
+      }
+
+      const rowInTile = lineInSprite & 7; // wrap to 0-7
+
+      const { low, high } = fetchTileRow(
+        this.vram,
+        tileBaseAddress,
+        tileIndex,
+        rowInTile,
+      );
+
+      // draw 8 pixel columns for this sprite row
+      for (let x = 0; x < 8; x += 1) {
+        const screenX = sprite.x + x;
+        // dont render offscreen
+        if (screenX < 0 || screenX >= SCREEN_WIDTH) {
+          continue;
+        }
+
+        // palette bit depends on X flip, palette index = 0-3
+        const bitIndex = xFlip ? x : 7 - x;
+        const paletteIndex = getBGPixelIndex(low, high, bitIndex);
+        if (paletteIndex === 0) {
+          continue; // color 0 is transparent for sprites
+        }
+
+        // same as bg
+        const color = this.mapOBPPalette(obp, paletteIndex);
+        const bufIndex = scanlineOffset + screenX;
+
+        // don't draw over non‑transparent background colors
+        if (priorityBehindBg) {
+          const bgIndex = this.bgIndexLine[screenX];
+          if (bgIndex !== 0) {
+            continue;
+          }
+        }
+
+        this.framebuffer[bufIndex] = color;
+      }
+    }
+  }
+
+  getFramebuffer(): Uint32Array {
+    return this.framebuffer;
+  }
+
+  consumeFrameReady(): boolean {
+    const ready = this.frameReady;
+    this.frameReady = false;
+    return ready;
+  }
+
+  getTileViewerData(): { width: number; height: number; data: Uint8Array } {
+    const tilesX = 16;
+    const tilesY = 12;
+    const width = tilesX * 8;
+    const height = tilesY * 8;
+    const data = new Uint8Array(width * height);
+
+    const { base: tileBase } = readTileDataIndex(this.io);
+    const maxTileCount = ((0x9800 - tileBase) / TILE_BYTES) | 0;
+    const totalTiles = Math.min(maxTileCount, tilesX * tilesY);
+
+    for (let tileIndex = 0; tileIndex < totalTiles; tileIndex += 1) {
+      const tileX = tileIndex % tilesX;
+      const tileY = (tileIndex / tilesX) | 0;
+
+      for (let row = 0; row < 8; row += 1) {
+        const { low, high } = fetchTileRow(this.vram, tileBase, tileIndex, row);
+
+        for (let col = 0; col < 8; col += 1) {
+          const bitIndex = 7 - col;
+          const colorIndex = getBGPixelIndex(low, high, bitIndex);
+          const x = tileX * 8 + col;
+          const y = tileY * 8 + row;
+          data[y * width + x] = colorIndex;
+        }
+      }
+    }
+
+    return { width, height, data };
+  }
+
+  getSpriteTileViewerData(): {
+    width: number;
+    height: number;
+    data: Uint8Array;
+  } {
+    const tilesX = 8;
+    const tilesY = 5;
+    const width = tilesX * 8;
+    const height = tilesY * 8;
+    const data = new Uint8Array(width * height);
+
+    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+    const isTallSprite = (lcdc & 0x04) !== 0;
+
+    const uniqueTiles: number[] = [];
+
+    for (let i = 0; i < 40; i += 1) {
+      const base = i * 4;
+      let tile = this.oam[base + 2];
+      if (isTallSprite) {
+        tile &= 0xfe;
+      }
+
+      if (!uniqueTiles.includes(tile)) {
+        uniqueTiles.push(tile);
+        if (uniqueTiles.length >= tilesX * tilesY) break;
+      }
+    }
+
+    const tileBaseAddress = 0x8000;
+    const totalTiles = uniqueTiles.length;
+
+    for (let index = 0; index < totalTiles; index += 1) {
+      const tileIndex = uniqueTiles[index];
+      const tileX = index % tilesX;
+      const tileY = (index / tilesX) | 0;
+
+      for (let row = 0; row < 8; row += 1) {
+        const { low, high } = fetchTileRow(
+          this.vram,
+          tileBaseAddress,
+          tileIndex,
+          row,
+        );
+
+        for (let col = 0; col < 8; col += 1) {
+          const bitIndex = 7 - col;
+          const colorIndex = getBGPixelIndex(low, high, bitIndex);
+          const x = tileX * 8 + col;
+          const y = tileY * 8 + row;
+          data[y * width + x] = colorIndex;
+        }
+      }
+    }
+
+    return { width, height, data };
+  }
+
+  private setMode(mode: PpuMode): void {
+    const idx = IO_REGISTERS.STAT - 0xff00;
+    const stat = this.io[idx];
+
+    if (this.mode !== mode) {
+      this.mode = mode;
+      this.io[idx] = (stat & (~STAT_MODE_BITS & 0xff)) | mode;
+      this.checkSTATInterrupts();
+      return;
+    }
+    this.io[idx] = (stat & (~STAT_MODE_BITS & 0xff)) | mode;
+  }
+
+  private lcdEnabled(): boolean {
+    return (this.io[IO_REGISTERS.LCDC - 0xff00] & 0x80) !== 0;
+  }
+
+  private evaluateLycAndCheckSTAT(): void {
+    /* 
+    syncs LYC = LY status into STAT and forwards that state to the STAT interrupt logic
+
+    read LYC and check if LYC == LY
+    set/clear STAT bit 2 (LYC flag) to mirror the result
+    check for STAT interrupts when LYC=LY is true and STAT bit 6 (LYC interrupt) is enabled
+    */
+    const statIdx = IO_REGISTERS.STAT - 0xff00;
+    const statBefore = this.io[statIdx];
+
+    const lyc = this.io[IO_REGISTERS.LYC - 0xff00];
+    const equal = this.ly === lyc;
+
+    const newStat =
+      (statBefore & (~STAT_LYC_FLAG & 0xff)) | (equal ? STAT_LYC_FLAG : 0);
+
+    this.io[statIdx] = newStat;
+    this.checkSTATInterrupts();
+  }
+
+  private checkSTATInterrupts(): void {
+    const statIdx = IO_REGISTERS.STAT - 0xff00;
+    const stat = this.io[statIdx];
+    const mode = stat & STAT_MODE_BITS;
+    const wantM0 = (stat & STAT_M0_IRQ) !== 0;
+    const wantM1 = (stat & STAT_M1_IRQ) !== 0;
+    const wantM2 = (stat & STAT_M2_IRQ) !== 0;
+    const wantLYC = (stat & STAT_LYC_IRQ) !== 0;
+
+    if (!this.lcdEnabled()) {
+      this.statInterruptSet.m0 = false;
+      this.statInterruptSet.m1 = false;
+      this.statInterruptSet.m2 = false;
+      this.statInterruptSet.lyc = false;
+      return;
+    }
+
+    // hblank
+    if (wantM0 && mode === PpuMode.HBlank) {
+      if (!this.statInterruptSet.m0) {
+        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
+        this.statInterruptSet.m0 = true;
+      }
+    } else {
+      this.statInterruptSet.m0 = false;
+    }
+
+    // vblank
+    if (wantM1 && mode === PpuMode.VBlank) {
+      if (!this.statInterruptSet.m1) {
+        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
+        this.statInterruptSet.m1 = true;
+      }
+    } else {
+      this.statInterruptSet.m1 = false;
+    }
+
+    // oam
+    if (wantM2 && mode === PpuMode.OAM) {
+      if (!this.statInterruptSet.m2) {
+        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
+        this.statInterruptSet.m2 = true;
+      }
+    } else {
+      this.statInterruptSet.m2 = false;
+    }
+
+    // LYC
+    const lyc = this.io[IO_REGISTERS.LYC - 0xff00];
+    const lyEqualsLYC = this.ly === lyc;
+    if (wantLYC && lyEqualsLYC) {
+      if (!this.statInterruptSet.lyc) {
+        this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
+        this.statInterruptSet.lyc = true;
+      }
+    } else {
+      this.statInterruptSet.lyc = false;
     }
   }
 

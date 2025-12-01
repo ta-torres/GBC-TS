@@ -1,5 +1,5 @@
-import type { CPU } from "./cpu";
-import type { AddressBus } from "../memory/addressBus";
+import type { CPU } from "../cpu";
+import type { AddressBus } from "../../memory/addressBus";
 import type { OpcodeInfo } from "../../types/instructions";
 import { getRegister, setRegister, REGISTER_NAMES } from "./instructions";
 

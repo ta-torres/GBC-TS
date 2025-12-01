@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { Cartridge } from "../../emulator/cartridge/cartridge";
-import { AddressBus } from "../../emulator/memory/addressBus";
-import { CPU } from "../../emulator/core/cpu";
-import { Interrupts } from "../../emulator/core/interrupts";
-import { Timer } from "../../emulator/core/timer";
+import { Cartridge } from "../cartridge/cartridge";
+import { AddressBus } from "../memory/addressBus";
+import { CPU } from "../core/cpu";
+import { Interrupts } from "../core/interrupts";
+import { Timer } from "../core/timer";
 
 function makeROM(program: number[]): Uint8Array {
   const rom = new Uint8Array(0x8000);

@@ -1,4 +1,4 @@
-import type { AddressBus } from "../emulator/memory/addressBus";
+import type { AddressBus } from "../memory/addressBus";
 
 export type OpcodeHandler<TCpu> = (cpu: TCpu, bus: AddressBus) => number;
 

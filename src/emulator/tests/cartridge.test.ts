@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Cartridge } from "../emulator/cartridge/cartridge";
+import { Cartridge } from "../cartridge/cartridge";
 
 describe("Cartridge", () => {
   let cartridge: Cartridge;

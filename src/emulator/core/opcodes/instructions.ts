@@ -1,5 +1,5 @@
-import type { CPU } from "./cpu";
-import type { AddressBus } from "../memory/addressBus";
+import type { CPU } from "../cpu";
+import type { AddressBus } from "../../memory/addressBus";
 
 export const getRegister = (
   cpu: CPU,

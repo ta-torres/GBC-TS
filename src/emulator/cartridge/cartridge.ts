@@ -1,5 +1,5 @@
-import type { CartridgeHeader } from "../../types/cartridge";
-import { getRAMSize, CARTRIDGE_TYPE } from "../../types/cartridge";
+import type { CartridgeHeader } from "../types/cartridge";
+import { getRAMSize, CARTRIDGE_TYPE } from "../types/cartridge";
 import type { MBC } from "./mbc";
 import { MBC1 } from "./mbc1";
 import { MBC3 } from "./mbc3";

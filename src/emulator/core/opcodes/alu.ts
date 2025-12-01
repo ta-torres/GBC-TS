@@ -1,4 +1,4 @@
-import type { CPU } from "./cpu";
+import type { CPU } from "../cpu";
 
 export const add8 = (cpu: CPU, value: number, useCarry: boolean): void => {
   const a = cpu.registers.getA();
@@ -6,7 +6,7 @@ export const add8 = (cpu: CPU, value: number, useCarry: boolean): void => {
   const b = value & 0xff;
   const sum = a + b + carryIn;
   const result = sum & 0xff;
-  const halfCarry = ((a & 0x0f) + (b & 0x0f) + carryIn) > 0x0f;
+  const halfCarry = (a & 0x0f) + (b & 0x0f) + carryIn > 0x0f;
   const carry = sum > 0xff;
 
   cpu.registers.setA(result);
@@ -22,8 +22,8 @@ export const sub8 = (cpu: CPU, value: number, useCarry: boolean): void => {
   const b = value & 0xff;
   const diff = a - b - carryIn;
   const result = diff & 0xff;
-  const halfCarry = (a & 0x0f) < ((b & 0x0f) + carryIn);
-  const carry = a < (b + carryIn);
+  const halfCarry = (a & 0x0f) < (b & 0x0f) + carryIn;
+  const carry = a < b + carryIn;
 
   cpu.registers.setA(result);
   cpu.registers.setZeroFlag(result === 0);
@@ -100,7 +100,7 @@ export const add16 = (cpu: CPU, left: number, right: number): number => {
   const b = right & 0xffff;
   const sum = a + b;
   const result = sum & 0xffff;
-  const halfCarry = ((a & 0x0fff) + (b & 0x0fff)) > 0x0fff;
+  const halfCarry = (a & 0x0fff) + (b & 0x0fff) > 0x0fff;
   const carry = sum > 0xffff;
 
   cpu.registers.setSubtractFlag(false);

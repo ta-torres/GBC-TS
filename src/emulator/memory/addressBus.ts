@@ -1,5 +1,5 @@
 import { Cartridge } from "../cartridge/cartridge";
-import { MEMORY_MAP, IO_REGISTERS } from "../../types/memory";
+import { MEMORY_MAP, IO_REGISTERS } from "../types/memory";
 import { Timer } from "../core/timer";
 import { Interrupts } from "../core/interrupts";
 import { Joypad } from "../input/joypad";
@@ -35,7 +35,6 @@ export class AddressBus {
   }
 
   read(address: number): number {
-    // mask to 16bit address bus
     address &= 0xffff;
 
     // ROM (0x0000-0x7FFF)
@@ -43,7 +42,6 @@ export class AddressBus {
       return this.cartridge.read(address);
     }
 
-    // not done yet
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
       return this.vram[address - 0x8000];
@@ -138,14 +136,12 @@ export class AddressBus {
     address &= 0xffff;
     value &= 0xff;
 
-    // todo: mbc control
     // ROM (0x0000-0x7FFF)
     if (address < 0x8000) {
       this.cartridge.write(address, value);
       return;
     }
 
-    // todo: vram
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
       this.vram[address - 0x8000] = value;

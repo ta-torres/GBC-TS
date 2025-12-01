@@ -9,9 +9,9 @@ import {
   inc8,
   dec8,
   add16,
-} from "../emulator/core/alu";
-import { Registers } from "../emulator/core/registers";
-import type { CPU } from "../emulator/core/cpu";
+} from "../core/opcodes/alu";
+import { Registers } from "../core/registers";
+import type { CPU } from "../core/cpu";
 
 describe("ALU", () => {
   let registers: Registers;

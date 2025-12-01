@@ -1,8 +1,8 @@
 import { Registers } from "./registers";
 import { AddressBus } from "../memory/addressBus";
-import { OPCODE_TABLE } from "./opcodes";
-import { CB_OPCODE_TABLE } from "./opcodesCB";
-import { toHex16, toHex8 } from "../../utils/bitwise";
+import { OPCODE_TABLE } from "./opcodes/opcodes";
+import { CB_OPCODE_TABLE } from "./opcodes/opcodesCB";
+import { toHex16, toHex8 } from "../utils/bitwise";
 import { Interrupts, InterruptType, INTERRUPT_ADDRESSES } from "./interrupts";
 
 export class CPU {
@@ -25,8 +25,8 @@ export class CPU {
     this.interrupts = interrupts;
 
     // post-boot state
-    this.pc = 0x0100; // start of cartridge
-    this.sp = 0xfffe; // top of stack
+    this.pc = 0x0100;
+    this.sp = 0xfffe;
     this.ime = false;
     this.imeScheduled = false;
     this.halted = false;
@@ -49,7 +49,6 @@ export class CPU {
       https://gbdev.io/pandocs/halt.html#halt-bug
       HALT bug: pc is not incremented after a HALT instruction when IME is disabled and an interrupt is pending
       check for disabled IME and pending interrupt
-      return default halt cycle for now
       */
 
       // wake from halted state if there is an interrupt, deal with interrupt only if IME is enabled
@@ -135,6 +134,18 @@ export class CPU {
     return (high << 8) | low;
   }
 
+  halt(): void {
+    const pending = this.interrupts.getPending();
+    // don't enter HALT, skip next PC increment
+    if (!this.ime && pending !== 0) {
+      this.haltBug = true;
+      this.halted = false;
+      return;
+    }
+    // wait until an interrupt becomes pending (in this.halted)
+    this.halted = true;
+  }
+
   reset(): void {
     this.registers.reset();
     this.pc = 0x0100;
@@ -170,20 +181,5 @@ export class CPU {
   }
   scheduleIME(): void {
     this.imeScheduled = true;
-  }
-  enableHalt(): void {
-    this.halted = true;
-  }
-
-  halt(): void {
-    const pending = this.interrupts.getPending();
-    // don't enter HALT, skip next PC increment
-    if (!this.ime && pending !== 0) {
-      this.haltBug = true;
-      this.halted = false;
-      return;
-    }
-    // wait until an interrupt becomes pending (in this.halted)
-    this.halted = true;
   }
 }
