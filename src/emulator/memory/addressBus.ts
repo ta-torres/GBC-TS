@@ -199,6 +199,14 @@ export class AddressBus {
       return;
     }
 
+    // Unusable (0xFEA0-0xFEFF)
+    if (
+      address >= MEMORY_MAP.UNUSABLE.start &&
+      address <= MEMORY_MAP.UNUSABLE.end
+    ) {
+      return;
+    }
+
     // I/O Registers (0xFF00-0xFF7F)
     if (
       address >= MEMORY_MAP.IO_REGISTERS.start &&
