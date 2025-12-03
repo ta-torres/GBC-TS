@@ -133,7 +133,7 @@ function App() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="justify-center lg:col-span-2">
             {emulatorRef.current && (
-              <GameBoyShell>
+              <GameBoyShell batteryOn={isRunning}>
                 <GBScreen emulator={emulatorRef.current} />
               </GameBoyShell>
             )}

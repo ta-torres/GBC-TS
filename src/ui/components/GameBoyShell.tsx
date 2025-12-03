@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 
 interface GameBoyShellProps {
   children: ReactNode;
+  batteryOn: boolean;
 }
 
-export const GameBoyShell = ({ children }: GameBoyShellProps) => {
+export const GameBoyShell = ({ children, batteryOn }: GameBoyShellProps) => {
   const handleFullscreen = () => {
     const canvas = document.querySelector(
       ".gb-screen-canvas",
@@ -56,7 +57,9 @@ export const GameBoyShell = ({ children }: GameBoyShellProps) => {
 
           <div className="gameboy-screen-shell">
             <div className="gameboy-battery">
-              <div className="gameboy-battery-led" />
+              <div
+                className={`gameboy-battery-led ${batteryOn ? "" : "gameboy-battery-led--off"}`}
+              />
               <div className="gameboy-battery-label">BATTERY</div>
             </div>
 

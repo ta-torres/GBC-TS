@@ -175,6 +175,11 @@
   box-shadow: 0 0 8px rgba(212, 31, 48, 0.8);
 }
 
+.gameboy-battery-led--off {
+  background: #3a3f46;
+  box-shadow: none;
+}
+
 .gameboy-battery-label {
   position: relative;
   right: 3px;
