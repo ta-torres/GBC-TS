@@ -63,6 +63,18 @@ function App() {
     updateDebugInfo();
   };
 
+  const handleButtonDown = (button: JoypadButton) => {
+    const emu = emulatorRef.current;
+    if (!emu) return;
+    emu.pressButton(button);
+  };
+
+  const handleButtonUp = (button: JoypadButton) => {
+    const emu = emulatorRef.current;
+    if (!emu) return;
+    emu.releaseButton(button);
+  };
+
   useEffect(() => {
     let rafId = 0;
     const CYCLES_PER_FRAME = 70224;
@@ -133,7 +145,11 @@ function App() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="justify-center lg:col-span-2">
             {emulatorRef.current && (
-              <GameBoyShell batteryOn={isRunning}>
+              <GameBoyShell
+                batteryOn={isRunning}
+                onButtonDown={handleButtonDown}
+                onButtonUp={handleButtonUp}
+              >
                 <GBScreen emulator={emulatorRef.current} />
               </GameBoyShell>
             )}

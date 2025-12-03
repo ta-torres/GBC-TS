@@ -1,11 +1,19 @@
 import type { ReactNode } from "react";
+import type { JoypadButton } from "../../emulator/input/joypad";
 
 interface GameBoyShellProps {
   children: ReactNode;
   batteryOn: boolean;
+  onButtonDown: (button: JoypadButton) => void;
+  onButtonUp: (button: JoypadButton) => void;
 }
 
-export const GameBoyShell = ({ children, batteryOn }: GameBoyShellProps) => {
+export const GameBoyShell = ({
+  children,
+  batteryOn,
+  onButtonDown,
+  onButtonUp,
+}: GameBoyShellProps) => {
   const handleFullscreen = () => {
     const canvas = document.querySelector(
       ".gb-screen-canvas",
@@ -71,18 +79,74 @@ export const GameBoyShell = ({ children, batteryOn }: GameBoyShellProps) => {
           <div className="gameboy-controls-row">
             <div className="gameboy-dpad">
               <div className="dpad-vertical">
-                <button className="dpad-up">
+                <button
+                  className="dpad-up"
+                  type="button"
+                  onMouseDown={() => onButtonDown("up")}
+                  onMouseUp={() => onButtonUp("up")}
+                  onMouseLeave={() => onButtonUp("up")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onButtonDown("up");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    onButtonUp("up");
+                  }}
+                >
                   <label>{`^`}</label>
                 </button>
-                <button className="dpad-down">
+                <button
+                  className="dpad-down"
+                  type="button"
+                  onMouseDown={() => onButtonDown("down")}
+                  onMouseUp={() => onButtonUp("down")}
+                  onMouseLeave={() => onButtonUp("down")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onButtonDown("down");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    onButtonUp("down");
+                  }}
+                >
                   <label>{`ˇ`}</label>
                 </button>
               </div>
               <div className="dpad-horizontal">
-                <button className="dpad-left">
+                <button
+                  className="dpad-left"
+                  type="button"
+                  onMouseDown={() => onButtonDown("left")}
+                  onMouseUp={() => onButtonUp("left")}
+                  onMouseLeave={() => onButtonUp("left")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onButtonDown("left");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    onButtonUp("left");
+                  }}
+                >
                   <label>{`<`}</label>
                 </button>
-                <button className="dpad-right">
+                <button
+                  className="dpad-right"
+                  type="button"
+                  onMouseDown={() => onButtonDown("right")}
+                  onMouseUp={() => onButtonUp("right")}
+                  onMouseLeave={() => onButtonUp("right")}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    onButtonDown("right");
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    onButtonUp("right");
+                  }}
+                >
                   <label>{`>`}</label>
                 </button>
               </div>
@@ -90,27 +154,83 @@ export const GameBoyShell = ({ children, batteryOn }: GameBoyShellProps) => {
             </div>
 
             <div className="gameboy-ab-buttons">
-              <div className="gameboy-button gameboy-button-a">
+              <button
+                type="button"
+                className="gameboy-button gameboy-button-a"
+                onMouseDown={() => onButtonDown("a")}
+                onMouseUp={() => onButtonUp("a")}
+                onMouseLeave={() => onButtonUp("a")}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  onButtonDown("a");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  onButtonUp("a");
+                }}
+              >
                 <label className="a-label">X</label>
                 <span>A</span>
-              </div>
-              <div className="gameboy-button gameboy-button-b">
+              </button>
+              <button
+                type="button"
+                className="gameboy-button gameboy-button-b"
+                onMouseDown={() => onButtonDown("b")}
+                onMouseUp={() => onButtonUp("b")}
+                onMouseLeave={() => onButtonUp("b")}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  onButtonDown("b");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  onButtonUp("b");
+                }}
+              >
                 <label className="b-label">Z</label>
                 <span>B</span>
-              </div>
+              </button>
             </div>
           </div>
 
           <div className="gameboy-middle-row">
             <div className="gameboy-select-start">
-              <div className="gameboy-pill gameboy-pill-select">
+              <button
+                type="button"
+                className="gameboy-pill gameboy-pill-select"
+                onMouseDown={() => onButtonDown("select")}
+                onMouseUp={() => onButtonUp("select")}
+                onMouseLeave={() => onButtonUp("select")}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  onButtonDown("select");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  onButtonUp("select");
+                }}
+              >
                 <label>Shift</label>
                 <span>SELECT</span>
-              </div>
-              <div className="gameboy-pill gameboy-pill-start">
+              </button>
+              <button
+                type="button"
+                className="gameboy-pill gameboy-pill-start"
+                onMouseDown={() => onButtonDown("start")}
+                onMouseUp={() => onButtonUp("start")}
+                onMouseLeave={() => onButtonUp("start")}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  onButtonDown("start");
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  onButtonUp("start");
+                }}
+              >
                 <label>Enter</label>
                 <span>START</span>
-              </div>
+              </button>
             </div>
 
             <div className="gameboy-speaker">
