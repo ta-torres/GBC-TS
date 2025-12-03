@@ -43,7 +43,13 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
   }, [emulator]);
 
   return (
-    <div className="rounded-lg bg-gray-800 p-4">
+    <canvas
+      ref={canvasRef}
+      width={160}
+      height={144}
+      className="gb-screen-canvas"
+      style={{ imageRendering: "pixelated" }}
+      /* <div className="rounded-lg bg-gray-800 p-4">
       <canvas
         ref={canvasRef}
         width={160}
@@ -51,6 +57,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
         className="w-full border-4 border-gray-700"
         style={{ imageRendering: "pixelated" }}
       />
-    </div>
+    </div> */
+    />
   );
 };

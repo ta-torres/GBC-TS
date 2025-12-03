@@ -7,6 +7,7 @@ import { EmuControllers } from "./ui/components/EmuControllers";
 import { DebugData } from "./ui/components/DebugData";
 import { TileViewer } from "./ui/components/TileViewer";
 import { SpriteViewer } from "./ui/components/SpriteViewer";
+import { GameBoyShell } from "./ui/components/GameBoyShell";
 
 function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
@@ -130,8 +131,12 @@ function App() {
     <div className="min-h-screen bg-gray-900 p-8 text-white">
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            {emulatorRef.current && <GBScreen emulator={emulatorRef.current} />}
+          <div className="justify-center lg:col-span-2">
+            {emulatorRef.current && (
+              <GameBoyShell>
+                <GBScreen emulator={emulatorRef.current} />
+              </GameBoyShell>
+            )}
           </div>
           <div className="space-y-4">
             <EmuControllers
