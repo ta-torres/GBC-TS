@@ -73,9 +73,10 @@ export class CPU {
 
       const cbInfo = CB_OPCODE_TABLE[cbOpcode];
       if (!cbInfo) {
-        throw new Error(
+        console.warn(
           `Unimplemented CB opcode: ${toHex8(cbOpcode)} at PC: ${toHex16(this.pc)}`,
         );
+        return 4;
       }
       return cbInfo.handler(this, this.bus);
     }
@@ -85,10 +86,11 @@ export class CPU {
     ); */
     const info = OPCODE_TABLE[opcode];
     if (!info) {
-      throw new Error(
+      console.warn(
         `Unimplemented opcode: ${toHex8(opcode)} at PC: ${toHex16(this.pc)}\n` +
           `Registers: ${this.registers.toString()}`,
       );
+      return 4;
     }
     //console.log(this.getRegisters().toString());
 
