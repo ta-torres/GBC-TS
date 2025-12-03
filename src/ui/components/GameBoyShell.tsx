@@ -5,6 +5,22 @@ interface GameBoyShellProps {
 }
 
 export const GameBoyShell = ({ children }: GameBoyShellProps) => {
+  const handleFullscreen = () => {
+    const canvas = document.querySelector(
+      ".gb-screen-canvas",
+    ) as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      return;
+    }
+
+    if (canvas.requestFullscreen) {
+      canvas.requestFullscreen();
+    }
+  };
+
   return (
     <div className="gameboy-shell">
       <div className="gameboy-shell-inner">
@@ -16,6 +32,14 @@ export const GameBoyShell = ({ children }: GameBoyShellProps) => {
         {/* <div className="gameboy-top-ridge-left" />
           <div className="gameboy-top-ridge-right" /> */}
         <div className="gameboy-screen-area">
+          <button
+            type="button"
+            className="gameboy-fullscreen-button"
+            onClick={handleFullscreen}
+            aria-label="Toggle fullscreen"
+          >
+            ⤢
+          </button>
           <div className="gameboy-screen-header">
             <div className="gameboy-header-stripes">
               <span />

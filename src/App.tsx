@@ -128,7 +128,7 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8 text-white">
+    <div className="min-h-screen bg-gray-900 text-white sm:p-8">
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="justify-center lg:col-span-2">
