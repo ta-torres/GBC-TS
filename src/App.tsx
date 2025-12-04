@@ -30,8 +30,12 @@ function App() {
     const emu = emulatorRef.current;
     if (!emu) return;
     const ok = await emu.loadROM(file);
-    setIsLoaded(ok);
-    if (ok) updateDebugInfo();
+    if (ok) {
+      setIsLoaded(ok);
+      emu.start();
+      setIsRunning(true);
+      updateDebugInfo();
+    }
   };
 
   const handleStart = () => {
