@@ -53,6 +53,18 @@ export const TileViewer = ({ emulator }: TileViewerProps) => {
 
       ctx.putImageData(imageData, 0, 0);
 
+      let hasTiles = false;
+      for (let i = 0; i < data.length && !hasTiles; i += 1) {
+        if (data[i] !== 0) {
+          hasTiles = true;
+        }
+      }
+
+      if (!hasTiles) {
+        ctx.fillStyle = "#0f380f";
+        ctx.fillRect(0, 0, width, height);
+      }
+
       rafId = requestAnimationFrame(render);
     };
 
@@ -61,12 +73,14 @@ export const TileViewer = ({ emulator }: TileViewerProps) => {
   }, [emulator]);
 
   return (
-    <Card className="p-4" style={{ backgroundColor: "#b7bac3" }}>
-      <canvas
-        ref={canvasRef}
-        className="h-64 w-80 border border-gray-600"
-        style={{ imageRendering: "pixelated" }}
-      />
+    <Card className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
+      <Card className="m-0 p-0">
+        <canvas
+          ref={canvasRef}
+          className="gb-screen-canvas h-64 w-full"
+          style={{ imageRendering: "pixelated" }}
+        />
+      </Card>
     </Card>
   );
 };

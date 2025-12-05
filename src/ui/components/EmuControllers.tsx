@@ -33,7 +33,7 @@ export const EmuControllers = ({
   };
 
   return (
-    <Card className="p-4" style={{ backgroundColor: "#b7bac3" }}>
+    <Card className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
       <div>
         <input
           ref={fileInputRef}
@@ -54,7 +54,7 @@ export const EmuControllers = ({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <Button
           onClick={onStart}
           disabled={!isLoaded || isRunning}
@@ -64,19 +64,19 @@ export const EmuControllers = ({
         </Button>
 
         <Button
-          onClick={onPause}
-          disabled={!isRunning}
-          className="w-full rounded bg-yellow-600 px-4 py-2 font-medium hover:bg-yellow-700 disabled:cursor-not-allowed disabled:bg-gray-600"
-        >
-          Pause
-        </Button>
-
-        <Button
           onClick={onReset}
           disabled={!isLoaded}
           className="w-full rounded bg-red-600 px-4 py-2 font-medium hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
           Reset
+        </Button>
+
+        <Button
+          onClick={onPause}
+          disabled={!isRunning}
+          className="w-full rounded bg-yellow-600 px-4 py-2 font-medium hover:bg-yellow-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+        >
+          Pause
         </Button>
 
         <Button
