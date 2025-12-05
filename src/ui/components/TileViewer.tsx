@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { GBEmulator } from "@/emulator/gbEmulator";
+import { Card } from "@/components/ui/pixelact-ui/card";
 
 interface TileViewerProps {
   emulator: GBEmulator | null;
@@ -60,12 +61,12 @@ export const TileViewer = ({ emulator }: TileViewerProps) => {
   }, [emulator]);
 
   return (
-    <div className="rounded-lg bg-gray-800 p-4">
+    <Card className="p-4" style={{ backgroundColor: "#b7bac3" }}>
       <canvas
         ref={canvasRef}
         className="h-64 w-80 border border-gray-600"
         style={{ imageRendering: "pixelated" }}
       />
-    </div>
+    </Card>
   );
 };

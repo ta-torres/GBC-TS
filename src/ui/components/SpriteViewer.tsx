@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { GBEmulator } from "@/emulator/gbEmulator";
+import { Card } from "@/components/ui/pixelact-ui/card";
 
 interface SpriteViewerProps {
   emulator: GBEmulator | null;
@@ -86,15 +87,15 @@ export const SpriteViewer = ({ emulator }: SpriteViewerProps) => {
   }, [emulator]);
 
   return (
-    <div className="rounded-lg bg-gray-800 p-4">
+    <Card className="p-4" style={{ backgroundColor: "#b7bac3" }}>
       <canvas
         ref={canvasRef}
         className="h-64 w-80 border border-gray-600"
         style={{ imageRendering: "pixelated" }}
       />
-      <div className="mt-2 text-sm text-gray-300" ref={labelRef}>
+      <div className="text-xs text-gray-600" ref={labelRef}>
         Sprites: 0
       </div>
-    </div>
+    </Card>
   );
 };

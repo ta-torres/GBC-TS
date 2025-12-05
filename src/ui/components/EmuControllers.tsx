@@ -1,4 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import { Card } from "@/components/ui/pixelact-ui/card";
+import { Button } from "@/components/ui/pixelact-ui/button";
 
 interface EmuControllersProps {
   onLoadROM: (file: File) => void;
@@ -31,11 +33,8 @@ export const EmuControllers = ({
   };
 
   return (
-    <div className="space-y-4 rounded-lg bg-gray-800 p-4">
-      <h2 className="mb-4 text-xl font-bold">Controls</h2>
-
+    <Card className="p-4" style={{ backgroundColor: "#b7bac3" }}>
       <div>
-        <label className="mb-2 block text-sm font-medium">Load ROM</label>
         <input
           ref={fileInputRef}
           type="file"
@@ -43,49 +42,51 @@ export const EmuControllers = ({
           onChange={handleFileChange}
           className="hidden"
         />
-        <button
+        <Button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className="w-full cursor-pointer bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
         >
           Load Game
-        </button>
-        {fileName && <div className="mt-1 text-xs">{fileName}</div>}
+        </Button>
+        {fileName && (
+          <div className="mt-1 text-xs text-gray-700">{fileName}</div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <button
+        <Button
           onClick={onStart}
           disabled={!isLoaded || isRunning}
-          className="rounded bg-green-600 px-4 py-2 font-medium hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+          className="w-full rounded bg-green-600 px-4 py-2 font-medium hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
           Start
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={onPause}
           disabled={!isRunning}
-          className="rounded bg-yellow-600 px-4 py-2 font-medium hover:bg-yellow-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+          className="w-full rounded bg-yellow-600 px-4 py-2 font-medium hover:bg-yellow-700 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
           Pause
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={onReset}
           disabled={!isLoaded}
-          className="rounded bg-red-600 px-4 py-2 font-medium hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+          className="w-full rounded bg-red-600 px-4 py-2 font-medium hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
           Reset
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={onStep}
           disabled={!isLoaded || isRunning}
-          className="rounded bg-blue-600 px-4 py-2 font-medium hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+          className="w-full rounded bg-blue-600 px-4 py-2 font-medium hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
           Step
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 };
