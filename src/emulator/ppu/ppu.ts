@@ -85,7 +85,7 @@ export class PPU {
   private framebuffer: Uint32Array;
   private bgIndexLine: Uint8Array;
   private mode: PpuMode;
-  private ly: number;
+  private currentScanlineLY: number;
   private dotsInLine: number;
   private frameReady: boolean;
   private windowScanline: number;
@@ -116,7 +116,7 @@ export class PPU {
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
     this.bgIndexLine = new Uint8Array(SCREEN_WIDTH);
     this.mode = PpuMode.OAM;
-    this.ly = 0;
+    this.currentScanlineLY = 0;
     this.dotsInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
@@ -133,7 +133,7 @@ export class PPU {
     this.framebuffer.fill(0);
     this.bgIndexLine.fill(0);
     this.mode = PpuMode.OAM;
-    this.ly = 0;
+    this.currentScanlineLY = 0;
     this.dotsInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
@@ -146,7 +146,7 @@ export class PPU {
 
   step(cycles: number): void {
     if (!this.lcdEnabled()) {
-      this.ly = 0;
+      this.currentScanlineLY = 0;
       this.dotsInLine = 0;
       this.frameReady = false;
       this.io[IO_REGISTERS.LY - 0xff00] = 0;
@@ -160,7 +160,7 @@ export class PPU {
 
     const previousMode = this.mode;
 
-    if (this.ly < 144) {
+    if (this.currentScanlineLY < 144) {
       if (this.dotsInLine < MODE2_DOTS) {
         this.setMode(PpuMode.OAM);
       } else if (this.dotsInLine < MODE2_DOTS + MODE3_DOTS) {
@@ -168,7 +168,7 @@ export class PPU {
       } else if (this.dotsInLine < DOTS_PER_LINE) {
         this.setMode(PpuMode.HBlank);
         // only render bg once per scanline at the start of hblank
-        if (previousMode === PpuMode.Transfer && this.ly < 144) {
+        if (previousMode === PpuMode.Transfer && this.currentScanlineLY < 144) {
           this.renderBackgroundLine();
           this.renderWindowLine();
           this.renderSpritesForScanline();
@@ -179,13 +179,13 @@ export class PPU {
     }
 
     if (this.dotsInLine >= DOTS_PER_LINE) {
-      const previousLy = this.ly;
+      const previousLy = this.currentScanlineLY;
 
       this.dotsInLine -= DOTS_PER_LINE;
 
       // increment horizontal line counter and update ly register
-      this.ly = (this.ly + 1) & 0xff;
-      this.io[IO_REGISTERS.LY - 0xff00] = this.ly;
+      this.currentScanlineLY = (this.currentScanlineLY + 1) & 0xff;
+      this.io[IO_REGISTERS.LY - 0xff00] = this.currentScanlineLY;
 
       this.evaluateLycAndCheckSTAT();
 
@@ -198,7 +198,7 @@ export class PPU {
         this.windowScanline = (this.windowScanline + 1) & 0xff;
       }
 
-      if (this.ly === 144) {
+      if (this.currentScanlineLY === 144) {
         this.setMode(PpuMode.VBlank);
 
         /* if (this.debugTrace) {
@@ -206,8 +206,8 @@ export class PPU {
         } */
         this.frameReady = true;
         this.interrupts.requestInterrupt(InterruptType.VBLANK);
-      } else if (this.ly > 153) {
-        this.ly = 0;
+      } else if (this.currentScanlineLY > 153) {
+        this.currentScanlineLY = 0;
         this.io[IO_REGISTERS.LY - 0xff00] = 0;
 
         this.evaluateLycAndCheckSTAT();
@@ -235,7 +235,7 @@ export class PPU {
     if (!bgEnabled) {
       const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
       const backgroundColor = this.mapDMGPalette(bgPalette, 0);
-      const scanlineY = this.ly | 0;
+      const scanlineY = this.currentScanlineLY | 0;
       const scanlineOffset = scanlineY * SCREEN_WIDTH;
       for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
         this.framebuffer[scanlineOffset + screenX] = backgroundColor;
@@ -255,12 +255,12 @@ export class PPU {
     const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
 
     // calcula qué fila de tiles de BG y qué fila interna del tile toca este LY
-    const bgY = (this.ly + scrollY) & 0xff;
+    const bgY = (this.currentScanlineLY + scrollY) & 0xff;
     const bgTileRowIndex = (bgY >> 3) & 31; // 32x32 tiles
     const tileRowOffset = bgY & 7;
 
     // recorre X en pantalla, agarra tile/píxel de BG y mapea a color
-    const scanlineOffset = this.ly * SCREEN_WIDTH;
+    const scanlineOffset = this.currentScanlineLY * SCREEN_WIDTH;
     for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
       // mapea screenX de pantalla actual al espacio de BG
       // selecciona columna de tile de BG e índice dentro del tile map
@@ -315,7 +315,7 @@ export class PPU {
 
     // if current scanline LY is ABOVE the windows starting position WY (top to bottom) don't draw the window yet
     // window starts being visible on scanline ly === wy
-    if (this.ly < wy) return;
+    if (this.currentScanlineLY < wy) return;
 
     // same as BG
     const { base: tileDataBaseAddress, signedIndex } = readTileDataIndex(
@@ -330,7 +330,7 @@ export class PPU {
     const windowTileRowOffset = windowRowInPixels & 7;
 
     // Same as BG but don't draw to negative framebuffer (skip off-screen pixels)
-    const scanlineOffset = this.ly * SCREEN_WIDTH;
+    const scanlineOffset = this.currentScanlineLY * SCREEN_WIDTH;
     for (
       let screenX = Math.max(0, windowXStart);
       screenX < SCREEN_WIDTH;
@@ -380,7 +380,7 @@ export class PPU {
   private evalSpritesForScanline(): OAMEntry[] {
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
     const isTallSprite = (lcdc & 0x04) !== 0;
-    const ly = this.ly | 0;
+    const currentScanlineLY = this.currentScanlineLY | 0;
     const sprites: OAMEntry[] = [];
 
     const spriteHeight = isTallSprite ? 16 : 8;
@@ -396,7 +396,7 @@ export class PPU {
       const attribute = this.oam[base + 3];
 
       // don't render on this scanline
-      if (ly < y || ly >= y + spriteHeight) {
+      if (currentScanlineLY < y || currentScanlineLY >= y + spriteHeight) {
         continue;
       }
 
@@ -427,8 +427,8 @@ export class PPU {
     const obp0 = this.io[IO_REGISTERS.OBP0 - 0xff00];
     const obp1 = this.io[IO_REGISTERS.OBP1 - 0xff00];
 
-    const ly = this.ly | 0;
-    const scanlineOffset = ly * SCREEN_WIDTH;
+    const currentScanlineLY = this.currentScanlineLY | 0;
+    const scanlineOffset = currentScanlineLY * SCREEN_WIDTH;
 
     const tileBaseAddress = 0x8000;
 
@@ -446,7 +446,7 @@ export class PPU {
       const obp = useDMGPalette ? obp1 : obp0;
 
       // read from row 0-7 or 0-15
-      let lineInSprite = ly - sprite.y;
+      let lineInSprite = currentScanlineLY - sprite.y;
       if (yFlip) {
         lineInSprite = spriteHeight - 1 - lineInSprite;
       }
@@ -626,7 +626,7 @@ export class PPU {
     const statBefore = this.io[statIdx];
 
     const lyc = this.io[IO_REGISTERS.LYC - 0xff00];
-    const equal = this.ly === lyc;
+    const equal = this.currentScanlineLY === lyc;
 
     const newStat =
       (statBefore & (~STAT_LYC_FLAG & 0xff)) | (equal ? STAT_LYC_FLAG : 0);
@@ -684,7 +684,7 @@ export class PPU {
 
     // LYC
     const lyc = this.io[IO_REGISTERS.LYC - 0xff00];
-    const lyEqualsLYC = this.ly === lyc;
+    const lyEqualsLYC = this.currentScanlineLY === lyc;
     if (wantLYC && lyEqualsLYC) {
       if (!this.statInterruptSet.lyc) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
