@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 
 interface EmuControllersProps {
   onLoadROM: (file: File) => void;
@@ -19,9 +19,15 @@ export const EmuControllers = ({
   isLoaded,
   isRunning,
 }: EmuControllersProps) => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) onLoadROM(file);
+    if (file) {
+      setFileName(file.name);
+      onLoadROM(file);
+    }
   };
 
   return (
@@ -31,11 +37,20 @@ export const EmuControllers = ({
       <div>
         <label className="mb-2 block text-sm font-medium">Load ROM</label>
         <input
+          ref={fileInputRef}
           type="file"
           accept=".gb,.gbc"
           onChange={handleFileChange}
-          className="w-full cursor-pointer text-sm text-gray-400 file:mr-4 file:rounded file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700"
+          className="hidden"
         />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full cursor-pointer bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+        >
+          Load Game
+        </button>
+        {fileName && <div className="mt-1 text-xs">{fileName}</div>}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
