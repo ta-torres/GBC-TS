@@ -14,18 +14,10 @@ function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [debugInfo, setDebugInfo] = useState("");
-  const lastDebugUpdateRef = useRef<number>(0);
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBEmulator();
   }
-
-  const updateDebugInfo = () => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    setDebugInfo(emu.getCPUState());
-  };
 
   const handleLoadROM = async (file: File) => {
     const emu = emulatorRef.current;
@@ -35,7 +27,6 @@ function App() {
       setIsLoaded(ok);
       emu.start();
       setIsRunning(true);
-      updateDebugInfo();
     }
   };
 
@@ -58,14 +49,12 @@ function App() {
     if (!emu) return;
     emu.reset();
     setIsRunning(false);
-    updateDebugInfo();
   };
 
   const handleStep = () => {
     const emu = emulatorRef.current;
     if (!emu || !isLoaded) return;
     emu.stepInstruction();
-    updateDebugInfo();
   };
 
   const handleButtonDown = (button: JoypadButton) => {
@@ -88,12 +77,6 @@ function App() {
       const emu = emulatorRef.current;
       if (emu && emu.isRunning() && !emu.isPaused()) {
         emu.runCycles(CYCLES_PER_FRAME);
-
-        const now = performance.now();
-        if (now - lastDebugUpdateRef.current > 250) {
-          lastDebugUpdateRef.current = now;
-          updateDebugInfo();
-        }
       }
       rafId = requestAnimationFrame(loop);
     };
@@ -172,7 +155,7 @@ function App() {
             {emulatorRef.current && isRunning && (
               <SpeedControl emulator={emulatorRef.current} />
             )}
-            <DebugData info={debugInfo} />
+            <DebugData emulator={emulatorRef.current} />
             <TileViewer emulator={emulatorRef.current} />
             <SpriteViewer emulator={emulatorRef.current} />
           </div>
