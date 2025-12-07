@@ -8,6 +8,7 @@ import { DebugData } from "./ui/components/DebugData";
 import { TileViewer } from "./ui/components/TileViewer";
 import { SpriteViewer } from "./ui/components/SpriteViewer";
 import { GameBoyShell } from "./ui/components/GameBoyShell";
+import { SpeedControl } from "./ui/components/SpeedControl";
 
 function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
@@ -168,6 +169,9 @@ function App() {
               isLoaded={isLoaded}
               isRunning={isRunning}
             />
+            {emulatorRef.current && isRunning && (
+              <SpeedControl emulator={emulatorRef.current} />
+            )}
             <DebugData info={debugInfo} />
             <TileViewer emulator={emulatorRef.current} />
             <SpriteViewer emulator={emulatorRef.current} />

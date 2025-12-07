@@ -21,6 +21,7 @@ export class GBEmulator {
   private running = false;
   private paused = false;
   private ticks = 0;
+  private speedMultiplier = 1.0;
 
   constructor() {
     this.cartridge = new Cartridge();
@@ -115,7 +116,8 @@ export class GBEmulator {
 
     if (!this.running || this.paused) return;
 
-    let remainingCycles = cyclesPerFrame;
+    const targetCycles = cyclesPerFrame * this.speedMultiplier;
+    let remainingCycles = targetCycles;
     while (remainingCycles > 0 && this.running && !this.paused) {
       const ticks = this.ticks;
       this.stepInstruction();
@@ -149,6 +151,15 @@ export class GBEmulator {
 
   getTicks(): number {
     return this.ticks;
+  }
+
+  setSpeedMultiplier(multiplier: number): void {
+    const clampedValue = Math.min(Math.max(0.25, multiplier), 4.0);
+    this.speedMultiplier = clampedValue;
+  }
+
+  getSpeedMultiplier(): number {
+    return this.speedMultiplier;
   }
 
   getCPUState(): string {
