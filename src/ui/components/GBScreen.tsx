@@ -1,8 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GBEmulator } from "../../emulator/gbEmulator";
+import { Overlay } from "./Overlay";
 
 export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastFrameTimestampRef = useRef<number | null>(null);
+  const intervalStartTimeRef = useRef<number | null>(null);
+  const frameCountRef = useRef(0);
+  const [fps, setFps] = useState(0);
+  const [frameTime, setFrameTime] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -29,12 +35,34 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
     );
     let rafId = 0;
 
-    const draw = () => {
+    const draw = (timestampFromRAF: number) => {
       if (emulator && emulator.consumeFrameReady()) {
         const framebuffer = emulator.getFramebuffer();
         screenDataBuffer.set(framebuffer);
         ctx.putImageData(imageData, 0, 0);
+
+        if (lastFrameTimestampRef.current !== null) {
+          if (intervalStartTimeRef.current === null) {
+            intervalStartTimeRef.current = lastFrameTimestampRef.current;
+            frameCountRef.current = 0;
+          }
+
+          frameCountRef.current += 1;
+          const timeElapsed = timestampFromRAF - intervalStartTimeRef.current;
+
+          if (timeElapsed >= 500 && frameCountRef.current > 0) {
+            const avgDeltaTimeBetweenFrames =
+              timeElapsed / frameCountRef.current;
+            const currentFps = (frameCountRef.current * 1000) / timeElapsed;
+            setFrameTime(avgDeltaTimeBetweenFrames);
+            setFps(currentFps);
+            intervalStartTimeRef.current = timestampFromRAF;
+            frameCountRef.current = 0;
+          }
+        }
+        lastFrameTimestampRef.current = timestampFromRAF;
       }
+
       rafId = requestAnimationFrame(draw);
     };
 
@@ -43,21 +71,15 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
   }, [emulator]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={160}
-      height={144}
-      className="gb-screen-canvas"
-      style={{ imageRendering: "pixelated" }}
-      /* <div className="rounded-lg bg-gray-800 p-4">
+    <>
       <canvas
         ref={canvasRef}
         width={160}
         height={144}
-        className="w-full border-4 border-gray-700"
+        className="gb-screen-canvas"
         style={{ imageRendering: "pixelated" }}
       />
-    </div> */
-    />
+      <Overlay fps={fps} frameTime={frameTime} />
+    </>
   );
 };
