@@ -1,18 +1,22 @@
 import type { FC } from "react";
 
 interface OverlayProps {
-  fps: number;
-  frameTime: number;
-  speedPercent: number;
+  overlay: {
+    fps: number;
+    frameTime: number;
+    speedPercent: number;
+  };
 }
 
-export const Overlay: FC<OverlayProps> = ({ fps, frameTime, speedPercent }) => {
-  const formattedFps = Number.isFinite(fps) ? fps.toFixed(1) : "-";
-  const formattedFrameTime = Number.isFinite(frameTime)
-    ? frameTime.toFixed(2)
+export const Overlay: FC<OverlayProps> = ({ overlay }) => {
+  const formattedFps = Number.isFinite(overlay.fps)
+    ? overlay.fps.toFixed(1)
     : "-";
-  const formattedSpeed = Number.isFinite(speedPercent)
-    ? speedPercent.toFixed(1)
+  const formattedFrameTime = Number.isFinite(overlay.frameTime)
+    ? overlay.frameTime.toFixed(2)
+    : "-";
+  const formattedSpeed = Number.isFinite(overlay.speedPercent)
+    ? overlay.speedPercent.toFixed(1)
     : "-";
 
   return (

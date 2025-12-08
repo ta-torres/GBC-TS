@@ -9,9 +9,11 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
   const lastFrameTimestampRef = useRef<number | null>(null);
   const intervalStartTimeRef = useRef<number | null>(null);
   const frameCountRef = useRef(0);
-  const [fps, setFps] = useState(0);
-  const [frameTime, setFrameTime] = useState(0);
-  const [speedPercent, setSpeedPercent] = useState(0);
+  const [overlayStats, setOverlayStats] = useState({
+    fps: 0,
+    frameTime: 0,
+    speedPercent: 0,
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -57,9 +59,13 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
             const avgDeltaTimeBetweenFrames =
               timeElapsed / frameCountRef.current;
             const currentFps = (frameCountRef.current * 1000) / timeElapsed;
-            setFrameTime(avgDeltaTimeBetweenFrames);
-            setFps(currentFps);
-            setSpeedPercent((currentFps / GB_TARGET_FPS) * 100);
+
+            setOverlayStats({
+              fps: currentFps,
+              frameTime: avgDeltaTimeBetweenFrames,
+              speedPercent: (currentFps / GB_TARGET_FPS) * 100,
+            });
+
             intervalStartTimeRef.current = timestampFromRAF;
             frameCountRef.current = 0;
           }
@@ -83,7 +89,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
         className="gb-screen-canvas"
         style={{ imageRendering: "pixelated" }}
       />
-      <Overlay fps={fps} frameTime={frameTime} speedPercent={speedPercent} />
+      <Overlay overlay={overlayStats} />
     </div>
   );
 };
