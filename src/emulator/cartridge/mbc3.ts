@@ -36,6 +36,8 @@ export class MBC3 implements MBC {
 
   private lastLatchWrite = 0;
 
+  private sramWrite = false;
+
   constructor(rom: Uint8Array, ram: Uint8Array | null, hasRTC: boolean) {
     this.rom = rom;
     this.ram = ram;
@@ -251,6 +253,7 @@ export class MBC3 implements MBC {
       const offset = this.getRamOffset(address);
       if (offset === null || !this.ram) return;
       this.ram[offset] = value & 0xff;
+      this.sramWrite = true;
       return;
     }
   }
@@ -261,5 +264,13 @@ export class MBC3 implements MBC {
 
   getRAMBank(): number {
     return this.ramBank & 0x03;
+  }
+
+  hasSRAMBeenWrittenTo(): boolean {
+    return this.sramWrite;
+  }
+
+  clearSRAMWriteFlag(): void {
+    this.sramWrite = false;
   }
 }

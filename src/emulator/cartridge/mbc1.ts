@@ -15,6 +15,8 @@ export class MBC1 implements MBC {
 
   private debugRomReadCount = 0;
 
+  private sramWrite = false;
+
   constructor(rom: Uint8Array, ram: Uint8Array | null) {
     this.rom = rom;
     this.ram = ram;
@@ -176,6 +178,7 @@ export class MBC1 implements MBC {
       const offset = this.getRAMOffset(address);
       if (offset === null) return;
       this.ram[offset] = value & 0xff;
+      this.sramWrite = true;
       return;
     }
   }
@@ -186,5 +189,13 @@ export class MBC1 implements MBC {
 
   getRAMBank(): number {
     return this.calcRAMBank();
+  }
+
+  hasSRAMBeenWrittenTo(): boolean {
+    return this.sramWrite;
+  }
+
+  clearSRAMWriteFlag(): void {
+    this.sramWrite = false;
   }
 }

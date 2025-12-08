@@ -3,4 +3,6 @@ export interface MBC {
   write(address: number, value: number): void;
   getROMBank(): number;
   getRAMBank(): number;
+  hasSRAMBeenWrittenTo(): boolean;
+  clearSRAMWriteFlag(): void;
 }

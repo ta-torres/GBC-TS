@@ -212,4 +212,12 @@ export class GBEmulator {
   getSaveKey(): string | null {
     return this.cartridge.getSaveKey();
   }
+
+  hasSRAMBeenWrittenTo(): boolean {
+    return this.cartridge.hasSRAMBeenWrittenTo();
+  }
+
+  clearSRAMWriteFlag(): void {
+    this.cartridge.clearSRAMWriteFlag();
+  }
 }

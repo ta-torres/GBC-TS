@@ -10,6 +10,8 @@ export class Cartridge {
   private ram: Uint8Array | null = null;
   private mbc: MBC | null = null;
 
+  private sramWrite = false;
+
   constructor() {
     this.rom = new Uint8Array(0);
   }
@@ -174,6 +176,7 @@ export class Cartridge {
         const offset = address - 0xa000;
         if (offset >= 0 && offset < this.ram.length) {
           this.ram[offset] = value & 0xff;
+          this.sramWrite = true;
         }
       }
       return;
@@ -190,6 +193,21 @@ export class Cartridge {
 
   isLoaded(): boolean {
     return this.header !== null;
+  }
+
+  hasSRAMBeenWrittenTo(): boolean {
+    if (this.mbc) {
+      return this.mbc.hasSRAMBeenWrittenTo();
+    }
+    return this.sramWrite;
+  }
+
+  clearSRAMWriteFlag(): void {
+    if (this.mbc) {
+      this.mbc.clearSRAMWriteFlag();
+      return;
+    }
+    this.sramWrite = false;
   }
 
   hasBatteryBackedRAM(): boolean {

@@ -20,14 +20,16 @@ function App() {
   }
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const interval = window.setInterval(() => {
       const emu = emulatorRef.current;
       if (!emu) return;
+      if (!emu.hasSRAMBeenWrittenTo()) return;
       saveSRAMToLocalStorage(emu);
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
+      emu.clearSRAMWriteFlag();
+    }, 2000);
+
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.clearInterval(interval);
     };
   }, []);
 
