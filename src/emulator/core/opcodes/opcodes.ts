@@ -6,7 +6,7 @@ import { add8, sub8, and8, or8, xor8, cp8, inc8, dec8, add16 } from "./alu";
 
 export const OPCODE_TABLE: Record<number, OpcodeInfo<CPU>> = {};
 
-let ldhDebugLogCount = 0;
+// let ldhDebugLogCount = 0;
 
 const register = (
   opcode: number,
@@ -194,7 +194,7 @@ register(0xf0, "LDH A,(n)", 2, 12, (cpu, bus) => {
   const value = bus.read(addr);
   cpu.registers.setA(value);
 
-  if (ldhDebugLogCount < 64) {
+  /* if (ldhDebugLogCount < 64) {
     const pc = cpu.pc & 0xffff;
     if (pc >= 0x0100 && pc < 0x0300) {
       const lcdc = bus.read(0xff40);
@@ -213,7 +213,7 @@ register(0xf0, "LDH A,(n)", 2, 12, (cpu, bus) => {
       );
       ldhDebugLogCount += 1;
     }
-  }
+  } */
   return 12;
 });
 

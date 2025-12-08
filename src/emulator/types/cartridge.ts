@@ -66,12 +66,17 @@ export type CartridgeTypeCode =
   (typeof CARTRIDGE_TYPE)[keyof typeof CARTRIDGE_TYPE];
 
 export const getROMSize = (code: number): number => {
-  // Returns size in bytes
   return 32768 * (1 << code); // 32KB * 2^code
 };
 
 export const getRAMSize = (code: number): number => {
-  // Mapping per spec guide. Some codes are reserved/unused.
-  const sizes = [0, 0, 8192, 32768, 131072, 65536];
-  return sizes[code] || 0;
+  const sizes: { [key: number]: number } = {
+    0: 0,
+    1: 2048,
+    2: 8192,
+    3: 32768,
+    4: 131072,
+    5: 65536,
+  };
+  return sizes[code] ?? 0;
 };

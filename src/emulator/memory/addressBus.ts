@@ -16,8 +16,8 @@ export class AddressBus {
   private interrupts: Interrupts;
   private joypad?: Joypad;
 
-  private debugVramWriteCount = 0;
-  private debugOamWriteCount = 0;
+  /* private debugVramWriteCount = 0;
+  private debugOamWriteCount = 0; */
 
   constructor(cartridge: Cartridge, timer: Timer, interrupts: Interrupts) {
     this.cartridge = cartridge;
@@ -146,14 +146,14 @@ export class AddressBus {
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
       this.vram[address - 0x8000] = value;
 
-      if (this.debugVramWriteCount < 64) {
+      /* if (this.debugVramWriteCount < 64) {
         console.log(
           "VRAM write",
           "addr=0x" + address.toString(16),
           "val=0x" + value.toString(16),
         );
         this.debugVramWriteCount += 1;
-      }
+      } */
       return;
     }
 
@@ -188,14 +188,14 @@ export class AddressBus {
     if (address >= MEMORY_MAP.OAM.start && address <= MEMORY_MAP.OAM.end) {
       this.oam[address - 0xfe00] = value;
 
-      if (this.debugOamWriteCount < 64) {
+      /* if (this.debugOamWriteCount < 64) {
         console.log(
           "OAM write",
           "addr=0x" + address.toString(16),
           "val=0x" + value.toString(16),
         );
         this.debugOamWriteCount += 1;
-      }
+      } */
       return;
     }
 

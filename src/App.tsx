@@ -20,6 +20,76 @@ function App() {
   }
 
   useEffect(() => {
+    let rafId = 0;
+    const CYCLES_PER_FRAME = 70224;
+
+    const loop = () => {
+      const emu = emulatorRef.current;
+      if (emu && emu.isRunning() && !emu.isPaused()) {
+        emu.runCycles(CYCLES_PER_FRAME);
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  useEffect(() => {
+    const keyToButton: Record<string, JoypadButton> = {
+      ArrowRight: "right",
+      ArrowLeft: "left",
+      ArrowUp: "up",
+      ArrowDown: "down",
+      KeyZ: "b",
+      KeyX: "a",
+      Enter: "start",
+      ShiftRight: "select",
+      ShiftLeft: "select",
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const emu = emulatorRef.current;
+      if (!emu) return;
+      const button = keyToButton[event.code];
+      if (!button) return;
+
+      event.preventDefault();
+      emu.pressButton(button);
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      const emu = emulatorRef.current;
+      if (!emu) return;
+      const button = keyToButton[event.code];
+      if (!button) return;
+
+      event.preventDefault();
+      emu.releaseButton(button);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  const handleButtonDown = (button: JoypadButton) => {
+    const emu = emulatorRef.current;
+    if (!emu) return;
+    emu.pressButton(button);
+  };
+
+  const handleButtonUp = (button: JoypadButton) => {
+    const emu = emulatorRef.current;
+    if (!emu) return;
+    emu.releaseButton(button);
+  };
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       const emu = emulatorRef.current;
       if (!emu) return;
@@ -101,76 +171,6 @@ function App() {
     if (!emu || !isLoaded) return;
     emu.stepInstruction();
   };
-
-  const handleButtonDown = (button: JoypadButton) => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    emu.pressButton(button);
-  };
-
-  const handleButtonUp = (button: JoypadButton) => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    emu.releaseButton(button);
-  };
-
-  useEffect(() => {
-    let rafId = 0;
-    const CYCLES_PER_FRAME = 70224;
-
-    const loop = () => {
-      const emu = emulatorRef.current;
-      if (emu && emu.isRunning() && !emu.isPaused()) {
-        emu.runCycles(CYCLES_PER_FRAME);
-      }
-      rafId = requestAnimationFrame(loop);
-    };
-
-    rafId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
-  useEffect(() => {
-    const keyToButton: Record<string, JoypadButton> = {
-      ArrowRight: "right",
-      ArrowLeft: "left",
-      ArrowUp: "up",
-      ArrowDown: "down",
-      KeyZ: "b",
-      KeyX: "a",
-      Enter: "start",
-      ShiftRight: "select",
-      ShiftLeft: "select",
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const emu = emulatorRef.current;
-      if (!emu) return;
-      const button = keyToButton[event.code];
-      if (!button) return;
-
-      event.preventDefault();
-      emu.pressButton(button);
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      const emu = emulatorRef.current;
-      if (!emu) return;
-      const button = keyToButton[event.code];
-      if (!button) return;
-
-      event.preventDefault();
-      emu.releaseButton(button);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">

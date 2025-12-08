@@ -13,7 +13,7 @@ export class MBC1 implements MBC {
   private ramBankMask: number;
   private romBanks: number;
 
-  private debugRomReadCount = 0;
+  //private debugRomReadCount = 0;
 
   private sramWrite = false;
 
@@ -100,7 +100,7 @@ export class MBC1 implements MBC {
       const bank = this.getROMBank0();
       const offset = bank * 0x4000 + address;
       const value = this.rom[offset] ?? 0xff;
-      if (
+      /* if (
         this.debugRomReadCount < 64 &&
         address >= 0x0100 &&
         address < 0x0120
@@ -113,7 +113,7 @@ export class MBC1 implements MBC {
           "val=0x" + value.toString(16),
         );
         this.debugRomReadCount += 1;
-      }
+      } */
       return value;
     }
 
@@ -121,7 +121,7 @@ export class MBC1 implements MBC {
       const bank = this.getROMBankN();
       const offset = bank * 0x4000 + (address - 0x4000);
       const value = this.rom[offset] ?? 0xff;
-      if (
+      /* if (
         this.debugRomReadCount < 64 &&
         address >= 0x4000 &&
         address < 0x4020
@@ -134,7 +134,7 @@ export class MBC1 implements MBC {
           "val=0x" + value.toString(16),
         );
         this.debugRomReadCount += 1;
-      }
+      } */
       return value;
     }
 

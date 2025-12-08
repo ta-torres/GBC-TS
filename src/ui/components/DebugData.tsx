@@ -16,7 +16,7 @@ export const DebugData = ({ emulator }: DebugDataProps) => {
     const loop = () => {
       if (emulator) {
         const now = performance.now();
-        if (now - lastUpdate > 250) {
+        if (now - lastUpdate > 1000) {
           lastUpdate = now;
           setInfo(emulator.getCPUState());
         }
