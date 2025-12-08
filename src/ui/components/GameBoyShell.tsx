@@ -15,18 +15,18 @@ export const GameBoyShell = ({
   onButtonUp,
 }: GameBoyShellProps) => {
   const handleFullscreen = () => {
-    const canvas = document.querySelector(
-      ".gb-screen-canvas",
-    ) as HTMLCanvasElement | null;
-    if (!canvas) return;
+    const container = document.querySelector(
+      ".gameboy-screen-window",
+    ) as HTMLElement | null;
+    if (!container) return;
 
     if (document.fullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen();
       return;
     }
 
-    if (canvas.requestFullscreen) {
-      canvas.requestFullscreen();
+    if (container.requestFullscreen) {
+      container.requestFullscreen();
     }
   };
 

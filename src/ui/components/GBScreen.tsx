@@ -75,7 +75,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
   }, [emulator]);
 
   return (
-    <>
+    <div className="gb-screen-inner">
       <canvas
         ref={canvasRef}
         width={160}
@@ -84,6 +84,6 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
         style={{ imageRendering: "pixelated" }}
       />
       <Overlay fps={fps} frameTime={frameTime} speedPercent={speedPercent} />
-    </>
+    </div>
   );
 };
