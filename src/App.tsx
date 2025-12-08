@@ -49,6 +49,7 @@ function App() {
   const handleLoadROM = async (file: File) => {
     const emu = emulatorRef.current;
     if (!emu) return;
+    saveSRAMToLocalStorage(emu);
     const ok = await emu.loadROM(file);
 
     if (ok) {
