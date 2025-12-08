@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { GBEmulator } from "../../emulator/gbEmulator";
 import { Overlay } from "./Overlay";
 
+const GB_TARGET_FPS = 59.7;
+
 export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastFrameTimestampRef = useRef<number | null>(null);
@@ -9,6 +11,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
   const frameCountRef = useRef(0);
   const [fps, setFps] = useState(0);
   const [frameTime, setFrameTime] = useState(0);
+  const [speedPercent, setSpeedPercent] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -56,6 +59,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
             const currentFps = (frameCountRef.current * 1000) / timeElapsed;
             setFrameTime(avgDeltaTimeBetweenFrames);
             setFps(currentFps);
+            setSpeedPercent((currentFps / GB_TARGET_FPS) * 100);
             intervalStartTimeRef.current = timestampFromRAF;
             frameCountRef.current = 0;
           }
@@ -79,7 +83,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
         className="gb-screen-canvas"
         style={{ imageRendering: "pixelated" }}
       />
-      <Overlay fps={fps} frameTime={frameTime} />
+      <Overlay fps={fps} frameTime={frameTime} speedPercent={speedPercent} />
     </>
   );
 };
