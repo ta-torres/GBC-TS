@@ -191,4 +191,42 @@ export class Cartridge {
   isLoaded(): boolean {
     return this.header !== null;
   }
+
+  hasBatteryBackedRAM(): boolean {
+    if (!this.header) return false;
+    const type = this.header.cartridgeType;
+
+    switch (type) {
+      case CARTRIDGE_TYPE.ROM_RAM_BATTERY:
+      case CARTRIDGE_TYPE.MBC1_RAM_BATTERY:
+      case CARTRIDGE_TYPE.MBC2_BATTERY:
+      case CARTRIDGE_TYPE.MBC3_TIMER_BATTERY:
+      case CARTRIDGE_TYPE.MBC3_TIMER_RAM_BATTERY:
+      case CARTRIDGE_TYPE.MBC3_RAM_BATTERY:
+      case CARTRIDGE_TYPE.MBC5_RAM_BATTERY:
+      case CARTRIDGE_TYPE.MBC5_RUMBLE_RAM_BATTERY:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  getSRAMSnapshot(): Uint8Array | null {
+    if (!this.ram) return null;
+    return new Uint8Array(this.ram);
+  }
+
+  loadSRAMSnapshot(data: Uint8Array): void {
+    if (!this.ram || data.length === 0) return;
+    const length = Math.min(this.ram.length, data.length);
+    this.ram.set(data.subarray(0, length), 0);
+  }
+
+  getSaveKey(): string | null {
+    if (!this.header || !this.hasBatteryBackedRAM()) return null;
+    const title = this.header.title || "UNKNOWN";
+    const type = this.header.cartridgeType.toString(16);
+    const checksum = this.header.globalChecksum.toString(16);
+    return `gbc-save:${title}:${type}:${checksum}`;
+  }
 }

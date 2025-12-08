@@ -19,11 +19,52 @@ function App() {
     emulatorRef.current = new GBEmulator();
   }
 
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const emu = emulatorRef.current;
+      if (!emu) return;
+      saveSRAMToLocalStorage(emu);
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
+  const saveSRAMToLocalStorage = (emu: GBEmulator) => {
+    const saveKey = emu.getSaveKey();
+    if (!saveKey || typeof window === "undefined") return;
+
+    try {
+      const sram = emu.getSRAMSnapshot();
+      if (!sram) return;
+
+      const encoded = btoa(String.fromCharCode(...sram));
+      window.localStorage.setItem(saveKey, encoded);
+    } catch (error) {
+      console.error("Error saving SRAM", error);
+    }
+  };
+
   const handleLoadROM = async (file: File) => {
     const emu = emulatorRef.current;
     if (!emu) return;
     const ok = await emu.loadROM(file);
+
     if (ok) {
+      const saveKey = emu.getSaveKey();
+      if (saveKey && typeof window !== "undefined") {
+        try {
+          const raw = window.localStorage.getItem(saveKey);
+          if (raw) {
+            const decoded = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+            emu.loadSRAMSnapshot(decoded);
+          }
+        } catch (error) {
+          console.error("Failed to load SRAM from localStorage", error);
+        }
+      }
+
       setIsLoaded(ok);
       emu.start();
       setIsRunning(true);
@@ -47,6 +88,7 @@ function App() {
   const handleReset = () => {
     const emu = emulatorRef.current;
     if (!emu) return;
+    saveSRAMToLocalStorage(emu);
     emu.reset();
     setIsRunning(false);
   };

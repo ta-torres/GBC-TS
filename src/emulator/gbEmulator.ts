@@ -196,4 +196,20 @@ export class GBEmulator {
   releaseButton(button: JoypadButton): void {
     this.joypad.releaseButton(button);
   }
+
+  getCartridgeHeader() {
+    return this.cartridge.getHeader();
+  }
+
+  getSRAMSnapshot(): Uint8Array | null {
+    return this.cartridge.getSRAMSnapshot();
+  }
+
+  loadSRAMSnapshot(data: Uint8Array): void {
+    this.cartridge.loadSRAMSnapshot(data);
+  }
+
+  getSaveKey(): string | null {
+    return this.cartridge.getSaveKey();
+  }
 }
