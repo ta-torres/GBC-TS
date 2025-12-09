@@ -8,10 +8,12 @@ import { GameBoyShell } from "./ui/components/GameBoyShell";
 
 function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [showDebugTools] = useState(true);
   const [showOverlay] = useState(true);
+  const [lastFileName, setLastFileName] = useState<string | null>(null);
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBEmulator();
@@ -142,6 +144,17 @@ function App() {
     }
   };
 
+  const handleRequestLoadRom = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLastFileName(file.name);
+    void handleLoadROM(file);
+  };
+
   const handleStart = () => {
     const emu = emulatorRef.current;
     if (!emu || !isLoaded) return;
@@ -173,6 +186,13 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
       <div className="mx-auto max-w-6xl">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".gb,.gbc"
+          onChange={handleFileChange}
+          className="hidden"
+        />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="justify-center lg:col-span-2">
             {emulatorRef.current && (
@@ -194,7 +214,8 @@ function App() {
               emulator={emulatorRef.current}
               isLoaded={isLoaded}
               isRunning={isRunning}
-              onLoadROM={handleLoadROM}
+              onLoadROMClick={handleRequestLoadRom}
+              fileName={lastFileName}
               onStart={handleStart}
               onPause={handlePause}
               onReset={handleReset}

@@ -10,7 +10,8 @@ interface DebugPanelProps {
   emulator: GBEmulator | null;
   isLoaded: boolean;
   isRunning: boolean;
-  onLoadROM: (file: File) => void;
+  onLoadROMClick: () => void;
+  fileName: string | null;
   onStart: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -22,7 +23,8 @@ export const DebugPanel = ({
   emulator,
   isLoaded,
   isRunning,
-  onLoadROM,
+  onLoadROMClick,
+  fileName,
   onStart,
   onPause,
   onReset,
@@ -33,7 +35,8 @@ export const DebugPanel = ({
   return (
     <>
       <EmuControllers
-        onLoadROM={onLoadROM}
+        onLoadROMClick={onLoadROMClick}
+        fileName={fileName}
         onStart={onStart}
         onPause={onPause}
         onReset={onReset}

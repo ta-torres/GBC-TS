@@ -1,9 +1,9 @@
-import { useRef, useState, type ChangeEvent } from "react";
 import { Card } from "@/components/ui/pixelact-ui/card";
 import { Button } from "@/components/ui/pixelact-ui/button";
 
 interface EmuControllersProps {
-  onLoadROM: (file: File) => void;
+  onLoadROMClick: () => void;
+  fileName: string | null;
   onStart: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -13,7 +13,8 @@ interface EmuControllersProps {
 }
 
 export const EmuControllers = ({
-  onLoadROM,
+  onLoadROMClick,
+  fileName,
   onStart,
   onPause,
   onReset,
@@ -21,30 +22,12 @@ export const EmuControllers = ({
   isLoaded,
   isRunning,
 }: EmuControllersProps) => {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
-      onLoadROM(file);
-    }
-  };
-
   return (
     <Card className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
       <div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".gb,.gbc"
-          onChange={handleFileChange}
-          className="hidden"
-        />
         <Button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={onLoadROMClick}
           className="w-full cursor-pointer bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
         >
           Load Game
