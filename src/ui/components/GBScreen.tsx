@@ -4,7 +4,13 @@ import { Overlay } from "./Overlay";
 
 const GB_TARGET_FPS = 59.7;
 
-export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
+export const GBScreen = ({
+  emulator,
+  showOverlay,
+}: {
+  emulator: GBEmulator;
+  showOverlay: boolean;
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastFrameTimestampRef = useRef<number | null>(null);
   const intervalStartTimeRef = useRef<number | null>(null);
@@ -46,7 +52,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
         screenDataBuffer.set(framebuffer);
         ctx.putImageData(imageData, 0, 0);
 
-        if (lastFrameTimestampRef.current !== null) {
+        if (showOverlay && lastFrameTimestampRef.current !== null) {
           if (intervalStartTimeRef.current === null) {
             intervalStartTimeRef.current = lastFrameTimestampRef.current;
             frameCountRef.current = 0;
@@ -78,7 +84,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [emulator]);
+  }, [emulator, showOverlay]);
 
   return (
     <div className="gb-screen-inner">
@@ -89,7 +95,7 @@ export const GBScreen = ({ emulator }: { emulator: GBEmulator }) => {
         className="gb-screen-canvas"
         style={{ imageRendering: "pixelated" }}
       />
-      <Overlay overlay={overlayStats} />
+      {showOverlay && <Overlay overlay={overlayStats} />}
     </div>
   );
 };

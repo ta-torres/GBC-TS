@@ -3,17 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import { GBEmulator } from "./emulator/gbEmulator";
 import type { JoypadButton } from "./emulator/input/joypad";
 import { GBScreen } from "./ui/components/GBScreen";
-import { EmuControllers } from "./ui/components/EmuControllers";
-import { DebugData } from "./ui/components/DebugData";
-import { TileViewer } from "./ui/components/TileViewer";
-import { SpriteViewer } from "./ui/components/SpriteViewer";
+import { DebugPanel } from "./ui/components/DebugPanel";
 import { GameBoyShell } from "./ui/components/GameBoyShell";
-import { SpeedControl } from "./ui/components/SpeedControl";
 
 function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [showDebugTools] = useState(true);
+  const [showOverlay] = useState(true);
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBEmulator();
@@ -183,26 +181,25 @@ function App() {
                 onButtonDown={handleButtonDown}
                 onButtonUp={handleButtonUp}
               >
-                <GBScreen emulator={emulatorRef.current} />
+                <GBScreen
+                  emulator={emulatorRef.current}
+                  showOverlay={showOverlay}
+                />
               </GameBoyShell>
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            <EmuControllers
+            <DebugPanel
+              visible={showDebugTools}
+              emulator={emulatorRef.current}
+              isLoaded={isLoaded}
+              isRunning={isRunning}
               onLoadROM={handleLoadROM}
               onStart={handleStart}
               onPause={handlePause}
               onReset={handleReset}
               onStep={handleStep}
-              isLoaded={isLoaded}
-              isRunning={isRunning}
             />
-            {emulatorRef.current && isRunning && (
-              <SpeedControl emulator={emulatorRef.current} />
-            )}
-            <DebugData emulator={emulatorRef.current} />
-            <TileViewer emulator={emulatorRef.current} />
-            <SpriteViewer emulator={emulatorRef.current} />
           </div>
         </div>
       </div>
