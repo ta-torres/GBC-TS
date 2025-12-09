@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 import type { JoypadButton } from "../../emulator/input/joypad";
+import { SettingsIcon } from "lucide-react";
 
 interface GameBoyShellProps {
   children: ReactNode;
   batteryOn: boolean;
   onButtonDown: (button: JoypadButton) => void;
   onButtonUp: (button: JoypadButton) => void;
+  onToggleSettings?: () => void;
+  isCommandMenuOpen?: boolean;
+  commandMenu?: ReactNode;
 }
 
 export const GameBoyShell = ({
@@ -13,6 +17,9 @@ export const GameBoyShell = ({
   batteryOn,
   onButtonDown,
   onButtonUp,
+  onToggleSettings,
+  isCommandMenuOpen,
+  commandMenu,
 }: GameBoyShellProps) => {
   const handleFullscreen = () => {
     const container = document.querySelector(
@@ -49,6 +56,7 @@ export const GameBoyShell = ({
           >
             ⤢
           </button>
+
           <div className="gameboy-screen-header">
             <div className="gameboy-header-stripes">
               <span />
@@ -69,6 +77,21 @@ export const GameBoyShell = ({
                 className={`gameboy-battery-led ${batteryOn ? "" : "gameboy-battery-led--off"}`}
               />
               <div className="gameboy-battery-label">BATTERY</div>
+              <div className="relative inline-flex">
+                <button
+                  type="button"
+                  className="gameboy-settings-button"
+                  onClick={onToggleSettings}
+                  aria-label="Open settings menu"
+                >
+                  <SettingsIcon className="h-3 w-3 text-gray-300" />
+                </button>
+                {isCommandMenuOpen && commandMenu && (
+                  <div className="absolute -top-35 z-500 ml-0 w-72 scale-70">
+                    {commandMenu}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="gameboy-screen-window">{children}</div>

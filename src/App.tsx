@@ -1,18 +1,20 @@
 import "./App.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { GBEmulator } from "./emulator/gbEmulator";
 import type { JoypadButton } from "./emulator/input/joypad";
 import { GBScreen } from "./ui/components/GBScreen";
 import { DebugPanel } from "./ui/components/DebugPanel";
 import { GameBoyShell } from "./ui/components/GameBoyShell";
+import { CommandMenu } from "./ui/components/CommandMenu";
 
 function App() {
   const emulatorRef = useRef<GBEmulator | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [showDebugTools] = useState(true);
-  const [showOverlay] = useState(true);
+  const [showDebugTools, setShowDebugTools] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
 
   if (!emulatorRef.current) {
@@ -148,7 +150,7 @@ function App() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setLastFileName(file.name);
@@ -183,6 +185,14 @@ function App() {
     emu.stepInstruction();
   };
 
+  const toggleCommandMenu = () => {
+    setIsCommandMenuOpen((prev) => !prev);
+  };
+
+  const closeCommandMenu = () => {
+    setIsCommandMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
       <div className="mx-auto max-w-6xl">
@@ -194,18 +204,35 @@ function App() {
           className="hidden"
         />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="justify-center lg:col-span-2">
+          <div className="relative justify-center lg:col-span-2">
             {emulatorRef.current && (
-              <GameBoyShell
-                batteryOn={isRunning}
-                onButtonDown={handleButtonDown}
-                onButtonUp={handleButtonUp}
-              >
-                <GBScreen
-                  emulator={emulatorRef.current}
-                  showOverlay={showOverlay}
-                />
-              </GameBoyShell>
+              <>
+                <GameBoyShell
+                  batteryOn={isRunning}
+                  onButtonDown={handleButtonDown}
+                  onButtonUp={handleButtonUp}
+                  onToggleSettings={toggleCommandMenu}
+                  isCommandMenuOpen={isCommandMenuOpen}
+                  commandMenu={
+                    <CommandMenu
+                      onClose={closeCommandMenu}
+                      onLoadGame={handleRequestLoadRom}
+                      onRestart={handleReset}
+                      onToggleOverlay={() => setShowOverlay((prev) => !prev)}
+                      onToggleDebugTools={() =>
+                        setShowDebugTools((prev) => !prev)
+                      }
+                      showOverlay={showOverlay}
+                      showDebugTools={showDebugTools}
+                    />
+                  }
+                >
+                  <GBScreen
+                    emulator={emulatorRef.current}
+                    showOverlay={showOverlay}
+                  />
+                </GameBoyShell>
+              </>
             )}
           </div>
           <div className="flex flex-col gap-1.5">
