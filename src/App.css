@@ -326,6 +326,13 @@
   width: 30px;
 }
 
+.dpad-active-up,
+.dpad-active-down,
+.dpad-active-left,
+.dpad-active-right {
+  background-color: #3a3d40;
+}
+
 .dpad-up label {
   position: relative;
   top: 3px;

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { JoypadButton } from "../../emulator/input/joypad";
 import { SettingsIcon } from "lucide-react";
+import { VirtualDpad } from "./VirtualDpad";
 
 interface GameBoyShellProps {
   children: ReactNode;
@@ -112,81 +113,7 @@ export const GameBoyShell = ({
 
         <div className="gameboy-bottom-area">
           <div className="gameboy-controls-row">
-            <div className="gameboy-dpad">
-              <div className="dpad-vertical">
-                <button
-                  className="dpad-up"
-                  type="button"
-                  onMouseDown={() => onButtonDown("up")}
-                  onMouseUp={() => onButtonUp("up")}
-                  onMouseLeave={() => onButtonUp("up")}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    onButtonDown("up");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    onButtonUp("up");
-                  }}
-                >
-                  <label>{`^`}</label>
-                </button>
-                <button
-                  className="dpad-down"
-                  type="button"
-                  onMouseDown={() => onButtonDown("down")}
-                  onMouseUp={() => onButtonUp("down")}
-                  onMouseLeave={() => onButtonUp("down")}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    onButtonDown("down");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    onButtonUp("down");
-                  }}
-                >
-                  <label>{`ˇ`}</label>
-                </button>
-              </div>
-              <div className="dpad-horizontal">
-                <button
-                  className="dpad-left"
-                  type="button"
-                  onMouseDown={() => onButtonDown("left")}
-                  onMouseUp={() => onButtonUp("left")}
-                  onMouseLeave={() => onButtonUp("left")}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    onButtonDown("left");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    onButtonUp("left");
-                  }}
-                >
-                  <label>{`<`}</label>
-                </button>
-                <button
-                  className="dpad-right"
-                  type="button"
-                  onMouseDown={() => onButtonDown("right")}
-                  onMouseUp={() => onButtonUp("right")}
-                  onMouseLeave={() => onButtonUp("right")}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    onButtonDown("right");
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                    onButtonUp("right");
-                  }}
-                >
-                  <label>{`>`}</label>
-                </button>
-              </div>
-              <div className="dpad-center" />
-            </div>
+            <VirtualDpad onButtonDown={onButtonDown} onButtonUp={onButtonUp} />
 
             <div className="gameboy-ab-buttons">
               <button
