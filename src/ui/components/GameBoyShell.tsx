@@ -22,18 +22,30 @@ export const GameBoyShell = ({
   commandMenu,
 }: GameBoyShellProps) => {
   const handleFullscreen = () => {
-    const container = document.querySelector(
-      ".gameboy-screen-window",
-    ) as HTMLElement | null;
-    if (!container) return;
-
-    if (document.fullscreenElement) {
-      if (document.exitFullscreen) document.exitFullscreen();
+    if (typeof window === "undefined" || typeof document === "undefined") {
       return;
     }
 
-    if (container.requestFullscreen) {
-      container.requestFullscreen();
+    const isCoarsePointer =
+      window.matchMedia?.("(pointer: coarse)").matches ?? false;
+    const isNarrowViewport = window.innerWidth < 768;
+    const isMobileLike = isCoarsePointer || isNarrowViewport;
+
+    const fullscreenOnDesktop = document.querySelector(
+      ".gameboy-screen-window",
+    ) as HTMLElement | null;
+
+    const fullscreenOnMobile = document.querySelector(
+      ".gameboy-shell",
+    ) as HTMLElement | null;
+
+    const target = isMobileLike ? fullscreenOnMobile : fullscreenOnDesktop;
+    if (!target) return;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      target.requestFullscreen?.();
     }
   };
 
