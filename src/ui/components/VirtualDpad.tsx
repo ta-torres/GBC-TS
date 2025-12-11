@@ -29,17 +29,19 @@ export const VirtualDpad = ({ onButtonDown, onButtonUp }: VirtualDpadProps) => {
     let nextDirection: JoypadButton | null = null;
 
     if (distance >= DEADZONE_RADIUS_PX) {
-      const angleRad = Math.atan2(-deltaY, deltaX);
-      const angleDeg = (angleRad * 180) / Math.PI;
+      const angleRad = Math.atan2(deltaY, deltaX);
+      let angleDeg = (angleRad * 180) / Math.PI;
+      // shift so 0° is up, and wrap to [0,360)
+      angleDeg = (angleDeg + 90 + 360) % 360;
 
-      if (angleDeg > -45 && angleDeg <= 45) {
-        nextDirection = "right";
-      } else if (angleDeg > 45 && angleDeg <= 135) {
+      if (angleDeg >= 315 || angleDeg <= 45) {
         nextDirection = "up";
-      } else if (angleDeg > 135 || angleDeg <= -135) {
-        nextDirection = "left";
-      } else if (angleDeg > -135 && angleDeg <= -45) {
+      } else if (angleDeg > 45 && angleDeg <= 135) {
+        nextDirection = "right";
+      } else if (angleDeg > 135 && angleDeg <= 225) {
         nextDirection = "down";
+      } else if (angleDeg > 225 && angleDeg < 315) {
+        nextDirection = "left";
       }
     }
 
