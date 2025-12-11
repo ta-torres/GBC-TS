@@ -1,11 +1,11 @@
 import {
   Command,
-  CommandEmpty,
+  // CommandEmpty,
   CommandGroup,
-  CommandInput,
+  // CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
+  // CommandSeparator,
 } from "@/components/ui/pixelact-ui/command";
 
 interface CommandMenuProps {
@@ -16,6 +16,7 @@ interface CommandMenuProps {
   onToggleDebugTools: () => void;
   showOverlay: boolean;
   showDebugTools: boolean;
+  fileName: string | null;
 }
 
 export const CommandMenu = ({
@@ -26,6 +27,7 @@ export const CommandMenu = ({
   onToggleDebugTools,
   showOverlay,
   showDebugTools,
+  fileName,
 }: CommandMenuProps) => {
   const handleAction = (action: () => void) => {
     action();
@@ -35,10 +37,11 @@ export const CommandMenu = ({
   };
 
   return (
-    <Command>
-      <CommandInput placeholder="Type a command..." />
+    <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        {fileName && (
+          <div className="mt-1 text-xs text-gray-700">{fileName}</div>
+        )}
 
         <CommandGroup heading="Game">
           <CommandItem
@@ -55,7 +58,7 @@ export const CommandMenu = ({
           </CommandItem>
         </CommandGroup>
 
-        <CommandSeparator />
+        {/* <CommandSeparator /> */}
 
         <CommandGroup heading="Settings">
           <CommandItem

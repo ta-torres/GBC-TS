@@ -12,8 +12,8 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [showDebugTools, setShowDebugTools] = useState(true);
-  const [showOverlay, setShowOverlay] = useState(true);
+  const [showDebugTools, setShowDebugTools] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
 
@@ -194,7 +194,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
+    <div className="app-emulator-container min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
       <div className="mx-auto max-w-6xl">
         <input
           ref={fileInputRef}
@@ -204,7 +204,7 @@ function App() {
           className="hidden"
         />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="relative justify-center lg:col-span-2">
+          <div className="app-touch-surface relative justify-center lg:col-span-2">
             {emulatorRef.current && (
               <>
                 <GameBoyShell
@@ -224,6 +224,7 @@ function App() {
                       }
                       showOverlay={showOverlay}
                       showDebugTools={showDebugTools}
+                      fileName={lastFileName}
                     />
                   }
                 >

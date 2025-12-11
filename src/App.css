@@ -35,12 +35,6 @@
   justify-content: space-between;
 }
 
-.gameboy-shell-inner {
-}
-
-.gameboy-top-ridge {
-}
-
 .gameboy-top-ridge-bottom {
   position: relative;
   transform: scalex(1.13);
@@ -57,9 +51,6 @@
   border-radius: 15px 15px 50px 15px;
   /* border-radius: inherit; */
   padding: 9px 25px 25px 10px;
-}
-
-.gb-screen-canvas {
 }
 
 .gameboy-screen-header {
@@ -97,9 +88,6 @@
 
 .gameboy-header-stripes span:nth-child(2) {
   background: #214a87;
-}
-
-.gameboy-header-stripes-right {
 }
 
 .gameboy-header-text {
@@ -469,4 +457,16 @@
   .gameboy-screen-shell {
     justify-content: center;
   }
+}
+
+.app-emulator-container {
+  overscroll-behavior: contain;
+}
+
+.app-touch-surface {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
