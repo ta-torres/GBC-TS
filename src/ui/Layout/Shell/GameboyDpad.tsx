@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { JoypadButton } from "../../emulator/input/joypad";
+import type { JoypadButton } from "@/emulator/input/joypad";
 
 interface VirtualDpadProps {
   onButtonDown: (button: JoypadButton) => void;
@@ -8,7 +8,7 @@ interface VirtualDpadProps {
   showDebugBounds?: boolean;
 }
 
-export const VirtualDpad = ({
+export const GameboyDpad = ({
   onButtonDown,
   onButtonUp,
   showDebugBounds,

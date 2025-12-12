@@ -1,9 +1,9 @@
 import type { GBEmulator } from "@/emulator/gbEmulator";
-import { EmuControllers } from "./EmuControllers";
-import { DebugData } from "./DebugData";
-import { TileViewer } from "./TileViewer";
-import { SpriteViewer } from "./SpriteViewer";
-import { SpeedControl } from "./SpeedControl";
+import { EmuControllers } from "../Debug/EmuControllers";
+import { DebugData } from "../Debug/DebugData";
+import { TileViewer } from "../Debug/TileViewer";
+import { SpriteViewer } from "../Debug/SpriteViewer";
+import { SpeedControl } from "../Debug/SpeedControl";
 
 interface DebugPanelStateProps {
   showDebugTools: boolean;

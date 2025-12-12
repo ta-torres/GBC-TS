@@ -1,9 +1,9 @@
 import "./App.css";
 import { useRef, useState, type ChangeEvent } from "react";
-import { GBScreen } from "./ui/components/GBScreen";
-import { DebugPanel } from "./ui/components/DebugPanel";
-import { GameBoyShell } from "./ui/components/GameBoyShell";
-import { CommandMenu } from "./ui/components/CommandMenu";
+import { GBScreen } from "./ui/Layout/Shell/GameboyScreen";
+import { DebugPanel } from "./ui/Layout/DebugPanel";
+import { GameBoyShell } from "./ui/Layout/GameBoyShell";
+import { CommandMenu } from "./ui/Layout/CommandMenu";
 import { useGameBoyEmulator } from "./hooks/useGameBoyEmulator";
 
 function App() {

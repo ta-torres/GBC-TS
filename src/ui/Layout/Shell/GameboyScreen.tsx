@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { GBEmulator } from "../../emulator/gbEmulator";
+import type { GBEmulator } from "../../../emulator/gbEmulator";
 import { Overlay } from "./Overlay";
 
 const GB_TARGET_FPS = 59.7;

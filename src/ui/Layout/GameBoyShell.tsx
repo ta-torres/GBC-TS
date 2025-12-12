@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { JoypadButton } from "../../emulator/input/joypad";
 import { SettingsIcon } from "lucide-react";
-import { VirtualDpad } from "./VirtualDpad";
+import { GameboyDpad } from "./Shell/GameboyDpad";
 
 interface GameBoyShellProps {
   children: ReactNode;
@@ -115,7 +115,7 @@ export const GameBoyShell = ({
 
         <div className="gameboy-bottom-area">
           <div className="gameboy-controls-row">
-            <VirtualDpad
+            <GameboyDpad
               onButtonDown={onButtonDown}
               onButtonUp={onButtonUp}
               showDebugBounds={showDpadDebug}
