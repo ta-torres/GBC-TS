@@ -18,7 +18,7 @@ export const useGameBoyEmulator = () => {
     const loop = () => {
       const emu = emulatorRef.current;
       if (emu && emu.isRunning() && !emu.isPaused()) {
-        emu.runCycles(CYCLES_PER_FRAME);
+        emu.stepFrame(CYCLES_PER_FRAME);
       }
       rafId = requestAnimationFrame(loop);
     };

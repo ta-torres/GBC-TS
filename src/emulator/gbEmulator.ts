@@ -25,7 +25,6 @@ export class GBEmulator {
 
   constructor() {
     this.cartridge = new Cartridge();
-    // use class fields instead of const for global scope access
     this.interrupts = new Interrupts();
     this.timer = new Timer(this.interrupts);
     this.bus = new AddressBus(this.cartridge, this.timer, this.interrupts);
@@ -93,7 +92,7 @@ export class GBEmulator {
     if (!this.cartridge.isLoaded()) return;
     try {
       const cycles = this.cpu.step();
-      // update timer based on t-cycles from opcodes
+      // update based on t-cycles
       this.timer.step(cycles);
       this.ppu.step(cycles);
       this.ticks += cycles;
@@ -106,38 +105,26 @@ export class GBEmulator {
     }
   }
 
-  runCycles(cyclesPerFrame: number): void {
+  stepFrame(cyclesPerFrame: number): void {
     /* 
     154 scanlines/frame * 456 cycles/scanline = 70224 cycles/frame 
-    Each RAF iteration in App.tsx calls runCycles by one frame worth of cpu cycles (70224)
+    Each RAF iteration in App.tsx calls this function by one frame worth of cpu cycles (70224)
     
-    stepInstruction adds t-cycles to ticks, which are used by runCycles to stop running the current frame once 70224 cycles have been consumed
+    stepInstruction adds t-cycles to ticks, which are used by this function to stop running the current frame once 70224 cycles have been consumed
     */
 
     if (!this.running || this.paused) return;
 
     const targetCycles = cyclesPerFrame * this.speedMultiplier;
     let remainingCycles = targetCycles;
+
     while (remainingCycles > 0 && this.running && !this.paused) {
-      const ticks = this.ticks;
+      const ticksBeforeInstruction = this.ticks;
       this.stepInstruction();
-      const cyclesSpent = this.ticks - ticks;
+      const cyclesSpent = this.ticks - ticksBeforeInstruction;
       if (cyclesSpent <= 0) break;
 
       remainingCycles -= cyclesSpent;
-    }
-  }
-
-  runInstructions(count: number): void {
-    for (let i = 0; i < count; i++) {
-      if (!this.running) break;
-      this.stepInstruction();
-    }
-  }
-
-  step(): void {
-    if (this.running && !this.paused) {
-      this.stepInstruction();
     }
   }
 
@@ -169,6 +156,8 @@ export class GBEmulator {
     return `Instruction: ${instruction} | PC: ${pc} | SP: ${sp} | ${this.cpu.getRegisters().toString()}`;
   }
 
+  /* PPU */
+
   getTileViewerData(): { width: number; height: number; data: Uint8Array } {
     return this.ppu.getTileViewerData();
   }
@@ -189,6 +178,8 @@ export class GBEmulator {
     return this.ppu.consumeFrameReady();
   }
 
+  /* JOYPAD */
+
   pressButton(button: JoypadButton): void {
     this.joypad.pressButton(button);
   }
@@ -196,6 +187,8 @@ export class GBEmulator {
   releaseButton(button: JoypadButton): void {
     this.joypad.releaseButton(button);
   }
+
+  /* CARTRIDGE */
 
   getCartridgeHeader() {
     return this.cartridge.getHeader();
