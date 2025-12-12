@@ -11,6 +11,7 @@ interface GameBoyShellProps {
   onToggleSettings?: () => void;
   isCommandMenuOpen?: boolean;
   commandMenu?: ReactNode;
+  showDpadDebug?: boolean;
 }
 
 export const GameBoyShell = ({
@@ -21,6 +22,7 @@ export const GameBoyShell = ({
   onToggleSettings,
   isCommandMenuOpen,
   commandMenu,
+  showDpadDebug,
 }: GameBoyShellProps) => {
   const handleFullscreen = () => {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -113,7 +115,11 @@ export const GameBoyShell = ({
 
         <div className="gameboy-bottom-area">
           <div className="gameboy-controls-row">
-            <VirtualDpad onButtonDown={onButtonDown} onButtonUp={onButtonUp} />
+            <VirtualDpad
+              onButtonDown={onButtonDown}
+              onButtonUp={onButtonUp}
+              showDebugBounds={showDpadDebug}
+            />
 
             <div className="gameboy-ab-buttons">
               <button

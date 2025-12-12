@@ -14,8 +14,10 @@ interface CommandMenuProps {
   onRestart: () => void;
   onToggleOverlay: () => void;
   onToggleDebugTools: () => void;
+  onToggleDpadDebug: () => void;
   showOverlay: boolean;
   showDebugTools: boolean;
+  showDpadDebug: boolean;
   fileName: string | null;
 }
 
@@ -25,8 +27,10 @@ export const CommandMenu = ({
   onRestart,
   onToggleOverlay,
   onToggleDebugTools,
+  onToggleDpadDebug,
   showOverlay,
   showDebugTools,
+  showDpadDebug,
   fileName,
 }: CommandMenuProps) => {
   const handleAction = (action: () => void) => {
@@ -72,6 +76,12 @@ export const CommandMenu = ({
             onSelect={() => handleAction(onToggleDebugTools)}
           >
             Debug tools: {showDebugTools ? "Visible" : "Hidden"}
+          </CommandItem>
+          <CommandItem
+            value="toggle-dpad-debug-visuals"
+            onSelect={() => handleAction(onToggleDpadDebug)}
+          >
+            D-pad debug: {showDpadDebug ? "On" : "Off"}
           </CommandItem>
         </CommandGroup>
       </CommandList>

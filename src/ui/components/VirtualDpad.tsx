@@ -5,9 +5,14 @@ import type { JoypadButton } from "../../emulator/input/joypad";
 interface VirtualDpadProps {
   onButtonDown: (button: JoypadButton) => void;
   onButtonUp: (button: JoypadButton) => void;
+  showDebugBounds?: boolean;
 }
 
-export const VirtualDpad = ({ onButtonDown, onButtonUp }: VirtualDpadProps) => {
+export const VirtualDpad = ({
+  onButtonDown,
+  onButtonUp,
+  showDebugBounds,
+}: VirtualDpadProps) => {
   const dpadElementRef = useRef<HTMLDivElement | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const dpadCenterPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -15,6 +20,11 @@ export const VirtualDpad = ({ onButtonDown, onButtonUp }: VirtualDpadProps) => {
   const [activeDirection, setActiveDirection] = useState<JoypadButton | null>(
     null,
   );
+  const [touchPoint, setTouchPoint] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  const [debugAngle, setDebugAngle] = useState<number | null>(null);
+  const [debugDistance, setDebugDistance] = useState<number | null>(null);
 
   const DEADZONE_RADIUS_PX = 16;
 
@@ -22,27 +32,42 @@ export const VirtualDpad = ({ onButtonDown, onButtonUp }: VirtualDpadProps) => {
     const centerPoint = dpadCenterPointRef.current;
     if (!centerPoint) return;
 
+    const dpadElement = dpadElementRef.current;
+    if (dpadElement) {
+      const rect = dpadElement.getBoundingClientRect();
+      const relativeX = x - rect.left;
+      const relativeY = y - rect.top;
+      setTouchPoint({ x: relativeX, y: relativeY });
+    }
+
     const deltaX = x - centerPoint.x;
     const deltaY = y - centerPoint.y;
     const distance = Math.hypot(deltaX, deltaY);
 
     let nextDirection: JoypadButton | null = null;
 
-    if (distance >= DEADZONE_RADIUS_PX) {
+    if (distance > 0) {
       const angleRad = Math.atan2(deltaY, deltaX);
       let angleDeg = (angleRad * 180) / Math.PI;
       // shift so 0° is up, and wrap to [0,360)
       angleDeg = (angleDeg + 90 + 360) % 360;
+      setDebugAngle(angleDeg);
+      setDebugDistance(distance);
 
-      if (angleDeg >= 315 || angleDeg <= 45) {
-        nextDirection = "up";
-      } else if (angleDeg > 45 && angleDeg <= 135) {
-        nextDirection = "right";
-      } else if (angleDeg > 135 && angleDeg <= 225) {
-        nextDirection = "down";
-      } else if (angleDeg > 225 && angleDeg < 315) {
-        nextDirection = "left";
+      if (distance >= DEADZONE_RADIUS_PX) {
+        if (angleDeg >= 315 || angleDeg <= 45) {
+          nextDirection = "up";
+        } else if (angleDeg > 45 && angleDeg <= 135) {
+          nextDirection = "right";
+        } else if (angleDeg > 135 && angleDeg <= 225) {
+          nextDirection = "down";
+        } else if (angleDeg > 225 && angleDeg < 315) {
+          nextDirection = "left";
+        }
       }
+    } else {
+      setDebugAngle(null);
+      setDebugDistance(null);
     }
 
     const currentDirection = activeDirectionButtonRef.current;
@@ -74,6 +99,9 @@ export const VirtualDpad = ({ onButtonDown, onButtonUp }: VirtualDpadProps) => {
     activePointerIdRef.current = null;
     dpadCenterPointRef.current = null;
     setActiveDirection(null);
+    setTouchPoint(null);
+    setDebugAngle(null);
+    setDebugDistance(null);
   };
 
   const handleDpadPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -155,6 +183,36 @@ export const VirtualDpad = ({ onButtonDown, onButtonUp }: VirtualDpadProps) => {
       onPointerUp={handleDpadPointerUp}
       onPointerCancel={handleDpadPointerCancel}
     >
+      {showDebugBounds && debugAngle !== null && (
+        <div className="gameboy-dpad-debug-readout">
+          <div className="gameboy-dpad-debug-line">
+            angle: {Math.round(debugAngle)}°
+          </div>
+          <div className="gameboy-dpad-debug-line">
+            direction: {activeDirection ?? "none"}
+          </div>
+          {debugDistance !== null && (
+            <div className="gameboy-dpad-debug-line">
+              distance: {Math.round(debugDistance)}
+            </div>
+          )}
+        </div>
+      )}
+      {showDebugBounds && (
+        <>
+          <div className="gameboy-dpad-debug-boundary" />
+          <div className="gameboy-dpad-debug-deadzone" />
+        </>
+      )}
+      {touchPoint && (
+        <div
+          className="gameboy-dpad-touch-indicator"
+          style={{
+            left: `${touchPoint.x}px`,
+            top: `${touchPoint.y}px`,
+          }}
+        />
+      )}
       <div className="dpad-vertical">
         <button
           className={upClass}

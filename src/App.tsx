@@ -13,6 +13,7 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [showDebugTools, setShowDebugTools] = useState(false);
+  const [showDpadDebug, setShowDpadDebug] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
@@ -222,11 +223,16 @@ function App() {
                       onToggleDebugTools={() =>
                         setShowDebugTools((prev) => !prev)
                       }
+                      onToggleDpadDebug={() =>
+                        setShowDpadDebug((prev) => !prev)
+                      }
                       showOverlay={showOverlay}
                       showDebugTools={showDebugTools}
+                      showDpadDebug={showDpadDebug}
                       fileName={lastFileName}
                     />
                   }
+                  showDpadDebug={showDpadDebug}
                 >
                   <GBScreen
                     emulator={emulatorRef.current}
