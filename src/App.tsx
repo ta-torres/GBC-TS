@@ -1,151 +1,30 @@
 import "./App.css";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { GBEmulator } from "./emulator/gbEmulator";
-import type { JoypadButton } from "./emulator/input/joypad";
+import { useRef, useState, type ChangeEvent } from "react";
 import { GBScreen } from "./ui/components/GBScreen";
 import { DebugPanel } from "./ui/components/DebugPanel";
 import { GameBoyShell } from "./ui/components/GameBoyShell";
 import { CommandMenu } from "./ui/components/CommandMenu";
+import { useGameBoyEmulator } from "./hooks/useGameBoyEmulator";
 
 function App() {
-  const emulatorRef = useRef<GBEmulator | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
   const [showDebugTools, setShowDebugTools] = useState(false);
   const [showDpadDebug, setShowDpadDebug] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
-
-  if (!emulatorRef.current) {
-    emulatorRef.current = new GBEmulator();
-  }
-
-  useEffect(() => {
-    let rafId = 0;
-    const CYCLES_PER_FRAME = 70224;
-
-    const loop = () => {
-      const emu = emulatorRef.current;
-      if (emu && emu.isRunning() && !emu.isPaused()) {
-        emu.runCycles(CYCLES_PER_FRAME);
-      }
-      rafId = requestAnimationFrame(loop);
-    };
-
-    rafId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
-  useEffect(() => {
-    const keyToButton: Record<string, JoypadButton> = {
-      ArrowRight: "right",
-      ArrowLeft: "left",
-      ArrowUp: "up",
-      ArrowDown: "down",
-      KeyZ: "b",
-      KeyX: "a",
-      Enter: "start",
-      ShiftRight: "select",
-      ShiftLeft: "select",
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const emu = emulatorRef.current;
-      if (!emu) return;
-      const button = keyToButton[event.code];
-      if (!button) return;
-
-      event.preventDefault();
-      emu.pressButton(button);
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      const emu = emulatorRef.current;
-      if (!emu) return;
-      const button = keyToButton[event.code];
-      if (!button) return;
-
-      event.preventDefault();
-      emu.releaseButton(button);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
-
-  const handleButtonDown = (button: JoypadButton) => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    emu.pressButton(button);
-  };
-
-  const handleButtonUp = (button: JoypadButton) => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    emu.releaseButton(button);
-  };
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      const emu = emulatorRef.current;
-      if (!emu) return;
-      if (!emu.hasSRAMBeenWrittenTo()) return;
-      saveSRAMToLocalStorage(emu);
-      emu.clearSRAMWriteFlag();
-    }, 2000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  const saveSRAMToLocalStorage = (emu: GBEmulator) => {
-    const saveKey = emu.getSaveKey();
-    if (!saveKey || typeof window === "undefined") return;
-
-    try {
-      const sram = emu.getSRAMSnapshot();
-      if (!sram) return;
-
-      const encoded = btoa(String.fromCharCode(...sram));
-      window.localStorage.setItem(saveKey, encoded);
-    } catch (error) {
-      console.error("Error saving SRAM", error);
-    }
-  };
-
-  const handleLoadROM = async (file: File) => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    saveSRAMToLocalStorage(emu);
-    const ok = await emu.loadROM(file);
-
-    if (ok) {
-      const saveKey = emu.getSaveKey();
-      if (saveKey && typeof window !== "undefined") {
-        try {
-          const raw = window.localStorage.getItem(saveKey);
-          if (raw) {
-            const decoded = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
-            emu.loadSRAMSnapshot(decoded);
-          }
-        } catch (error) {
-          console.error("Failed to load SRAM from localStorage", error);
-        }
-      }
-
-      setIsLoaded(ok);
-      emu.start();
-      setIsRunning(true);
-    }
-  };
+  const {
+    emulatorRef,
+    isLoaded,
+    isRunning,
+    handleButtonDown,
+    handleButtonUp,
+    handleLoadROM,
+    handleStart,
+    handlePause,
+    handleReset,
+    handleStep,
+  } = useGameBoyEmulator();
 
   const handleRequestLoadRom = () => {
     fileInputRef.current?.click();
@@ -156,34 +35,6 @@ function App() {
     if (!file) return;
     setLastFileName(file.name);
     void handleLoadROM(file);
-  };
-
-  const handleStart = () => {
-    const emu = emulatorRef.current;
-    if (!emu || !isLoaded) return;
-    emu.start();
-    setIsRunning(true);
-  };
-
-  const handlePause = () => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    emu.pause();
-    setIsRunning(!emu.isPaused());
-  };
-
-  const handleReset = () => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    saveSRAMToLocalStorage(emu);
-    emu.reset();
-    setIsRunning(false);
-  };
-
-  const handleStep = () => {
-    const emu = emulatorRef.current;
-    if (!emu || !isLoaded) return;
-    emu.stepInstruction();
   };
 
   const toggleOverlay = () => {
