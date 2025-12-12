@@ -16,13 +16,13 @@ export const VirtualDpad = ({
   const dpadElementRef = useRef<HTMLDivElement | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const dpadCenterPointRef = useRef<{ x: number; y: number } | null>(null);
-  const activeDirectionButtonRef = useRef<JoypadButton | null>(null);
-  const [activeDirection, setActiveDirection] = useState<JoypadButton | null>(
-    null,
-  );
+
+  const activeDirectionButtonRef = useRef<JoypadButton[]>([]);
+  const [activeDirection, setActiveDirection] = useState<JoypadButton[]>([]);
   const [touchPoint, setTouchPoint] = useState<{ x: number; y: number } | null>(
     null,
   );
+
   const [debugAngle, setDebugAngle] = useState<number | null>(null);
   const [debugDistance, setDebugDistance] = useState<number | null>(null);
 
@@ -44,7 +44,7 @@ export const VirtualDpad = ({
     const deltaY = y - centerPoint.y;
     const distance = Math.hypot(deltaX, deltaY);
 
-    let nextDirection: JoypadButton | null = null;
+    let nextDirection: JoypadButton[] = [];
 
     if (distance > 0) {
       const angleRad = Math.atan2(deltaY, deltaX);
@@ -55,14 +55,22 @@ export const VirtualDpad = ({
       setDebugDistance(distance);
 
       if (distance >= DEADZONE_RADIUS_PX) {
-        if (angleDeg >= 315 || angleDeg <= 45) {
-          nextDirection = "up";
-        } else if (angleDeg > 45 && angleDeg <= 135) {
-          nextDirection = "right";
-        } else if (angleDeg > 135 && angleDeg <= 225) {
-          nextDirection = "down";
-        } else if (angleDeg > 225 && angleDeg < 315) {
-          nextDirection = "left";
+        if (angleDeg >= 337.5 || angleDeg < 22.5) {
+          nextDirection = ["up"];
+        } else if (angleDeg >= 22.5 && angleDeg < 67.5) {
+          nextDirection = ["up", "right"];
+        } else if (angleDeg >= 67.5 && angleDeg < 112.5) {
+          nextDirection = ["right"];
+        } else if (angleDeg >= 112.5 && angleDeg < 157.5) {
+          nextDirection = ["down", "right"];
+        } else if (angleDeg >= 157.5 && angleDeg < 202.5) {
+          nextDirection = ["down"];
+        } else if (angleDeg >= 202.5 && angleDeg < 247.5) {
+          nextDirection = ["down", "left"];
+        } else if (angleDeg >= 247.5 && angleDeg < 292.5) {
+          nextDirection = ["left"];
+        } else if (angleDeg >= 292.5 && angleDeg < 337.5) {
+          nextDirection = ["up", "left"];
         }
       }
     } else {
@@ -71,13 +79,24 @@ export const VirtualDpad = ({
     }
 
     const currentDirection = activeDirectionButtonRef.current;
-    if (nextDirection === currentDirection) return;
 
-    if (currentDirection) {
-      onButtonUp(currentDirection);
+    if (
+      currentDirection.length === nextDirection.length &&
+      currentDirection.every((dir) => nextDirection.includes(dir))
+    ) {
+      return;
     }
-    if (nextDirection) {
-      onButtonDown(nextDirection);
+
+    for (const dir of currentDirection) {
+      if (!nextDirection.includes(dir)) {
+        onButtonUp(dir);
+      }
+    }
+
+    for (const dir of nextDirection) {
+      if (!currentDirection.includes(dir)) {
+        onButtonDown(dir);
+      }
     }
 
     activeDirectionButtonRef.current = nextDirection;
@@ -92,16 +111,18 @@ export const VirtualDpad = ({
 
   const resetActivePointerState = () => {
     const currentDirection = activeDirectionButtonRef.current;
-    if (currentDirection) {
-      onButtonUp(currentDirection);
+    if (currentDirection.length > 0) {
+      for (const dir of currentDirection) {
+        onButtonUp(dir);
+      }
     }
-    activeDirectionButtonRef.current = null;
+    activeDirectionButtonRef.current = [];
     activePointerIdRef.current = null;
     dpadCenterPointRef.current = null;
-    setActiveDirection(null);
     setTouchPoint(null);
     setDebugAngle(null);
     setDebugDistance(null);
+    setActiveDirection([]);
   };
 
   const handleDpadPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -166,13 +187,14 @@ export const VirtualDpad = ({
   };
 
   const upClass =
-    "dpad-up" + (activeDirection === "up" ? " dpad-active-up" : "");
+    "dpad-up" + (activeDirection.includes("up") ? " dpad-active-up" : "");
   const downClass =
-    "dpad-down" + (activeDirection === "down" ? " dpad-active-down" : "");
+    "dpad-down" + (activeDirection.includes("down") ? " dpad-active-down" : "");
   const leftClass =
-    "dpad-left" + (activeDirection === "left" ? " dpad-active-left" : "");
+    "dpad-left" + (activeDirection.includes("left") ? " dpad-active-left" : "");
   const rightClass =
-    "dpad-right" + (activeDirection === "right" ? " dpad-active-right" : "");
+    "dpad-right" +
+    (activeDirection.includes("right") ? " dpad-active-right" : "");
 
   return (
     <div
