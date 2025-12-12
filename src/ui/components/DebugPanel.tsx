@@ -5,32 +5,32 @@ import { TileViewer } from "./TileViewer";
 import { SpriteViewer } from "./SpriteViewer";
 import { SpeedControl } from "./SpeedControl";
 
-interface DebugPanelProps {
-  visible: boolean;
-  emulator: GBEmulator | null;
+interface DebugPanelStateProps {
+  showDebugTools: boolean;
   isLoaded: boolean;
   isRunning: boolean;
-  onLoadROMClick: () => void;
   fileName: string | null;
+}
+
+interface DebugPanelActionProps {
+  onLoadROMClick: () => void;
   onStart: () => void;
   onPause: () => void;
   onReset: () => void;
   onStep: () => void;
 }
 
-export const DebugPanel = ({
-  visible,
-  emulator,
-  isLoaded,
-  isRunning,
-  onLoadROMClick,
-  fileName,
-  onStart,
-  onPause,
-  onReset,
-  onStep,
-}: DebugPanelProps) => {
-  if (!visible) return null;
+interface DebugPanelProps {
+  state: DebugPanelStateProps;
+  actions: DebugPanelActionProps;
+  emulator: GBEmulator | null;
+}
+
+export const DebugPanel = ({ state, actions, emulator }: DebugPanelProps) => {
+  const { showDebugTools, isLoaded, isRunning, fileName } = state;
+  const { onLoadROMClick, onStart, onPause, onReset, onStep } = actions;
+
+  if (!showDebugTools) return null;
 
   return (
     <>

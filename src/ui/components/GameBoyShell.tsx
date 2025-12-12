@@ -5,22 +5,22 @@ import { VirtualDpad } from "./VirtualDpad";
 
 interface GameBoyShellProps {
   children: ReactNode;
-  batteryOn: boolean;
+  isBatteryOn: boolean;
   onButtonDown: (button: JoypadButton) => void;
   onButtonUp: (button: JoypadButton) => void;
-  onToggleSettings?: () => void;
-  isCommandMenuOpen?: boolean;
+  toggleCommandMenu?: () => void;
+  showCommandMenu?: boolean;
   commandMenu?: ReactNode;
   showDpadDebug?: boolean;
 }
 
 export const GameBoyShell = ({
   children,
-  batteryOn,
+  isBatteryOn,
   onButtonDown,
   onButtonUp,
-  onToggleSettings,
-  isCommandMenuOpen,
+  toggleCommandMenu,
+  showCommandMenu,
   commandMenu,
   showDpadDebug,
 }: GameBoyShellProps) => {
@@ -89,19 +89,19 @@ export const GameBoyShell = ({
           <div className="gameboy-screen-shell">
             <div className="gameboy-battery">
               <div
-                className={`gameboy-battery-led ${batteryOn ? "" : "gameboy-battery-led--off"}`}
+                className={`gameboy-battery-led ${isBatteryOn ? "" : "gameboy-battery-led--off"}`}
               />
               <div className="gameboy-battery-label">BATTERY</div>
               <div className="relative inline-flex">
                 <button
                   type="button"
                   className="gameboy-settings-button"
-                  onClick={onToggleSettings}
+                  onClick={toggleCommandMenu}
                   aria-label="Open settings menu"
                 >
                   <SettingsIcon className="h-3 w-3 text-gray-300" />
                 </button>
-                {isCommandMenuOpen && commandMenu && (
+                {showCommandMenu && commandMenu && (
                   <div className="absolute -top-35 z-500 ml-0 w-72 scale-70">
                     {commandMenu}
                   </div>

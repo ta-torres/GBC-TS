@@ -15,7 +15,7 @@ function App() {
   const [showDebugTools, setShowDebugTools] = useState(false);
   const [showDpadDebug, setShowDpadDebug] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
-  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
+  const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
 
   if (!emulatorRef.current) {
@@ -186,12 +186,24 @@ function App() {
     emu.stepInstruction();
   };
 
+  const toggleOverlay = () => {
+    setShowOverlay((prev) => !prev);
+  };
+
+  const toggleDebugTools = () => {
+    setShowDebugTools((prev) => !prev);
+  };
+
+  const toggleDpadDebug = () => {
+    setShowDpadDebug((prev) => !prev);
+  };
+
   const toggleCommandMenu = () => {
-    setIsCommandMenuOpen((prev) => !prev);
+    setShowCommandMenu((prev) => !prev);
   };
 
   const closeCommandMenu = () => {
-    setIsCommandMenuOpen(false);
+    setShowCommandMenu(false);
   };
 
   return (
@@ -209,27 +221,27 @@ function App() {
             {emulatorRef.current && (
               <>
                 <GameBoyShell
-                  batteryOn={isRunning}
+                  isBatteryOn={isRunning}
                   onButtonDown={handleButtonDown}
                   onButtonUp={handleButtonUp}
-                  onToggleSettings={toggleCommandMenu}
-                  isCommandMenuOpen={isCommandMenuOpen}
+                  toggleCommandMenu={toggleCommandMenu}
+                  showCommandMenu={showCommandMenu}
                   commandMenu={
                     <CommandMenu
-                      onClose={closeCommandMenu}
-                      onLoadGame={handleRequestLoadRom}
-                      onRestart={handleReset}
-                      onToggleOverlay={() => setShowOverlay((prev) => !prev)}
-                      onToggleDebugTools={() =>
-                        setShowDebugTools((prev) => !prev)
-                      }
-                      onToggleDpadDebug={() =>
-                        setShowDpadDebug((prev) => !prev)
-                      }
-                      showOverlay={showOverlay}
-                      showDebugTools={showDebugTools}
-                      showDpadDebug={showDpadDebug}
-                      fileName={lastFileName}
+                      state={{
+                        showOverlay,
+                        showDebugTools,
+                        showDpadDebug,
+                        fileName: lastFileName,
+                      }}
+                      actions={{
+                        onClose: closeCommandMenu,
+                        onLoadGame: handleRequestLoadRom,
+                        onRestart: handleReset,
+                        onToggleOverlay: toggleOverlay,
+                        onToggleDebugTools: toggleDebugTools,
+                        onToggleDpadDebug: toggleDpadDebug,
+                      }}
                     />
                   }
                   showDpadDebug={showDpadDebug}
@@ -244,16 +256,20 @@ function App() {
           </div>
           <div className="flex flex-col gap-1.5">
             <DebugPanel
-              visible={showDebugTools}
+              state={{
+                showDebugTools,
+                isLoaded,
+                isRunning,
+                fileName: lastFileName,
+              }}
+              actions={{
+                onLoadROMClick: handleRequestLoadRom,
+                onStart: handleStart,
+                onPause: handlePause,
+                onReset: handleReset,
+                onStep: handleStep,
+              }}
               emulator={emulatorRef.current}
-              isLoaded={isLoaded}
-              isRunning={isRunning}
-              onLoadROMClick={handleRequestLoadRom}
-              fileName={lastFileName}
-              onStart={handleStart}
-              onPause={handlePause}
-              onReset={handleReset}
-              onStep={handleStep}
             />
           </div>
         </div>
