@@ -127,7 +127,9 @@ export const GameboyDpad = ({
 
   const handleDpadPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const isTouchLike =
-      event.pointerType === "touch" || event.pointerType === "pen";
+      event.pointerType === "touch" ||
+      event.pointerType === "pen" ||
+      event.pointerType === "mouse";
     if (!isTouchLike) return;
     if (activePointerIdRef.current !== null) return;
 
@@ -150,7 +152,9 @@ export const GameboyDpad = ({
 
   const handleDpadPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const isTouchLike =
-      event.pointerType === "touch" || event.pointerType === "pen";
+      event.pointerType === "touch" ||
+      event.pointerType === "pen" ||
+      event.pointerType === "mouse";
     if (!isTouchLike) return;
     if (activePointerIdRef.current !== event.pointerId) return;
 
@@ -160,7 +164,9 @@ export const GameboyDpad = ({
 
   const handleDpadPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     const isTouchLike =
-      event.pointerType === "touch" || event.pointerType === "pen";
+      event.pointerType === "touch" ||
+      event.pointerType === "pen" ||
+      event.pointerType === "mouse";
     if (!isTouchLike) return;
     if (activePointerIdRef.current !== event.pointerId) return;
 
@@ -175,7 +181,9 @@ export const GameboyDpad = ({
     event: ReactPointerEvent<HTMLDivElement>,
   ) => {
     const isTouchLike =
-      event.pointerType === "touch" || event.pointerType === "pen";
+      event.pointerType === "touch" ||
+      event.pointerType === "pen" ||
+      event.pointerType === "mouse";
     if (!isTouchLike) return;
     if (activePointerIdRef.current !== event.pointerId) return;
 
@@ -236,42 +244,18 @@ export const GameboyDpad = ({
         />
       )}
       <div className="dpad-vertical">
-        <button
-          className={upClass}
-          type="button"
-          onMouseDown={() => onButtonDown("up")}
-          onMouseUp={() => onButtonUp("up")}
-          onMouseLeave={() => onButtonUp("up")}
-        >
+        <button className={upClass} type="button">
           <label>{`^`}</label>
         </button>
-        <button
-          className={downClass}
-          type="button"
-          onMouseDown={() => onButtonDown("down")}
-          onMouseUp={() => onButtonUp("down")}
-          onMouseLeave={() => onButtonUp("down")}
-        >
+        <button className={downClass} type="button">
           <label>{`ˇ`}</label>
         </button>
       </div>
       <div className="dpad-horizontal">
-        <button
-          className={leftClass}
-          type="button"
-          onMouseDown={() => onButtonDown("left")}
-          onMouseUp={() => onButtonUp("left")}
-          onMouseLeave={() => onButtonUp("left")}
-        >
+        <button className={leftClass} type="button">
           <label>{`<`}</label>
         </button>
-        <button
-          className={rightClass}
-          type="button"
-          onMouseDown={() => onButtonDown("right")}
-          onMouseUp={() => onButtonUp("right")}
-          onMouseLeave={() => onButtonUp("right")}
-        >
+        <button className={rightClass} type="button">
           <label>{`>`}</label>
         </button>
       </div>

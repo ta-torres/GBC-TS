@@ -313,17 +313,6 @@
   pointer-events: none;
 }
 
-.gameboy-dpad-touch-indicator {
-  position: absolute;
-  width: 15px;
-  height: 15px;
-  border-radius: 100%;
-  background-color: #5d5d5d;
-  box-shadow: inset 0 0 8px 4px #3c3c3c;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
 .gameboy-dpad-debug-readout {
   position: absolute;
   bottom: 100%;
@@ -522,6 +511,17 @@
   }
   .gameboy-screen-shell {
     justify-content: center;
+  }
+
+  .gameboy-dpad-touch-indicator {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border-radius: 100%;
+    background-color: #5d5d5d;
+    box-shadow: inset 0 0 8px 4px #3c3c3c;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
   }
 }
 
