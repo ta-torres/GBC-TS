@@ -76,6 +76,7 @@ export class CPU {
         console.warn(
           `Unimplemented CB opcode: ${toHex8(cbOpcode)} at PC: ${toHex16(this.programCounter)}`,
         );
+        this.programCounter = (this.programCounter + 1) & 0xffff;
         return 4;
       }
       return cbInstruction.execute(this, this.bus);
@@ -90,6 +91,7 @@ export class CPU {
         `Unimplemented opcode: ${toHex8(opcode)} at PC: ${toHex16(this.programCounter)}\n` +
           `Registers: ${this.registers.toString()}`,
       );
+      this.programCounter = (this.programCounter + 1) & 0xffff;
       return 4;
     }
     //console.log(this.getRegisters().toString());
