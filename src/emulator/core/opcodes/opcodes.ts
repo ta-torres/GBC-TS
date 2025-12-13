@@ -13,9 +13,9 @@ const register = (
   mnemonic: string,
   bytes: number,
   cycles: number,
-  handler: (cpu: CPU, bus: AddressBus) => number,
+  execute: (cpu: CPU, bus: AddressBus) => number,
 ) => {
-  OPCODE_TABLE[opcode] = { mnemonic, bytes, cycles, handler };
+  OPCODE_TABLE[opcode] = { mnemonic, bytes, cycles, execute };
 };
 
 // 0x00: NOP

@@ -8,7 +8,7 @@ export const CB_OPCODE_TABLE: Record<number, OpcodeInfo<CPU>> = {};
 const registerCB = (
   opcode: number,
   mnemonic: string,
-  handler: (cpu: CPU, bus: AddressBus) => number,
+  execute: (cpu: CPU, bus: AddressBus) => number,
 ) => {
   /*
     CB opcode structure: CB xx yyy zzz
@@ -29,7 +29,7 @@ const registerCB = (
     cycles = isHL ? 16 : 8;
   }
 
-  CB_OPCODE_TABLE[opcode] = { mnemonic, bytes: 2, cycles, handler };
+  CB_OPCODE_TABLE[opcode] = { mnemonic, bytes: 2, cycles, execute };
 };
 
 // Rotate/shift helpers

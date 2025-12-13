@@ -6,5 +6,5 @@ export interface OpcodeInfo<TCpu> {
   mnemonic: string;
   bytes: number;
   cycles: number;
-  handler: OpcodeHandler<TCpu>;
+  execute: OpcodeHandler<TCpu>;
 }

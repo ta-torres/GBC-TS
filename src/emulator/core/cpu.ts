@@ -8,9 +8,9 @@ import { Interrupts, InterruptType, INTERRUPT_ADDRESSES } from "./interrupts";
 export class CPU {
   public registers: Registers;
   private bus: AddressBus;
-  public pc: number;
-  public sp: number;
-  private ime: boolean = false;
+  public programCounter: number;
+  public stackPointer: number;
+  private interruptMasterEnable: boolean = false;
   private imeScheduled: boolean;
   private halted: boolean;
   // @ts-expect-error unused
@@ -25,9 +25,9 @@ export class CPU {
     this.interrupts = interrupts;
 
     // post-boot state
-    this.pc = 0x0100;
-    this.sp = 0xfffe;
-    this.ime = false;
+    this.programCounter = 0x0100;
+    this.stackPointer = 0xfffe;
+    this.interruptMasterEnable = false;
     this.imeScheduled = false;
     this.halted = false;
     this.stopped = false;
@@ -36,7 +36,7 @@ export class CPU {
 
   step(): number {
     // handle interrupts before running current instruction
-    if (this.ime) {
+    if (this.interruptMasterEnable) {
       const interrupt = this.interrupts.getHighestPriority();
       if (interrupt !== null) {
         this.handleInterrupt(interrupt);
@@ -47,8 +47,8 @@ export class CPU {
     if (this.halted) {
       /*
       https://gbdev.io/pandocs/halt.html#halt-bug
-      HALT bug: pc is not incremented after a HALT instruction when IME is disabled and an interrupt is pending
-      check for disabled IME and pending interrupt
+      HALT bug: pc is not incremented after running a HALT instruction if IME is disabled and an interrupt is pending. "Double read" effect happens if the next instruction reads the next value from the program counter (pc++)
+      halt() checks this condition and sets haltBug = true, preventing pc from being incremented in the next step()
       */
 
       // wake from halted state if there is an interrupt, deal with interrupt only if IME is enabled
@@ -59,46 +59,46 @@ export class CPU {
       return 4;
     }
 
-    const opcode = this.bus.read(this.pc);
+    const opcode = this.bus.read(this.programCounter);
     if (this.haltBug) {
       // read next byte twice
       this.haltBug = false;
     } else {
-      this.pc = (this.pc + 1) & 0xffff;
+      this.programCounter = (this.programCounter + 1) & 0xffff;
     }
 
     if (opcode === 0xcb) {
-      const cbOpcode = this.bus.read(this.pc);
-      this.pc = (this.pc + 1) & 0xffff;
+      const cbOpcode = this.bus.read(this.programCounter);
+      this.programCounter = (this.programCounter + 1) & 0xffff;
 
-      const cbInfo = CB_OPCODE_TABLE[cbOpcode];
-      if (!cbInfo) {
+      const cbInstruction = CB_OPCODE_TABLE[cbOpcode];
+      if (!cbInstruction) {
         console.warn(
-          `Unimplemented CB opcode: ${toHex8(cbOpcode)} at PC: ${toHex16(this.pc)}`,
+          `Unimplemented CB opcode: ${toHex8(cbOpcode)} at PC: ${toHex16(this.programCounter)}`,
         );
         return 4;
       }
-      return cbInfo.handler(this, this.bus);
+      return cbInstruction.execute(this, this.bus);
     }
 
     /* console.log(
       `PC: ${toHex16(this.pc)} | Opcode: ${toHex8(opcode)} | ${this.registers.toString()}`,
     ); */
-    const info = OPCODE_TABLE[opcode];
-    if (!info) {
+    const instruction = OPCODE_TABLE[opcode];
+    if (!instruction) {
       console.warn(
-        `Unimplemented opcode: ${toHex8(opcode)} at PC: ${toHex16(this.pc)}\n` +
+        `Unimplemented opcode: ${toHex8(opcode)} at PC: ${toHex16(this.programCounter)}\n` +
           `Registers: ${this.registers.toString()}`,
       );
       return 4;
     }
     //console.log(this.getRegisters().toString());
 
-    const cycles = info.handler(this, this.bus);
+    const cycles = instruction.execute(this, this.bus);
 
     // if IME is scheduled after running current instruction, enable IME for next step (EI delays by 1 instruction)
     if (this.imeScheduled) {
-      this.ime = true;
+      this.interruptMasterEnable = true;
       this.imeScheduled = false;
     }
 
@@ -106,32 +106,32 @@ export class CPU {
   }
 
   private handleInterrupt(type: InterruptType): void {
-    this.ime = false;
+    this.interruptMasterEnable = false;
     this.imeScheduled = false;
     this.halted = false;
     this.interrupts.clearInterrupt(type);
-    this.push(this.pc);
-    this.pc = INTERRUPT_ADDRESSES[type];
+    this.push(this.programCounter);
+    this.programCounter = INTERRUPT_ADDRESSES[type];
   }
 
   push(value: number): void {
     // handle overflow case when decrementing SP?
     // high byte first
-    this.sp = (this.sp - 1) & 0xffff;
-    this.bus.write(this.sp, (value >> 8) & 0xff);
+    this.stackPointer = (this.stackPointer - 1) & 0xffff;
+    this.bus.write(this.stackPointer, (value >> 8) & 0xff);
     // low byte second
-    this.sp = (this.sp - 1) & 0xffff;
-    this.bus.write(this.sp, value & 0xff);
+    this.stackPointer = (this.stackPointer - 1) & 0xffff;
+    this.bus.write(this.stackPointer, value & 0xff);
   }
 
   pop(): number {
     // handle underflow case when SP=0xFFFF?
     // low first
-    const low = this.bus.read(this.sp);
-    this.sp = (this.sp + 1) & 0xffff;
+    const low = this.bus.read(this.stackPointer);
+    this.stackPointer = (this.stackPointer + 1) & 0xffff;
 
-    const high = this.bus.read(this.sp);
-    this.sp = (this.sp + 1) & 0xffff;
+    const high = this.bus.read(this.stackPointer);
+    this.stackPointer = (this.stackPointer + 1) & 0xffff;
 
     return (high << 8) | low;
   }
@@ -139,7 +139,7 @@ export class CPU {
   halt(): void {
     const pending = this.interrupts.getPending();
     // don't enter HALT, skip next PC increment
-    if (!this.ime && pending !== 0) {
+    if (!this.interruptMasterEnable && pending !== 0) {
       this.haltBug = true;
       this.halted = false;
       return;
@@ -150,21 +150,38 @@ export class CPU {
 
   reset(): void {
     this.registers.reset();
-    this.pc = 0x0100;
-    this.sp = 0xfffe;
-    this.ime = false;
+    this.programCounter = 0x0100;
+    this.stackPointer = 0xfffe;
+    this.interruptMasterEnable = false;
     this.imeScheduled = false;
     this.halted = false;
     this.stopped = false;
     this.haltBug = false;
   }
 
+  // backwards compatibility with opcodes/test definitions
+  get pc(): number {
+    return this.programCounter;
+  }
+
+  set pc(value: number) {
+    this.programCounter = value & 0xffff;
+  }
+
+  get sp(): number {
+    return this.stackPointer;
+  }
+
+  set sp(value: number) {
+    this.stackPointer = value & 0xffff;
+  }
+
   getPC(): number {
-    return this.pc;
+    return this.programCounter;
   }
 
   getSP(): number {
-    return this.sp;
+    return this.stackPointer;
   }
 
   getRegisters(): Registers {
@@ -172,14 +189,14 @@ export class CPU {
   }
 
   getInstruction(): string {
-    return this.bus.readInstruction(this.pc).toString(16);
+    return this.bus.readInstruction(this.programCounter).toString(16);
   }
 
   enableIME(): void {
-    this.ime = true;
+    this.interruptMasterEnable = true;
   }
   disableIME(): void {
-    this.ime = false;
+    this.interruptMasterEnable = false;
   }
   scheduleIME(): void {
     this.imeScheduled = true;
