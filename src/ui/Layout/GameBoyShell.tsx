@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import type { JoypadButton } from "../../emulator/input/joypad";
 import { SettingsIcon } from "lucide-react";
 import { GameboyDpad } from "./Shell/GameboyDpad";
+import { GameboyActionButtons } from "./Shell/GameboyActionButtons";
+import { GameboySelectButtons } from "./Shell/GameboySelectButtons";
 
 interface GameBoyShellProps {
   children: ReactNode;
@@ -121,85 +123,17 @@ export const GameBoyShell = ({
               showDebugBounds={showDpadDebug}
             />
 
-            <div className="gameboy-ab-buttons">
-              <button
-                type="button"
-                className="gameboy-button gameboy-button-a"
-                onMouseDown={() => onButtonDown("a")}
-                onMouseUp={() => onButtonUp("a")}
-                onMouseLeave={() => onButtonUp("a")}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  onButtonDown("a");
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  onButtonUp("a");
-                }}
-              >
-                <label className="a-label">X</label>
-                <span>A</span>
-              </button>
-              <button
-                type="button"
-                className="gameboy-button gameboy-button-b"
-                onMouseDown={() => onButtonDown("b")}
-                onMouseUp={() => onButtonUp("b")}
-                onMouseLeave={() => onButtonUp("b")}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  onButtonDown("b");
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  onButtonUp("b");
-                }}
-              >
-                <label className="b-label">Z</label>
-                <span>B</span>
-              </button>
-            </div>
+            <GameboyActionButtons
+              onButtonDown={onButtonDown}
+              onButtonUp={onButtonUp}
+            />
           </div>
 
           <div className="gameboy-middle-row">
-            <div className="gameboy-select-start">
-              <button
-                type="button"
-                className="gameboy-pill gameboy-pill-select"
-                onMouseDown={() => onButtonDown("select")}
-                onMouseUp={() => onButtonUp("select")}
-                onMouseLeave={() => onButtonUp("select")}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  onButtonDown("select");
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  onButtonUp("select");
-                }}
-              >
-                <label>Shift</label>
-                <span>SELECT</span>
-              </button>
-              <button
-                type="button"
-                className="gameboy-pill gameboy-pill-start"
-                onMouseDown={() => onButtonDown("start")}
-                onMouseUp={() => onButtonUp("start")}
-                onMouseLeave={() => onButtonUp("start")}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  onButtonDown("start");
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  onButtonUp("start");
-                }}
-              >
-                <label>Enter</label>
-                <span>START</span>
-              </button>
-            </div>
+            <GameboySelectButtons
+              onButtonDown={onButtonDown}
+              onButtonUp={onButtonUp}
+            />
 
             <div className="gameboy-speaker">
               <span />
