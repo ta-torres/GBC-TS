@@ -250,6 +250,7 @@
   width: 86px;
   height: 86px;
   touch-action: none;
+  --dpad-press-depth: 10;
 }
 
 .gameboy-dpad .dpad-touch-area {
@@ -284,7 +285,20 @@
   position: absolute;
   background: transparent;
   border-radius: 3px;
-  box-shadow: 0 5px 6px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 calc(var(--dpad-press-depth) * 0.5px)
+    calc(var(--dpad-press-depth) * 0.6px) rgba(0, 0, 0, 0.45);
+}
+
+.gameboy-dpad .dpad.up .dpad-shadow::before,
+.gameboy-dpad .dpad.up .dpad-shadow::after,
+.gameboy-dpad .dpad.down .dpad-shadow::before,
+.gameboy-dpad .dpad.down .dpad-shadow::after,
+.gameboy-dpad .dpad.left .dpad-shadow::before,
+.gameboy-dpad .dpad.left .dpad-shadow::after,
+.gameboy-dpad .dpad.right .dpad-shadow::before,
+.gameboy-dpad .dpad.right .dpad-shadow::after {
+  box-shadow: 0 calc(var(--dpad-press-depth) * 0.85px)
+    calc(var(--dpad-press-depth) * 0.9px) rgba(0, 0, 0, 0.5);
 }
 
 .gameboy-dpad .dpad-shadow::before {
@@ -484,35 +498,39 @@
 }
 
 .gameboy-dpad .dpad.down {
-  transform: rotateX(-10deg);
+  transform: rotateX(calc(var(--dpad-press-depth) * -1deg));
 }
 
 .gameboy-dpad .dpad.up {
-  transform: rotateX(10deg);
+  transform: rotateX(calc(var(--dpad-press-depth) * 1deg));
 }
 
 .gameboy-dpad .dpad.left {
-  transform: rotateY(-10deg);
+  transform: rotateY(calc(var(--dpad-press-depth) * -1deg));
 }
 
 .gameboy-dpad .dpad.right {
-  transform: rotateY(10deg);
+  transform: rotateY(calc(var(--dpad-press-depth) * 1deg));
 }
 
 .gameboy-dpad .dpad.down.right {
-  transform: rotateX(-10deg) rotateY(10deg);
+  transform: rotateX(calc(var(--dpad-press-depth) * -1deg))
+    rotateY(calc(var(--dpad-press-depth) * 1deg));
 }
 
 .gameboy-dpad .dpad.down.left {
-  transform: rotateX(-10deg) rotateY(-10deg);
+  transform: rotateX(calc(var(--dpad-press-depth) * -1deg))
+    rotateY(calc(var(--dpad-press-depth) * -1deg));
 }
 
 .gameboy-dpad .dpad.up.right {
-  transform: rotateX(10deg) rotateY(10deg);
+  transform: rotateX(calc(var(--dpad-press-depth) * 1deg))
+    rotateY(calc(var(--dpad-press-depth) * 1deg));
 }
 
 .gameboy-dpad .dpad.up.left {
-  transform: rotateX(10deg) rotateY(-10deg);
+  transform: rotateX(calc(var(--dpad-press-depth) * 1deg))
+    rotateY(calc(var(--dpad-press-depth) * -1deg));
 }
 
 .gameboy-dpad-debug-boundary {
