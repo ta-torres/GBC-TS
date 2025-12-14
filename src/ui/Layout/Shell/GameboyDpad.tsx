@@ -18,6 +18,8 @@ export const GameboyDpad = ({
   const activePointerIdRef = useRef<number | null>(null);
   const dpadCenterPointRef = useRef<{ x: number; y: number } | null>(null);
 
+  const lastCardinalDirectionRef = useRef<JoypadButton | null>(null);
+
   const activeDirectionButtonRef = useRef<JoypadButton[]>([]);
   const [activeDirection, setActiveDirection] = useState<JoypadButton[]>([]);
   const [touchPoint, setTouchPoint] = useState<{ x: number; y: number } | null>(
@@ -81,6 +83,16 @@ export const GameboyDpad = ({
 
     const currentDirection = activeDirectionButtonRef.current;
 
+    if (nextDirection.length === 1) {
+      const nextCardinal = nextDirection[0];
+      if (lastCardinalDirectionRef.current !== nextCardinal) {
+        navigator.vibrate(30);
+        lastCardinalDirectionRef.current = nextCardinal;
+      }
+    } else {
+      lastCardinalDirectionRef.current = null;
+    }
+
     if (
       currentDirection.length === nextDirection.length &&
       currentDirection.every((dir) => nextDirection.includes(dir))
@@ -120,6 +132,7 @@ export const GameboyDpad = ({
     activeDirectionButtonRef.current = [];
     activePointerIdRef.current = null;
     dpadCenterPointRef.current = null;
+    lastCardinalDirectionRef.current = null;
     setTouchPoint(null);
     setDebugAngle(null);
     setDebugDistance(null);

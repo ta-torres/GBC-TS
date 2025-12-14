@@ -20,6 +20,7 @@ export const GameboyActionButtons = ({
         onMouseLeave={() => onButtonUp("a")}
         onTouchStart={(e) => {
           e.preventDefault();
+          navigator.vibrate(30);
           onButtonDown("a");
         }}
         onTouchEnd={(e) => {
@@ -38,6 +39,7 @@ export const GameboyActionButtons = ({
         onMouseLeave={() => onButtonUp("b")}
         onTouchStart={(e) => {
           e.preventDefault();
+          navigator.vibrate(30);
           onButtonDown("b");
         }}
         onTouchEnd={(e) => {
