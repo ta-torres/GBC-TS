@@ -252,42 +252,267 @@
   touch-action: none;
 }
 
-.dpad-vertical,
-.dpad-horizontal {
+.gameboy-dpad .dpad-touch-area {
   position: absolute;
-  background: #2b2d30;
-  border-radius: 3px;
+  inset: 0;
+  border-radius: 50%;
+  perspective-origin: center 75%;
+  perspective: 550px;
+  /* background-color: #a3a3a3; */
 }
 
-.dpad-vertical {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+.gameboy-dpad .dpad {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 27px 32px 27px;
+  grid-template-rows: 27px 32px 27px;
+  transform-style: preserve-3d;
+  transform-origin: 43px 43px -10px;
+}
+
+.gameboy-dpad .dpad-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gameboy-dpad .dpad-shadow::before,
+.gameboy-dpad .dpad-shadow::after {
+  content: "";
+  position: absolute;
+  background: transparent;
+  border-radius: 3px;
+  box-shadow: 0 5px 6px rgba(0, 0, 0, 0.45);
+}
+
+.gameboy-dpad .dpad-shadow::before {
   width: 32px;
   height: 86px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 27px;
+  top: 0;
 }
 
-.dpad-horizontal {
-  display: flex;
-  justify-content: space-between;
+.gameboy-dpad .dpad-shadow::after {
   width: 86px;
   height: 32px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 0;
+  top: 27px;
 }
 
-.dpad-center {
+.gameboy-dpad .dpad-vertical,
+.gameboy-dpad .dpad-horizontal {
+  position: relative;
+  background-color: #2b2d30;
+  /* border-radius: 3px; */
+  transform-style: preserve-3d;
+  z-index: 2;
+}
+
+.gameboy-dpad .dpad-horizontal-top,
+.gameboy-dpad .dpad-horizontal-bottom,
+.gameboy-dpad .dpad-horizontal-left,
+.gameboy-dpad .dpad-horizontal-right,
+.gameboy-dpad .dpad-vertical-left,
+.gameboy-dpad .dpad-vertical-top,
+.gameboy-dpad .dpad-vertical-right,
+.gameboy-dpad .dpad-vertical-bottom {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  z-index: 1;
+}
+
+.gameboy-dpad .dpad-vertical {
+  grid-column: 2;
+  grid-row: 1 / 4;
+}
+
+.gameboy-dpad .dpad-horizontal {
+  grid-column: 1 / 4;
+  grid-row: 2;
+}
+
+.gameboy-dpad .dpad-horizontal-top {
+  background-color: #343434;
+  width: 86px;
+  height: 32px;
+  transform-origin: top;
+  position: absolute;
+  left: 0;
+  top: 27px;
+  transform: translateZ(-30px) rotateX(90deg);
+}
+
+.gameboy-dpad .dpad-horizontal-bottom {
+  background-color: #343434;
+  width: 86px;
+  height: 32px;
+  transform-origin: top;
+  position: absolute;
+  left: 0;
+  top: 59px;
+  transform: translateZ(-30px) rotateX(90deg);
+}
+
+.gameboy-dpad .dpad-horizontal-left {
+  background-color: #343434;
+  width: 32px;
+  height: 32px;
+  transform-origin: left;
+  position: absolute;
+  left: 0;
+  top: 27px;
+  transform: rotateY(90deg);
+}
+
+.gameboy-dpad .dpad-horizontal-right {
+  background-color: #343434;
+  width: 32px;
+  height: 32px;
+  transform-origin: left;
+  position: absolute;
+  left: 86px;
+  top: 59px;
+  transform: rotateY(90deg) translateY(-32px);
+}
+
+.gameboy-dpad .dpad-vertical-left {
+  background-color: #343434;
+  width: 32px;
+  height: 86px;
+  transform-origin: left;
+  position: absolute;
+  left: 27px;
+  top: 0;
+  transform: translateZ(-30px) rotateY(-90deg);
+}
+
+.gameboy-dpad .dpad-vertical-right {
+  background-color: #343434;
+  width: 32px;
+  height: 86px;
+  transform-origin: left;
+  position: absolute;
+  left: 59px;
+  top: 0;
+  transform: translateZ(-30px) rotateY(-90deg);
+}
+
+.gameboy-dpad .dpad-vertical-bottom {
+  background-color: #343434;
+  width: 32px;
+  height: 32px;
+  transform-origin: top;
+  position: absolute;
+  left: 27px;
+  top: 86px;
+  transform: translateZ(-30px) rotateX(90deg);
+}
+
+.gameboy-dpad .dpad-vertical-top {
+  background-color: #343434;
+  width: 32px;
+  height: 32px;
+  transform-origin: top;
+  position: absolute;
+  left: 27px;
+  top: 0;
+  transform: translateZ(-30px) rotateX(90deg);
+}
+
+.gameboy-dpad .center-circle {
+  background-color: #5d5d5d;
+  border-radius: 50%;
   width: 16px;
   height: 16px;
-  transform: translate(-50%, -50%);
-  border-radius: 100%;
-  background-color: #5d5d5d;
+  position: relative;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  justify-self: center;
   box-shadow: inset 0 0 8px 4px #3c3c3c;
+  z-index: 3;
+}
+
+.gameboy-dpad button {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+}
+
+.gameboy-dpad .dpad-up {
+  grid-column: 2;
+  grid-row: 1;
+  width: 32px;
+  height: 27px;
+}
+
+.gameboy-dpad .dpad-down {
+  grid-column: 2;
+  grid-row: 3;
+  width: 32px;
+  height: 27px;
+}
+
+.gameboy-dpad .dpad-left {
+  grid-column: 1;
+  grid-row: 2;
+  width: 27px;
+  height: 32px;
+}
+
+.gameboy-dpad .dpad-right {
+  grid-column: 3;
+  grid-row: 2;
+  width: 27px;
+  height: 32px;
+}
+
+.gameboy-dpad .dpad-up label,
+.gameboy-dpad .dpad-down label,
+.gameboy-dpad .dpad-left label,
+.gameboy-dpad .dpad-right label {
+  font-weight: 600;
+  color: #818181;
+}
+
+.dpad-down label {
+  font-size: 30px;
+  transform: translateY(10px);
+}
+
+.gameboy-dpad .dpad.down {
+  transform: rotateX(-10deg);
+}
+
+.gameboy-dpad .dpad.up {
+  transform: rotateX(10deg);
+}
+
+.gameboy-dpad .dpad.left {
+  transform: rotateY(-10deg);
+}
+
+.gameboy-dpad .dpad.right {
+  transform: rotateY(10deg);
+}
+
+.gameboy-dpad .dpad.down.right {
+  transform: rotateX(-10deg) rotateY(10deg);
+}
+
+.gameboy-dpad .dpad.down.left {
+  transform: rotateX(-10deg) rotateY(-10deg);
+}
+
+.gameboy-dpad .dpad.up.right {
+  transform: rotateX(10deg) rotateY(10deg);
+}
+
+.gameboy-dpad .dpad.up.left {
+  transform: rotateX(10deg) rotateY(-10deg);
 }
 
 .gameboy-dpad-debug-boundary {
@@ -350,56 +575,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.dpad-up {
-  width: 100%;
-  height: 26px;
-}
-
-.dpad-down {
-  width: 100%;
-  height: 26px;
-}
-
-.dpad-left {
-  width: 30px;
-}
-
-.dpad-right {
-  width: 30px;
-}
-
-.dpad-active-up,
-.dpad-active-down,
-.dpad-active-left,
-.dpad-active-right {
-  background-color: #3a3d40;
-}
-
-.dpad-up label {
-  position: relative;
-  top: 3px;
-  font-weight: 600;
-  color: rgb(129, 129, 129);
-}
-
-.dpad-down label {
-  position: relative;
-  font-size: 30px;
-  color: rgb(129, 129, 129);
-}
-
-.dpad-left label {
-  position: relative;
-  font-weight: 600;
-  color: rgb(129, 129, 129);
-}
-
-.dpad-right label {
-  position: relative;
-  font-weight: 600;
-  color: rgb(129, 129, 129);
 }
 
 .gameboy-button-b {
@@ -512,7 +687,7 @@
   .gameboy-screen-shell {
     justify-content: center;
   }
-
+  /* 
   .gameboy-dpad-touch-indicator {
     position: absolute;
     width: 15px;
@@ -522,6 +697,11 @@
     box-shadow: inset 0 0 8px 4px #3c3c3c;
     transform: translate(-50%, -50%);
     pointer-events: none;
+  } */
+
+  .gameboy-dpad {
+    scale: 1.5;
+    transform: translate3d(22px, -10px, 0);
   }
 }
 

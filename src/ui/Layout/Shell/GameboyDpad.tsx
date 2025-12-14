@@ -204,6 +204,9 @@ export const GameboyDpad = ({
     "dpad-right" +
     (activeDirection.includes("right") ? " dpad-active-right" : "");
 
+  const dpadClass =
+    "dpad" + (activeDirection.length ? ` ${activeDirection.join(" ")}` : "");
+
   return (
     <div
       className="gameboy-dpad"
@@ -243,23 +246,37 @@ export const GameboyDpad = ({
           }}
         />
       )}
-      <div className="dpad-vertical">
-        <button className={upClass} type="button">
-          <label>{`^`}</label>
-        </button>
-        <button className={downClass} type="button">
-          <label>{`ˇ`}</label>
-        </button>
+      <div className="dpad-touch-area">
+        <div className={dpadClass}>
+          <div className="dpad-shadow" />
+          <div className="dpad-vertical" />
+          <div className="dpad-vertical-top" />
+          <div className="dpad-vertical-left" />
+          <div className="dpad-vertical-right" />
+          <div className="dpad-vertical-bottom" />
+
+          <div className="dpad-horizontal" />
+          <div className="dpad-horizontal-top" />
+          <div className="dpad-horizontal-left" />
+          <div className="dpad-horizontal-right" />
+          <div className="dpad-horizontal-bottom" />
+
+          <button className={upClass} type="button">
+            <label>{`^`}</label>
+          </button>
+          <button className={downClass} type="button">
+            <label>{`ˇ`}</label>
+          </button>
+          <button className={leftClass} type="button">
+            <label>{`<`}</label>
+          </button>
+          <button className={rightClass} type="button">
+            <label>{`>`}</label>
+          </button>
+
+          <div className="center-circle" />
+        </div>
       </div>
-      <div className="dpad-horizontal">
-        <button className={leftClass} type="button">
-          <label>{`<`}</label>
-        </button>
-        <button className={rightClass} type="button">
-          <label>{`>`}</label>
-        </button>
-      </div>
-      <div className="dpad-center" />
     </div>
   );
 };
