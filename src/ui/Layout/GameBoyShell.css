@@ -152,6 +152,13 @@
   overflow: hidden;
 }
 
+.gameboy-shell:fullscreen .gameboy-screen-window {
+  max-width: none;
+  scale: 1.35;
+  transform: translateX(-7px);
+  border: 1px solid gray;
+}
+
 .gameboy-battery {
   position: relative;
 
@@ -239,7 +246,7 @@
 @media (max-width: 768px) {
   .gameboy-shell {
     width: 100vw;
-    height: 650px;
+    height: 670px;
   }
   .gameboy-screen-shell {
     justify-content: center;
