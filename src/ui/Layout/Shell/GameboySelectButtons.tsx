@@ -1,4 +1,5 @@
 import type { JoypadButton } from "../../../emulator/input/joypad";
+import "./GameboySelectButtons.css";
 
 interface GameboySelectButtonsProps {
   onButtonDown: (button: JoypadButton) => void;

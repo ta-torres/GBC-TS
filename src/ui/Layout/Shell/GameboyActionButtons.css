@@ -1,0 +1,97 @@
+.gameboy-ab-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 20px;
+  transform: translateY(8px) translateX(-20px) rotate(36deg);
+  position: relative;
+  padding: 16px 18px;
+}
+
+.gameboy-ab-buttons::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #b7bac3, #bcbfc8);
+  transform: translate(20px, 0px) rotate(20deg);
+  width: 70px;
+  /* z-index: -3; */
+}
+
+.gameboy-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50px;
+  background: radial-gradient(circle at 30% 30%, #7c0545, #810049);
+  position: relative;
+  border: none;
+  padding: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gameboy-button::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+  border-radius: 50px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.55);
+  z-index: -1;
+  transition: opacity 90ms ease;
+}
+
+.gameboy-button:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 2px 0 rgba(255, 255, 255, 0.08);
+}
+
+.gameboy-button:active::before {
+  opacity: 0;
+}
+
+.gameboy-button-b {
+  margin-right: 26px;
+}
+
+.gameboy-button-a label {
+  color: rgb(129, 129, 129);
+  position: relative;
+  transform: rotate(-37deg) translate(5px, 3px);
+}
+
+.gameboy-button-b label {
+  color: rgb(129, 129, 129);
+  position: relative;
+  transform: rotate(-37deg) translate(5px, 3px);
+}
+
+.gameboy-button span {
+  font-size: 14px;
+  color: #18205c;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-weight: 700;
+  transform: rotate(-72deg) translateX(-10px) translateY(40px);
+}
+
+@media (max-width: 768px) {
+  .gameboy-ab-buttons {
+    scale: 1.3;
+    /* transform: translate(-20px, -15px) rotate(20deg); */
+  }
+}

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { JoypadButton } from "@/emulator/input/joypad";
+import "./GameboyDpad.css";
 
 interface VirtualDpadProps {
   onButtonDown: (button: JoypadButton) => void;

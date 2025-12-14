@@ -1,0 +1,286 @@
+:root {
+  --gb-scale: 1;
+}
+
+.gameboy-shell {
+  position: relative;
+  margin: 0 auto;
+  width: min(90vw, 360px);
+  /*   aspect-ratio: 0.6; */
+  border-radius: 15px 15px 50px 15px;
+  background: linear-gradient(
+    180deg,
+    #c2c3c7 0%,
+    #b9bcc5 45%,
+    #bcbfc8 80%,
+    #b7bac3 100%
+  );
+  box-shadow: 0 20px 35px rgba(0, 0, 0, 0.7);
+  padding: 18px 22px 50px;
+  transform: scale(var(--gb-scale));
+  transform-origin: top left;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.gameboy-shell-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.gameboy-top-ridge-bottom {
+  position: relative;
+  transform: scalex(1.13);
+  width: 100%;
+  top: 8px;
+  height: 3px;
+  background: rgba(60, 62, 65, 0.85);
+}
+
+.gameboy-screen-area {
+  position: relative;
+  margin-top: 22px;
+  background: linear-gradient(180deg, #5f6b79 0%, #5f6b79 100%);
+  border-radius: 15px 15px 50px 15px;
+  /* border-radius: inherit; */
+  padding: 9px 25px 25px 10px;
+}
+
+.gameboy-screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: #f5f5f5;
+  margin-bottom: 10px;
+}
+
+.gameboy-header-stripes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.gameboy-header-stripes span {
+  width: 50px;
+  height: 2px;
+  border-radius: 50px;
+}
+
+.gameboy-header-stripes span:nth-child(1) {
+  background: #5b3366;
+}
+
+.gameboy-header-stripes span:nth-child(2) {
+  background: #214a87;
+}
+
+.gameboy-header-text {
+  text-align: center;
+  white-space: nowrap;
+  color: #b5bfca;
+}
+
+.gameboy-screen-shell {
+  display: flex;
+}
+
+.gameboy-fullscreen-button {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background: rgba(25, 30, 40, 0.7);
+  color: #d5dde8;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.gameboy-fullscreen-button:hover {
+  background: rgba(35, 40, 50, 0.9);
+}
+
+.gameboy-settings-button {
+  position: absolute;
+  top: -90px;
+  left: -12px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background: rgba(25, 30, 40, 0.7);
+  color: #d5dde8;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.gameboy-settings-button:hover {
+  background: rgba(35, 40, 50, 0.9);
+}
+
+.gameboy-screen-window {
+  width: 100%;
+  max-width: 320px;
+  background: black;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/*
+.gb-screen-inner {
+  position: relative;
+  width: auto;
+  height: 100%;
+  /* max-width: 320px; */
+/* aspect-ratio: 160 / 144; 
+}
+*/
+
+.gb-screen-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.gb-screen-inner canvas {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  image-rendering: pixelated;
+}
+
+/* .gb-screen-inner:fullscreen {
+
+  max-width: none;
+  aspect-ratio: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+} */
+
+.gameboy-screen-window:fullscreen .gb-screen-inner {
+  width: auto;
+  height: 100%;
+}
+
+.gameboy-battery {
+  position: relative;
+
+  top: -30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 4px;
+}
+
+.gameboy-battery-led {
+  position: relative;
+  right: 5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: #d41f30;
+  box-shadow: 0 0 8px rgba(212, 31, 48, 0.8);
+}
+
+.gameboy-battery-led--off {
+  background: #3a3f46;
+  box-shadow: none;
+}
+
+.gameboy-battery-label {
+  position: relative;
+  right: 3px;
+  font-size: 8px;
+  /* letter-spacing: 0.18em; */
+  color: #b5bfca;
+}
+
+.gameboy-bottom-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-top: 32px;
+  /* height: calc(100% - 230px); */
+}
+
+.gameboy-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.gameboy-middle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 22px;
+}
+
+.gameboy-speaker {
+  display: flex;
+  gap: 11px;
+  transform: rotate(-30deg) translateY(10px);
+}
+
+.gameboy-speaker span {
+  width: 7px;
+  height: 48px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #505459 0%, #2b2e32 100%);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.75);
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --gb-scale: 1.5;
+  }
+
+  .gameboy-shell {
+    width: 380px;
+  }
+
+  .gameboy-fullscreen-button {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 768px) {
+  .gameboy-shell {
+    width: 100vw;
+    height: 650px;
+  }
+  .gameboy-screen-shell {
+    justify-content: center;
+  }
+}

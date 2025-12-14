@@ -4,6 +4,7 @@ import { SettingsIcon } from "lucide-react";
 import { GameboyDpad } from "./Shell/GameboyDpad";
 import { GameboyActionButtons } from "./Shell/GameboyActionButtons";
 import { GameboySelectButtons } from "./Shell/GameboySelectButtons";
+import "./GameBoyShell.css";
 
 interface GameBoyShellProps {
   children: ReactNode;
