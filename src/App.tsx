@@ -5,9 +5,14 @@ import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
 import { CommandMenu } from "./ui/Layout/CommandMenu";
 import { useGameBoyEmulator } from "./hooks/useGameBoyEmulator";
+import {
+  exportSRAMSavesToFile,
+  importSRAMSavesFromFile,
+} from "./emulator/utils/savesTransfer";
 
 function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const sramImportInputRef = useRef<HTMLInputElement | null>(null);
   const [showDebugTools, setShowDebugTools] = useState(false);
   const [showDpadDebug, setShowDpadDebug] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
@@ -24,6 +29,7 @@ function App() {
     handlePause,
     handleReset,
     handleStep,
+    handleSRAMSave,
   } = useGameBoyEmulator();
 
   const handleRequestLoadRom = () => {
@@ -35,6 +41,54 @@ function App() {
     if (!file) return;
     setLastFileName(file.name);
     void handleLoadROM(file);
+  };
+
+  const handleExportSRAMSaves = () => {
+    if (typeof window === "undefined") return;
+
+    handleSRAMSave();
+
+    try {
+      exportSRAMSavesToFile();
+    } catch (error) {
+      console.error("Failed to export SRAM saves", error);
+    }
+  };
+
+  const handleImportSRAMSaves = () => {
+    sramImportInputRef.current?.click();
+  };
+
+  const loadCurrentSRAMFromLocalStorage = () => {
+    const emu = emulatorRef.current;
+    if (!emu || typeof window === "undefined") return;
+    const saveKey = emu.getSaveKey();
+    if (!saveKey) return;
+
+    try {
+      const raw = window.localStorage.getItem(saveKey);
+      if (!raw) return;
+      const decoded = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+      emu.loadSRAMSnapshot(decoded);
+    } catch (error) {
+      console.error("Failed to load SRAM from localStorage", error);
+    }
+  };
+
+  const handleImportSRAMFileChange = async (
+    e: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || typeof window === "undefined") return;
+
+    try {
+      await importSRAMSavesFromFile(file);
+
+      loadCurrentSRAMFromLocalStorage();
+    } catch (error) {
+      console.error("Failed to import SRAM saves", error);
+    }
   };
 
   const toggleOverlay = () => {
@@ -67,6 +121,13 @@ function App() {
           onChange={handleFileChange}
           className="hidden"
         />
+        <input
+          ref={sramImportInputRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleImportSRAMFileChange}
+          className="hidden"
+        />
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="app-touch-surface relative justify-center lg:col-span-2">
             {emulatorRef.current && (
@@ -89,6 +150,8 @@ function App() {
                         onClose: closeCommandMenu,
                         onLoadGame: handleRequestLoadRom,
                         onRestart: handleReset,
+                        onExportSRAMSaves: handleExportSRAMSaves,
+                        onImportSRAMSaves: handleImportSRAMSaves,
                         onToggleOverlay: toggleOverlay,
                         onToggleDebugTools: toggleDebugTools,
                         onToggleDpadDebug: toggleDpadDebug,
