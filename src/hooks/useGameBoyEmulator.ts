@@ -16,11 +16,44 @@ export const useGameBoyEmulator = () => {
     let rafId = 0;
     const CYCLES_PER_FRAME = 70224;
 
-    const loop = () => {
-      const emu = emulatorRef.current;
-      if (emu && emu.isRunning() && !emu.isPaused()) {
-        emu.stepFrame(CYCLES_PER_FRAME);
+    const CLOCK_HZ = 4194304;
+    const FPS = CLOCK_HZ / CYCLES_PER_FRAME;
+
+    const FRAME_MS = 1000 / FPS;
+    const MAX_FRAMES_PER_RAF = 3;
+
+    let previousFrameTimestamp: number | null = null;
+    let accumulatedTimeMs = 0;
+
+    const loop = (timestampMs: number) => {
+      if (previousFrameTimestamp === null) {
+        previousFrameTimestamp = timestampMs;
       }
+
+      // clamp maximum time to avoid catching up when idle
+      const deltaTimeMs = Math.min(250, timestampMs - previousFrameTimestamp);
+      previousFrameTimestamp = timestampMs;
+
+      const emulator = emulatorRef.current;
+      if (emulator && emulator.isRunning() && !emulator.isPaused()) {
+        accumulatedTimeMs += deltaTimeMs;
+
+        // only step frames if within the current budget for a loop iteration and there is at least one emulated frame worth of time
+        let catchUpFrames = 0;
+        while (
+          accumulatedTimeMs >= FRAME_MS &&
+          catchUpFrames < MAX_FRAMES_PER_RAF
+        ) {
+          emulator.stepFrame(CYCLES_PER_FRAME);
+          accumulatedTimeMs -= FRAME_MS;
+          catchUpFrames += 1;
+        }
+
+        if (catchUpFrames === MAX_FRAMES_PER_RAF) accumulatedTimeMs = 0;
+      } else {
+        accumulatedTimeMs = 0;
+      }
+
       rafId = requestAnimationFrame(loop);
     };
 
