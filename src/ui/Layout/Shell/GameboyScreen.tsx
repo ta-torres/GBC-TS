@@ -3,7 +3,7 @@ import type { GBEmulator } from "../../../emulator/gbEmulator";
 import { Overlay } from "./Overlay";
 import "./GameboyScreen.css";
 
-const GB_TARGET_FPS = 59.7;
+const GB_TARGET_FPS = 4194304 / 70224;
 
 export const GBScreen = ({
   emulator,

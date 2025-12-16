@@ -14,12 +14,57 @@ export const useGameBoyEmulator = () => {
   useEffect(() => {
     let rafId = 0;
     const CYCLES_PER_FRAME = 70224;
+    const MAX_FRAMES_PER_RAF = 5;
+    const SMOOTHING_ALPHA = 0.1;
+    const MAX_SYNC_FPS = 60;
+    const MIN_TARGET_FRAME_MS = 1000 / MAX_SYNC_FPS;
 
-    const loop = () => {
+    let lastTimestamp: number | null = null;
+    let accumulatorMs = 0;
+    let estimatedDisplayFrameMs = 1000 / 60;
+
+    const loop = (timestamp: number) => {
+      if (lastTimestamp === null) {
+        lastTimestamp = timestamp;
+        rafId = requestAnimationFrame(loop);
+        return;
+      }
+
+      const rawDtMs = timestamp - lastTimestamp;
+      lastTimestamp = timestamp;
+
+      const dtMs = Math.min(250, rawDtMs);
+      if (rawDtMs > 0 && rawDtMs < 100) {
+        estimatedDisplayFrameMs +=
+          (rawDtMs - estimatedDisplayFrameMs) * SMOOTHING_ALPHA;
+      }
+
+      const targetFrameMs = Math.max(
+        estimatedDisplayFrameMs,
+        MIN_TARGET_FRAME_MS,
+      );
+
       const emu = emulatorRef.current;
       if (emu && emu.isRunning() && !emu.isPaused()) {
-        emu.stepFrame(CYCLES_PER_FRAME);
+        accumulatorMs += dtMs;
+
+        let framesStepped = 0;
+        while (
+          accumulatorMs >= targetFrameMs &&
+          framesStepped < MAX_FRAMES_PER_RAF
+        ) {
+          emu.stepFrame(CYCLES_PER_FRAME);
+          accumulatorMs -= targetFrameMs;
+          framesStepped += 1;
+        }
+
+        if (framesStepped === MAX_FRAMES_PER_RAF) {
+          accumulatorMs = 0;
+        }
+      } else {
+        accumulatorMs = 0;
       }
+
       rafId = requestAnimationFrame(loop);
     };
 
