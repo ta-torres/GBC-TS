@@ -19,6 +19,8 @@ interface CommandMenuActionProps {
   onClose?: () => void;
   onLoadGame: () => void;
   onRestart: () => void;
+  onExportSRAMSaves: () => void;
+  onImportSRAMSaves: () => void;
   onToggleOverlay: () => void;
   onToggleDebugTools: () => void;
   onToggleDpadDebug: () => void;
@@ -58,6 +60,21 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
             onSelect={() => handleAction(actions.onRestart)}
           >
             Restart game
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandGroup heading="Saves">
+          <CommandItem
+            value="export-sram-saves"
+            onSelect={() => handleAction(actions.onExportSRAMSaves)}
+          >
+            Export SRAM saves
+          </CommandItem>
+          <CommandItem
+            value="import-sram-saves"
+            onSelect={() => handleAction(actions.onImportSRAMSaves)}
+          >
+            Import SRAM saves
           </CommandItem>
         </CommandGroup>
 

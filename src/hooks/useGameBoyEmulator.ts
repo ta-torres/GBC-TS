@@ -98,6 +98,12 @@ export const useGameBoyEmulator = () => {
     }
   };
 
+  const handleSRAMSave = () => {
+    const emu = emulatorRef.current;
+    if (!emu) return;
+    saveSRAMToLocalStorage(emu);
+  };
+
   const handleButtonDown = (button: JoypadButton) => {
     const emu = emulatorRef.current;
     if (!emu) return;
@@ -168,6 +174,7 @@ export const useGameBoyEmulator = () => {
     emulatorRef,
     isLoaded,
     isRunning,
+    handleSRAMSave,
     handleButtonDown,
     handleButtonUp,
     handleLoadROM,
