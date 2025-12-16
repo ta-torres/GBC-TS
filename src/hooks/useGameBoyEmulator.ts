@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { GBEmulator } from "@/emulator/gbEmulator";
 import type { JoypadButton } from "@/emulator/input/joypad";
 
+type PresentableGBEmulator = GBEmulator & {
+  __gbPresentFront?: Uint32Array;
+  __gbPresentBack?: Uint32Array;
+  __gbPresentFrameId?: number;
+};
+
 export const useGameBoyEmulator = () => {
   const emulatorRef = useRef<GBEmulator | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -18,6 +24,14 @@ export const useGameBoyEmulator = () => {
     const SMOOTHING_ALPHA = 0.1;
     const MAX_SYNC_FPS = 60;
     const MIN_TARGET_FRAME_MS = 1000 / MAX_SYNC_FPS;
+
+    const emuForPresentation =
+      emulatorRef.current as PresentableGBEmulator | null;
+    if (emuForPresentation && !emuForPresentation.__gbPresentFront) {
+      emuForPresentation.__gbPresentFront = new Uint32Array(160 * 144);
+      emuForPresentation.__gbPresentBack = new Uint32Array(160 * 144);
+      emuForPresentation.__gbPresentFrameId = 0;
+    }
 
     let lastTimestamp: number | null = null;
     let accumulatorMs = 0;
@@ -54,6 +68,21 @@ export const useGameBoyEmulator = () => {
           framesStepped < MAX_FRAMES_PER_RAF
         ) {
           emu.stepFrame(CYCLES_PER_FRAME);
+
+          const presentableEmu = emu as PresentableGBEmulator;
+          if (
+            presentableEmu.__gbPresentFront &&
+            presentableEmu.__gbPresentBack &&
+            emu.consumeFrameReady()
+          ) {
+            presentableEmu.__gbPresentBack.set(emu.getFramebuffer());
+            const previousFront = presentableEmu.__gbPresentFront;
+            presentableEmu.__gbPresentFront = presentableEmu.__gbPresentBack;
+            presentableEmu.__gbPresentBack = previousFront;
+            presentableEmu.__gbPresentFrameId =
+              (presentableEmu.__gbPresentFrameId ?? 0) + 1;
+          }
+
           accumulatorMs -= targetFrameMs;
           framesStepped += 1;
         }
