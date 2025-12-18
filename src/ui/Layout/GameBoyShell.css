@@ -158,7 +158,29 @@
   transform: translateX(-7px);
   border: 1px solid gray;
 }
+/* 
+.gameboy-shell:fullscreen .gameboy-screen-window {
+  max-width: none;
+  width: 100vw;
+}
 
+.gameboy-shell:fullscreen .gameboy-screen-area {
+  padding: 0;
+}
+
+.gameboy-shell:fullscreen .gameboy-screen-shell {
+  justify-content: center;
+}
+
+.gameboy-shell:fullscreen .gameboy-battery {
+  display: none;
+}
+
+.gameboy-shell:fullscreen .gameboy-screen-header {
+  padding: 0;
+  display: none;
+}
+ */
 .gameboy-battery {
   position: relative;
 
