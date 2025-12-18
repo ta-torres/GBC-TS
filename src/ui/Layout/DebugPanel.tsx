@@ -18,6 +18,7 @@ interface DebugPanelActionProps {
   onPause: () => void;
   onReset: () => void;
   onStep: () => void;
+  onStepFrame: () => void;
 }
 
 interface DebugPanelProps {
@@ -28,7 +29,8 @@ interface DebugPanelProps {
 
 export const DebugPanel = ({ state, actions, emulator }: DebugPanelProps) => {
   const { showDebugTools, isLoaded, isRunning, fileName } = state;
-  const { onLoadROMClick, onStart, onPause, onReset, onStep } = actions;
+  const { onLoadROMClick, onStart, onPause, onReset, onStep, onStepFrame } =
+    actions;
 
   if (!showDebugTools) return null;
 
@@ -41,6 +43,7 @@ export const DebugPanel = ({ state, actions, emulator }: DebugPanelProps) => {
         onPause={onPause}
         onReset={onReset}
         onStep={onStep}
+        onStepFrame={onStepFrame}
         isLoaded={isLoaded}
         isRunning={isRunning}
       />

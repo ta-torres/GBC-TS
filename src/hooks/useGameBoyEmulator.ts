@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GBEmulator } from "@/emulator/gbEmulator";
 import type { JoypadButton } from "@/emulator/input/joypad";
 
@@ -6,6 +6,7 @@ export const useGameBoyEmulator = () => {
   const emulatorRef = useRef<GBEmulator | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBEmulator();
@@ -170,6 +171,7 @@ export const useGameBoyEmulator = () => {
       }
 
       setIsLoaded(ok);
+      setSpeedMultiplier(emu.getSpeedMultiplier());
       emu.start();
       setIsRunning(true);
     }
@@ -203,10 +205,59 @@ export const useGameBoyEmulator = () => {
     emu.stepInstruction();
   };
 
+  const handleStepFrame = () => {
+    const emu = emulatorRef.current;
+    if (!emu || !isLoaded) return;
+
+    const CYCLES_PER_FRAME = 70224;
+    const startTicks = emu.getTicks();
+    while (emu.getTicks() - startTicks < CYCLES_PER_FRAME) {
+      emu.stepInstruction();
+    }
+  };
+
+  const setEmulatorSpeedMultiplier = useCallback((multiplier: number) => {
+    const emu = emulatorRef.current;
+    if (!emu) return;
+    emu.setSpeedMultiplier(Math.max(1, multiplier));
+    setSpeedMultiplier(emu.getSpeedMultiplier());
+  }, []);
+
+  const handleIncreaseSpeed = useCallback(() => {
+    setEmulatorSpeedMultiplier(speedMultiplier + 0.25);
+  }, [setEmulatorSpeedMultiplier, speedMultiplier]);
+
+  const handleDecreaseSpeed = useCallback(() => {
+    setEmulatorSpeedMultiplier(Math.max(1, speedMultiplier - 0.25));
+  }, [setEmulatorSpeedMultiplier, speedMultiplier]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+
+      if (event.key === "+" || event.code === "KeyW") {
+        event.preventDefault();
+        handleIncreaseSpeed();
+        return;
+      }
+
+      if (event.key === "-" || event.code === "KeyQ") {
+        event.preventDefault();
+        handleDecreaseSpeed();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleDecreaseSpeed, handleIncreaseSpeed]);
+
   return {
     emulatorRef,
     isLoaded,
     isRunning,
+    speedMultiplier,
+    handleIncreaseSpeed,
+    handleDecreaseSpeed,
     handleSRAMSave,
     handleButtonDown,
     handleButtonUp,
@@ -215,5 +266,6 @@ export const useGameBoyEmulator = () => {
     handlePause,
     handleReset,
     handleStep,
+    handleStepFrame,
   };
 };

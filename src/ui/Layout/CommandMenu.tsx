@@ -13,6 +13,7 @@ interface CommandMenuStateProps {
   showDebugTools: boolean;
   showDpadDebug: boolean;
   fileName: string | null;
+  speedMultiplier: number;
 }
 
 interface CommandMenuActionProps {
@@ -24,6 +25,8 @@ interface CommandMenuActionProps {
   onToggleOverlay: () => void;
   onToggleDebugTools: () => void;
   onToggleDpadDebug: () => void;
+  onIncreaseSpeed: () => void;
+  onDecreaseSpeed: () => void;
 }
 
 interface CommandMenuProps {
@@ -32,7 +35,13 @@ interface CommandMenuProps {
 }
 
 export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
-  const { showOverlay, showDebugTools, showDpadDebug, fileName } = state;
+  const {
+    showOverlay,
+    showDebugTools,
+    showDpadDebug,
+    fileName,
+    speedMultiplier,
+  } = state;
 
   const handleAction = (action: () => void) => {
     action();
@@ -53,28 +62,48 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
             value="load-game"
             onSelect={() => handleAction(actions.onLoadGame)}
           >
-            Load game
+            Load
           </CommandItem>
           <CommandItem
             value="restart-game"
             onSelect={() => handleAction(actions.onRestart)}
           >
-            Restart game
+            Restart
           </CommandItem>
+          <div className="flex items-center justify-between rounded px-2 py-1.5 text-sm">
+            <div className="flex items-center gap-1">
+              <span>Speed:</span>
+              <button
+                type="button"
+                className="inline-flex h-6 w-6 items-center justify-center rounded bg-slate-500 text-white hover:bg-slate-600"
+                onClick={actions.onDecreaseSpeed}
+              >
+                -
+              </button>
+              <span className="min-w-10 text-center">{speedMultiplier}x</span>
+              <button
+                type="button"
+                className="inline-flex h-6 w-6 items-center justify-center rounded bg-slate-500 text-white hover:bg-slate-600"
+                onClick={actions.onIncreaseSpeed}
+              >
+                +
+              </button>
+            </div>
+          </div>
         </CommandGroup>
 
-        <CommandGroup heading="Saves">
+        <CommandGroup heading="SRAM Savedata">
           <CommandItem
             value="export-sram-saves"
             onSelect={() => handleAction(actions.onExportSRAMSaves)}
           >
-            Export SRAM saves
+            Export
           </CommandItem>
           <CommandItem
             value="import-sram-saves"
             onSelect={() => handleAction(actions.onImportSRAMSaves)}
           >
-            Import SRAM saves
+            Import
           </CommandItem>
         </CommandGroup>
 
@@ -91,7 +120,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
             value="toggle-debug-tools"
             onSelect={() => handleAction(actions.onToggleDebugTools)}
           >
-            Debug tools: {showDebugTools ? "Visible" : "Hidden"}
+            {showDebugTools ? "Hide debug tools" : "Show debug tools"}
           </CommandItem>
           <CommandItem
             value="toggle-dpad-debug-visuals"
