@@ -22,6 +22,9 @@ function App() {
     emulatorRef,
     isLoaded,
     isRunning,
+    speedMultiplier,
+    handleIncreaseSpeed,
+    handleDecreaseSpeed,
     handleButtonDown,
     handleButtonUp,
     handleLoadROM,
@@ -29,6 +32,7 @@ function App() {
     handlePause,
     handleReset,
     handleStep,
+    handleStepFrame,
     handleSRAMSave,
   } = useGameBoyEmulator();
 
@@ -145,6 +149,7 @@ function App() {
                         showDebugTools,
                         showDpadDebug,
                         fileName: lastFileName,
+                        speedMultiplier,
                       }}
                       actions={{
                         onClose: closeCommandMenu,
@@ -155,6 +160,8 @@ function App() {
                         onToggleOverlay: toggleOverlay,
                         onToggleDebugTools: toggleDebugTools,
                         onToggleDpadDebug: toggleDpadDebug,
+                        onIncreaseSpeed: handleIncreaseSpeed,
+                        onDecreaseSpeed: handleDecreaseSpeed,
                       }}
                     />
                   }
@@ -182,6 +189,7 @@ function App() {
                 onPause: handlePause,
                 onReset: handleReset,
                 onStep: handleStep,
+                onStepFrame: handleStepFrame,
               }}
               emulator={emulatorRef.current}
             />
