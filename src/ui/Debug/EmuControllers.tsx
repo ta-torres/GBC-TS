@@ -8,6 +8,7 @@ interface EmuControllersProps {
   onPause: () => void;
   onReset: () => void;
   onStep: () => void;
+  onStepFrame: () => void;
   isLoaded: boolean;
   isRunning: boolean;
 }
@@ -19,6 +20,7 @@ export const EmuControllers = ({
   onPause,
   onReset,
   onStep,
+  onStepFrame,
   isLoaded,
   isRunning,
 }: EmuControllersProps) => {
@@ -57,17 +59,25 @@ export const EmuControllers = ({
         <Button
           onClick={onPause}
           disabled={!isRunning}
-          className="w-full rounded bg-yellow-600 px-4 py-2 font-medium hover:bg-yellow-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+          className="col-span-2 w-full rounded bg-yellow-600 px-4 py-2 font-medium hover:bg-yellow-700 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
           Pause
         </Button>
 
+        <p className="col-span-2 ml-5 text-xs">Step</p>
+        <Button
+          onClick={onStepFrame}
+          disabled={!isLoaded || isRunning}
+          className="w-full rounded bg-blue-600 px-4 py-2 font-medium hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+        >
+          Frame
+        </Button>
         <Button
           onClick={onStep}
           disabled={!isLoaded || isRunning}
           className="w-full rounded bg-blue-600 px-4 py-2 font-medium hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
         >
-          Step
+          Opcode
         </Button>
       </div>
     </Card>

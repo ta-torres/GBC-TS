@@ -83,6 +83,7 @@ export class PPU {
   private io: Uint8Array;
   private interrupts: Interrupts;
   private framebuffer: Uint32Array;
+  private actualFramebufferDrawnToTheScreen: Uint32Array;
   private bgIndexLine: Uint8Array;
   private mode: PpuMode;
   private currentScanlineLY: number;
@@ -114,6 +115,9 @@ export class PPU {
     this.io = io;
     this.interrupts = interrupts;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
+    this.actualFramebufferDrawnToTheScreen = new Uint32Array(
+      SCREEN_WIDTH * SCREEN_HEIGHT,
+    );
     this.bgIndexLine = new Uint8Array(SCREEN_WIDTH);
     this.mode = PpuMode.OAM;
     this.currentScanlineLY = 0;
@@ -131,6 +135,7 @@ export class PPU {
 
   reset(): void {
     this.framebuffer.fill(0);
+    this.actualFramebufferDrawnToTheScreen.fill(0);
     this.bgIndexLine.fill(0);
     this.mode = PpuMode.OAM;
     this.currentScanlineLY = 0;
@@ -204,6 +209,7 @@ export class PPU {
         /* if (this.debugTrace) {
           this.renderTestPattern();
         } */
+        this.actualFramebufferDrawnToTheScreen.set(this.framebuffer);
         this.frameReady = true;
         this.interrupts.requestInterrupt(InterruptType.VBLANK);
       } else if (this.currentScanlineLY > 153) {
@@ -499,7 +505,7 @@ export class PPU {
   }
 
   getFramebuffer(): Uint32Array {
-    return this.framebuffer;
+    return this.actualFramebufferDrawnToTheScreen;
   }
 
   consumeFrameReady(): boolean {
