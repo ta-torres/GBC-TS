@@ -44,7 +44,7 @@ export const useGameBoyEmulator = () => {
           accumulatedTimeMs >= FRAME_MS &&
           catchUpFrames < MAX_FRAMES_PER_RAF
         ) {
-          emulator.stepFrame(CYCLES_PER_FRAME);
+          emulator.stepFrameCycle();
           accumulatedTimeMs -= FRAME_MS;
           catchUpFrames += 1;
         }

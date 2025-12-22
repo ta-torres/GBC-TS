@@ -105,17 +105,18 @@ export class GBEmulator {
     }
   }
 
-  stepFrame(cyclesPerFrame: number): void {
+  stepFrameCycle(): void {
     /* 
     154 scanlines/frame * 456 cycles/scanline = 70224 cycles/frame 
-    Each RAF iteration in App.tsx calls this function by one frame worth of cpu cycles (70224)
+    Each RAF iteration in useGameBoyEmulator calls this function by one frame worth of cpu cycles (70224)
     
     stepInstruction adds t-cycles to ticks, which are used by this function to stop running the current frame once 70224 cycles have been consumed
     */
 
     if (!this.running || this.paused) return;
 
-    const targetCycles = cyclesPerFrame * this.speedMultiplier;
+    const CYCLES_PER_FRAME = 70224;
+    const targetCycles = CYCLES_PER_FRAME * this.speedMultiplier;
     let remainingCycles = targetCycles;
 
     while (remainingCycles > 0 && this.running && !this.paused) {

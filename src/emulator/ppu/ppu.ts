@@ -11,17 +11,17 @@ type PpuMode = (typeof PpuMode)[keyof typeof PpuMode];
 
 const SCREEN_WIDTH = 160;
 const SCREEN_HEIGHT = 144;
-const DOTS_PER_LINE = 456;
-const MODE2_DOTS = 80;
-const MODE3_DOTS = 172;
+const CYCLES_PER_LINE = 456;
+const MODE2_OAM_SCAN_CYCLES = 80;
+const MODE3_TRANSFER_CYCLES = 172;
 
 // STAT interrupt flags
 const STAT_MODE_BITS = 0x03;
 const STAT_LYC_FLAG = 0x04;
-const STAT_M0_IRQ = 0x08;
-const STAT_M1_IRQ = 0x10;
-const STAT_M2_IRQ = 0x20;
-const STAT_LYC_IRQ = 0x40;
+const STAT_HBLANK_BIT_ENABLE = 0x08;
+const STAT_VBLANK_BIT_ENABLE = 0x10;
+const STAT_OAM_BIT_ENABLE = 0x20;
+const STAT_LYC_BIT_ENABLE = 0x40;
 
 const TILE_BYTES = 16;
 
@@ -87,11 +87,10 @@ export class PPU {
   private bgIndexLine: Uint8Array;
   private mode: PpuMode;
   private currentScanlineLY: number;
-  private dotsInLine: number;
+  private cyclesInLine: number;
   private frameReady: boolean;
   private windowScanline: number;
 
-  // cambiar a type alias?
   /*
   LCD_STAT interrupt
   Trackea que modos STAT ya activaron una interrupcion este frame,
@@ -121,7 +120,7 @@ export class PPU {
     this.bgIndexLine = new Uint8Array(SCREEN_WIDTH);
     this.mode = PpuMode.OAM;
     this.currentScanlineLY = 0;
-    this.dotsInLine = 0;
+    this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
 
@@ -139,7 +138,7 @@ export class PPU {
     this.bgIndexLine.fill(0);
     this.mode = PpuMode.OAM;
     this.currentScanlineLY = 0;
-    this.dotsInLine = 0;
+    this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
@@ -149,10 +148,10 @@ export class PPU {
     this.setMode(PpuMode.OAM);
   }
 
-  step(cycles: number): void {
+  step(tCycles: number): void {
     if (!this.lcdEnabled()) {
       this.currentScanlineLY = 0;
-      this.dotsInLine = 0;
+      this.cyclesInLine = 0;
       this.frameReady = false;
       this.io[IO_REGISTERS.LY - 0xff00] = 0;
       this.setMode(PpuMode.HBlank);
@@ -161,16 +160,19 @@ export class PPU {
 
     this.evaluateLycAndCheckSTAT();
 
-    this.dotsInLine += cycles;
+    this.cyclesInLine += tCycles;
 
     const previousMode = this.mode;
 
     if (this.currentScanlineLY < 144) {
-      if (this.dotsInLine < MODE2_DOTS) {
+      if (this.cyclesInLine < MODE2_OAM_SCAN_CYCLES) {
         this.setMode(PpuMode.OAM);
-      } else if (this.dotsInLine < MODE2_DOTS + MODE3_DOTS) {
+      } else if (
+        this.cyclesInLine <
+        MODE2_OAM_SCAN_CYCLES + MODE3_TRANSFER_CYCLES
+      ) {
         this.setMode(PpuMode.Transfer);
-      } else if (this.dotsInLine < DOTS_PER_LINE) {
+      } else if (this.cyclesInLine < CYCLES_PER_LINE) {
         this.setMode(PpuMode.HBlank);
         // only render bg once per scanline at the start of hblank
         if (previousMode === PpuMode.Transfer && this.currentScanlineLY < 144) {
@@ -183,10 +185,10 @@ export class PPU {
       this.setMode(PpuMode.VBlank);
     }
 
-    if (this.dotsInLine >= DOTS_PER_LINE) {
+    if (this.cyclesInLine >= CYCLES_PER_LINE) {
       const previousLy = this.currentScanlineLY;
 
-      this.dotsInLine -= DOTS_PER_LINE;
+      this.cyclesInLine -= CYCLES_PER_LINE;
 
       // increment horizontal line counter and update ly register
       this.currentScanlineLY = (this.currentScanlineLY + 1) & 0xff;
@@ -645,10 +647,10 @@ export class PPU {
     const statIdx = IO_REGISTERS.STAT - 0xff00;
     const stat = this.io[statIdx];
     const mode = stat & STAT_MODE_BITS;
-    const wantM0 = (stat & STAT_M0_IRQ) !== 0;
-    const wantM1 = (stat & STAT_M1_IRQ) !== 0;
-    const wantM2 = (stat & STAT_M2_IRQ) !== 0;
-    const wantLYC = (stat & STAT_LYC_IRQ) !== 0;
+    const hblankInterruptEnabled = (stat & STAT_HBLANK_BIT_ENABLE) !== 0;
+    const vblankInterruptEnabled = (stat & STAT_VBLANK_BIT_ENABLE) !== 0;
+    const oamInterruptEnabled = (stat & STAT_OAM_BIT_ENABLE) !== 0;
+    const lycInterruptEnabled = (stat & STAT_LYC_BIT_ENABLE) !== 0;
 
     if (!this.lcdEnabled()) {
       this.statInterruptSet.m0 = false;
@@ -659,7 +661,7 @@ export class PPU {
     }
 
     // hblank
-    if (wantM0 && mode === PpuMode.HBlank) {
+    if (hblankInterruptEnabled && mode === PpuMode.HBlank) {
       if (!this.statInterruptSet.m0) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
         this.statInterruptSet.m0 = true;
@@ -669,7 +671,7 @@ export class PPU {
     }
 
     // vblank
-    if (wantM1 && mode === PpuMode.VBlank) {
+    if (vblankInterruptEnabled && mode === PpuMode.VBlank) {
       if (!this.statInterruptSet.m1) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
         this.statInterruptSet.m1 = true;
@@ -679,7 +681,7 @@ export class PPU {
     }
 
     // oam
-    if (wantM2 && mode === PpuMode.OAM) {
+    if (oamInterruptEnabled && mode === PpuMode.OAM) {
       if (!this.statInterruptSet.m2) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
         this.statInterruptSet.m2 = true;
@@ -691,7 +693,7 @@ export class PPU {
     // LYC
     const lyc = this.io[IO_REGISTERS.LYC - 0xff00];
     const lyEqualsLYC = this.currentScanlineLY === lyc;
-    if (wantLYC && lyEqualsLYC) {
+    if (lycInterruptEnabled && lyEqualsLYC) {
       if (!this.statInterruptSet.lyc) {
         this.interrupts.requestInterrupt(InterruptType.LCD_STAT);
         this.statInterruptSet.lyc = true;
