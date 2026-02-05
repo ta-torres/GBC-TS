@@ -1,73 +1,142 @@
-# React + TypeScript + Vite
+# GBC-TS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+GBC-TS is a Gameboy emulator written in TypeScript and React. You can try out the project live at https://gbc-ts.vercel.app
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Compatible with ROM-Only, MBC1 and MBC3 cartridges (over 85%+ of the Game Boy's library)
+- Mobile-friendly: Draggable d-pad, haptic feedback and custom fullscreen mode
+- Emulation speed controls
+- Save data persisted in the browser
+- Debug features: VRAM & Sprites viewer, D-pad pointer position, performance overlay and frame/instruction stepping
+- Unit test coverage using Vitest
 
-## React Compiler
+## How to play
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Visit https://gbc-ts.vercel.app and load your own game backup in a .gb format
 
-## Expanding the ESLint configuration
+To run the emulator on a dev environment read below
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Why TypeScript and React?
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+I mean, _why not?_
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+TypeScript makes emulator development surprisingly approachable, with strong typing, tooling like Vitest and the browser's debugger to catch errors early. This setup lets me focus on learning the low-level concepts around emulation and the Game Boy's hardware, while making the implementation and debugging of certain features more straightforward, modularized and easy to test.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+For a project of this size that targets both desktop and mobile, React, shadcn-ui and TailwindCSS made the most sense to ship a polished UI and UX with relative ease, not to mention that it's what I'm familiar with and I like.
+
+## Compatibility
+
+Most Game Boy games rely on a Memory Bank Controller, a chip inside their cartridge that manages which parts of the game's assets are exposed to the Game Boy's limited memory at any given time. These chips allow the use of larger ROMs, and some of them even implement additional on-cartridge RAM.
+
+So far I implemented the behavior of MBC1 and MBC3 chips. I'm not able to test every single game, but in theory most titles using these cartridge types should work (which is about 85%+ of the console's library including most critically acclaimed titles). Some games that require a stricter emulation of the console's timer or rendering might contain graphical glitches.
+
+For copyright reasons game backups are not included, so you have to provide your own .gb files
+
+**Known compatible games**
+
+```
+Tetris
+Super Mario Land
+Kirby's Dream Land
+Pokémon Red/Blue (USA/Europe)
+The Legend of Zelda: Link's Awakening
+Donkey Kong Land
+Mega Man
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+A full list of games sorted by cartridge type can be found at https://gbhwdb.gekkio.fi/cartridges/gb.html
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Savedata
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Saves are automatically stored on your browser's storage whenever a write to SRAM is detected, which means games that contain a save feature will keep their data the next time you open the page.
+
+Save data can be exported as a .json file to transfer saves across devices. This is exclusively stored on localStorage so beware that clearing browser's cookies/site data will delete the saves unless exported.
+
+## How to run the project locally
+
+Assuming that [Git](https://www.theodinproject.com/lessons/foundations-setting-up-git) and [Node/npm](https://www.theodinproject.com/lessons/foundations-installing-node-js) are already installed, clone the repository and run the dev server
+
+Clone the repository and enter the folder
+
 ```
+git clone https://github.com/ta-torres/GBC-TS.git
+cd GBC-TS
+```
+
+Install dependencies
+
+```
+npm install
+```
+
+Run the local http server
+
+```
+npm run dev
+```
+
+If you wish to run the unit/integration tests through Vitest
+
+```
+npm run test
+```
+
+## Features to add
+
+- [ ] Sound
+- [ ] Game Boy Color support
+- [ ] Controller support
+- [ ] Custom button mapping
+- [ ] MBC1M multi-game compilation carts
+- [ ] MBC1 odd size roms
+
+## Testing
+
+In addition to unit tests written with Vitest, test roms were used to validate some of the emulator's functionality
+
+CPU (blargg's test roms)
+
+| cpu_instrs         | Passes |
+| ------------------ | ------ |
+| special            | ✔️     |
+| interrupts         | ✔️     |
+| op sp,hl           | ✔️     |
+| op r,imm           | ✔️     |
+| op rp              | ✔️     |
+| ld r,r             | ✔️     |
+| jr,jp,call,ret,rst | ✔️     |
+| misc instrs        | ✔️     |
+| op r,r             | ✔️     |
+| bit ops            | ✔️     |
+| op a,(hl)          | ✔️     |
+
+| **instr_timing**  | ✔️  |
+| ----------------- | --- |
+| **mem_timing**    | ❌  |
+| **oam_bug**       | ✔️  |
+| **halt_bug test** | ✔️  |
+
+MBC1 (Mooneye-test-suite)
+
+| MBC1              | Passes |
+| ----------------- | ------ |
+| bits_bank1        | ✔️     |
+| bits_bank2        | ✔️     |
+| bits_mode         | ✔️     |
+| bits_ramg         | ✔️     |
+| multicart_rom_8Mb | ❌     |
+| ram_64kb          | ✔️     |
+| ram_256kb         | ✔️     |
+| rom_1Mb           | ❌     |
+| rom_2Mb           | ❌     |
+| rom_4Mb           | ✔️     |
+| rom_8Mb           | ✔️     |
+| rom_16Mb          | ✔️     |
+| rom_512kb         | ❌     |
+
+PPU
+
+| PPU       | Passes                                     |
+| --------- | ------------------------------------------ |
+| dmg-acid2 | ✔️ (window internal line counter mismatch) |
