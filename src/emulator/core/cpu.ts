@@ -13,7 +13,6 @@ export class CPU {
   private interruptMasterEnable: boolean = false;
   private imeScheduled: boolean;
   private halted: boolean;
-  // @ts-expect-error unused
   private stopped: boolean;
   private haltBug: boolean;
 
@@ -42,6 +41,14 @@ export class CPU {
         this.handleInterrupt(interrupt);
         return 20;
       }
+    }
+
+    if (this.stopped) {
+      // wake from STOP when any interrupt becomes pending
+      if (this.interrupts.getPending() !== 0) {
+        this.stopped = false;
+      }
+      return 4;
     }
 
     if (this.halted) {
@@ -148,6 +155,10 @@ export class CPU {
     }
     // wait until an interrupt becomes pending (in this.halted)
     this.halted = true;
+  }
+
+  stop(): void {
+    this.stopped = true;
   }
 
   reset(): void {
