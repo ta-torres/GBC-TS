@@ -2,7 +2,7 @@ import { Cartridge } from "./cartridge/cartridge";
 import { CPU } from "./core/cpu";
 import { AddressBus } from "./memory/addressBus";
 import { loadROMFile } from "./utils/fileLoader";
-import { toHex16 } from "@/emulator/utils/bitwise";
+import { toHex16 } from "./utils/bitwise";
 import { Interrupts } from "./core/interrupts";
 import { Timer } from "./core/timer";
 import { PPU } from "./ppu/ppu";
@@ -17,6 +17,8 @@ export class GBEmulator {
   private timer: Timer;
   private ppu: PPU;
   private joypad: Joypad;
+
+  private cgbMode = false;
 
   private running = false;
   private paused = false;
@@ -47,6 +49,11 @@ export class GBEmulator {
         console.error("Failed to load cartridge");
         return false;
       }
+
+      const header = this.cartridge.getHeader();
+      const cgbFlag = header?.cgbFlag ?? 0x00;
+      // either CGB compatible or CGB only
+      this.cgbMode = cgbFlag === 0x80 || cgbFlag === 0xc0;
 
       this.reset();
       return true;
@@ -79,6 +86,7 @@ export class GBEmulator {
   reset(): void {
     this.cpu.reset();
     this.bus.reset();
+    this.bus.setCGBMode(this.cgbMode);
     this.timer.reset();
     this.interrupts.reset();
     this.joypad.reset();
