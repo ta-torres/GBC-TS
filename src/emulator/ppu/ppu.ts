@@ -79,6 +79,8 @@ const getBGPixelIndex = (
 
 export class PPU {
   private vram: Uint8Array;
+  // @ts-expect-error used in future CGB work
+  private vramBank1: Uint8Array;
   private oam: Uint8Array;
   private io: Uint8Array;
   private interrupts: Interrupts;
@@ -104,12 +106,14 @@ export class PPU {
   };
 
   constructor(
-    vram: Uint8Array,
+    vramBank0: Uint8Array,
+    vramBank1: Uint8Array,
     oam: Uint8Array,
     io: Uint8Array,
     interrupts: Interrupts,
   ) {
-    this.vram = vram;
+    this.vram = vramBank0;
+    this.vramBank1 = vramBank1;
     this.oam = oam;
     this.io = io;
     this.interrupts = interrupts;

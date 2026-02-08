@@ -32,7 +32,8 @@ export class GBEmulator {
     this.bus.attachJoypad(this.joypad);
     this.cpu = new CPU(this.bus, this.interrupts);
     this.ppu = new PPU(
-      this.bus.getVRAMView(),
+      this.bus.getVRAMBank0View(),
+      this.bus.getVRAMBank1View(),
       this.bus.getOAMView(),
       this.bus.getIORegistersView(),
       this.interrupts,

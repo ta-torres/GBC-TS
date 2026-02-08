@@ -6,8 +6,14 @@ import { Joypad } from "../input/joypad";
 
 export class AddressBus {
   private cartridge: Cartridge;
-  private wram: Uint8Array; // 0xC000-0xDFFF (8KB)
-  private vram: Uint8Array; // 0x8000-0x9FFF (8KB)
+
+  /* RAM BANKING */
+  private wramBank0: Uint8Array;
+  private wramBanks: Uint8Array[];
+  private currentWramBank: number;
+  private vramBanks: Uint8Array[];
+  private cpuVramBank: 0 | 1;
+
   private hram: Uint8Array; // 0xFF80-0xFFFE (127 bytes)
   private ioRegisters: Uint8Array; // 0xFF00-0xFF7F (128 bytes)
   private oam: Uint8Array; // 0xFE00-0xFE9F (160 bytes)
@@ -16,6 +22,8 @@ export class AddressBus {
   private interrupts: Interrupts;
   private joypad?: Joypad;
 
+  private cgbMode: boolean;
+
   /* private debugVramWriteCount = 0;
   private debugOamWriteCount = 0; */
 
@@ -23,11 +31,52 @@ export class AddressBus {
     this.cartridge = cartridge;
     this.timer = timer;
     this.interrupts = interrupts;
-    this.wram = new Uint8Array(0x2000); // 8KB
-    this.vram = new Uint8Array(0x2000); // 8KB
+    this.wramBank0 = new Uint8Array(0x1000);
+    this.wramBanks = Array.from({ length: 7 }, () => new Uint8Array(0x1000));
+    this.currentWramBank = 1;
+
+    this.vramBanks = [new Uint8Array(0x2000), new Uint8Array(0x2000)];
+    this.cpuVramBank = 0;
+
     this.hram = new Uint8Array(0x7f); // 127 bytes
     this.ioRegisters = new Uint8Array(0x80);
     this.oam = new Uint8Array(0xa0);
+
+    this.cgbMode = false;
+  }
+
+  setCGBMode(enabled: boolean): void {
+    this.cgbMode = enabled;
+    if (!enabled) {
+      this.cpuVramBank = 0;
+      this.currentWramBank = 1;
+    }
+  }
+
+  /* RAM BANKING READ/WRITE */
+  private readWram(address: number): number {
+    if (address >= 0xc000 && address <= 0xcfff) {
+      return this.wramBank0[address - 0xc000];
+    }
+
+    if (address >= 0xd000 && address <= 0xdfff) {
+      const bankIndex = Math.max(1, Math.min(7, this.currentWramBank)) - 1;
+      return this.wramBanks[bankIndex][address - 0xd000];
+    }
+
+    return 0xff;
+  }
+
+  private writeWram(address: number, value: number): void {
+    if (address >= 0xc000 && address <= 0xcfff) {
+      this.wramBank0[address - 0xc000] = value;
+      return;
+    }
+
+    if (address >= 0xd000 && address <= 0xdfff) {
+      const bankIndex = Math.max(1, Math.min(7, this.currentWramBank)) - 1;
+      this.wramBanks[bankIndex][address - 0xd000] = value;
+    }
   }
 
   attachJoypad(joypad: Joypad): void {
@@ -44,7 +93,7 @@ export class AddressBus {
 
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
-      return this.vram[address - 0x8000];
+      return this.vramBanks[this.cpuVramBank][address - 0x8000];
     }
 
     // External RAM (0xA000-0xBFFF)
@@ -60,7 +109,7 @@ export class AddressBus {
       address >= MEMORY_MAP.WRAM_BANK_0.start &&
       address <= MEMORY_MAP.WRAM_BANK_N.end
     ) {
-      return this.wram[address - 0xc000];
+      return this.readWram(address);
     }
 
     // Echo RAM (0xE000-0xFDFF) - mirrors WRAM
@@ -68,7 +117,8 @@ export class AddressBus {
       address >= MEMORY_MAP.ECHO_RAM.start &&
       address <= MEMORY_MAP.ECHO_RAM.end
     ) {
-      return this.wram[address - 0xe000];
+      const mirrored = (address - 0x2000) & 0xffff; // E000->C000, FDFF->DDFF
+      return this.readWram(mirrored);
     }
 
     // OAM (0xFE00-0xFE9F)
@@ -113,6 +163,16 @@ export class AddressBus {
           return this.timer.readTAC();
         case IO_REGISTERS.IF:
           return this.interrupts.getIF();
+        case IO_REGISTERS.VBK: {
+          // bit 0: VRAM bank, upper bits read as 1
+          return 0xfe | (this.cpuVramBank & 0x01);
+        }
+        case IO_REGISTERS.SVBK: {
+          // bits 0-2: WRAM bank (1-7), upper bits read as 1
+          // in DMG mode, this register doesnt exist
+          if (!this.cgbMode) return 0xff;
+          return 0xf8 | (this.currentWramBank & 0x07);
+        }
         default:
           return this.ioRegisters[address - 0xff00];
       }
@@ -144,7 +204,7 @@ export class AddressBus {
 
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
-      this.vram[address - 0x8000] = value;
+      this.vramBanks[this.cpuVramBank][address - 0x8000] = value;
 
       /* if (this.debugVramWriteCount < 64) {
         console.log(
@@ -171,7 +231,7 @@ export class AddressBus {
       address >= MEMORY_MAP.WRAM_BANK_0.start &&
       address <= MEMORY_MAP.WRAM_BANK_N.end
     ) {
-      this.wram[address - 0xc000] = value;
+      this.writeWram(address, value);
       return;
     }
 
@@ -180,7 +240,8 @@ export class AddressBus {
       address >= MEMORY_MAP.ECHO_RAM.start &&
       address <= MEMORY_MAP.ECHO_RAM.end
     ) {
-      this.wram[address - 0xe000] = value;
+      const mirrored = (address - 0x2000) & 0xffff;
+      this.writeWram(mirrored, value);
       return;
     }
 
@@ -246,6 +307,23 @@ export class AddressBus {
           }
           return;
         }
+        case IO_REGISTERS.VBK: {
+          // only bit 0 is used
+          this.ioRegisters[address - 0xff00] = value & 0x01;
+          if (this.cgbMode) {
+            this.cpuVramBank = (value & 0x01) as 0 | 1;
+          }
+          return;
+        }
+        case IO_REGISTERS.SVBK: {
+          this.ioRegisters[address - 0xff00] = value & 0x07;
+          if (this.cgbMode) {
+            let bank = value & 0x07;
+            if (bank === 0) bank = 1;
+            this.currentWramBank = bank;
+          }
+          return;
+        }
         default:
           this.ioRegisters[address - 0xff00] = value;
           return;
@@ -270,15 +348,28 @@ export class AddressBus {
   }
 
   reset(): void {
-    this.wram.fill(0);
-    this.vram.fill(0);
+    this.wramBank0.fill(0);
+    for (const bank of this.wramBanks) bank.fill(0);
+    for (const bank of this.vramBanks) bank.fill(0);
     this.hram.fill(0);
     this.ioRegisters.fill(0);
     this.oam.fill(0);
+
+    this.currentWramBank = 1;
+    this.cpuVramBank = 0;
   }
 
+  getVRAMBank0View(): Uint8Array {
+    return this.vramBanks[0];
+  }
+
+  getVRAMBank1View(): Uint8Array {
+    return this.vramBanks[1];
+  }
+
+  // DMG-only view, change when cgb is enabled?
   getVRAMView(): Uint8Array {
-    return this.vram;
+    return this.vramBanks[0];
   }
 
   getIORegistersView(): Uint8Array {
