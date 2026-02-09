@@ -22,10 +22,23 @@ export class AddressBus {
   private interrupts: Interrupts;
   private joypad?: Joypad;
 
+  /* GBC SPECIFIC */
+  /* 
+    https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
+    https://gbdev.io/pandocs/CGB_Registers.html
+  */
+
   private cgbMode: boolean;
 
   private cgbDoubleSpeed: boolean;
   private speedSwitchRequested: boolean;
+
+  private bgPaletteRam: Uint8Array;
+  private objPaletteRam: Uint8Array;
+  private bgPaletteIndex: number;
+  private bgPaletteAutoInc: boolean;
+  private objPaletteIndex: number;
+  private objPaletteAutoInc: boolean;
 
   /* private debugVramWriteCount = 0;
   private debugOamWriteCount = 0; */
@@ -45,9 +58,18 @@ export class AddressBus {
     this.ioRegisters = new Uint8Array(0x80);
     this.oam = new Uint8Array(0xa0);
 
+    /* GBC SPECIFIC */
+
     this.cgbMode = false;
     this.cgbDoubleSpeed = false;
     this.speedSwitchRequested = false;
+
+    this.bgPaletteRam = new Uint8Array(0x40);
+    this.objPaletteRam = new Uint8Array(0x40);
+    this.bgPaletteIndex = 0;
+    this.bgPaletteAutoInc = false;
+    this.objPaletteIndex = 0;
+    this.objPaletteAutoInc = false;
   }
 
   setCGBMode(enabled: boolean): void {
@@ -59,7 +81,14 @@ export class AddressBus {
 
     this.cgbDoubleSpeed = false;
     this.speedSwitchRequested = false;
+
+    this.bgPaletteIndex = 0;
+    this.bgPaletteAutoInc = false;
+    this.objPaletteIndex = 0;
+    this.objPaletteAutoInc = false;
   }
+
+  /* GBC SPECIFIC GETTERS/SETTERS */
 
   isCGBMode(): boolean {
     return this.cgbMode;
@@ -190,16 +219,49 @@ export class AddressBus {
           return this.timer.readTAC();
         case IO_REGISTERS.IF:
           return this.interrupts.getIF();
+
+        /* GBC SPECIFIC REGISTERS */
+
+        // speed switch
+        // https://gbdev.io/pandocs/CGB_Registers.html#ff4d--key1spd-cgb-mode-only-prepare-speed-switch
         case IO_REGISTERS.KEY1: {
           if (!this.cgbMode) return 0xff;
           const speedBit = this.cgbDoubleSpeed ? 0x80 : 0x00;
           const prepareBit = this.speedSwitchRequested ? 0x01 : 0x00;
           return 0x7e | speedBit | prepareBit;
         }
+        // background palette index
+        // https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
+        case IO_REGISTERS.BCPS: {
+          if (!this.cgbMode) return 0xff;
+          return (
+            (this.bgPaletteAutoInc ? 0x80 : 0x00) | (this.bgPaletteIndex & 0x3f)
+          );
+        }
+        // background palette data
+        case IO_REGISTERS.BCPD: {
+          if (!this.cgbMode) return 0xff;
+          return this.bgPaletteRam[this.bgPaletteIndex & 0x3f];
+        }
+        // object palette index
+        case IO_REGISTERS.OCPS: {
+          if (!this.cgbMode) return 0xff;
+          return (
+            (this.objPaletteAutoInc ? 0x80 : 0x00) |
+            (this.objPaletteIndex & 0x3f)
+          );
+        }
+        // object palette data
+        case IO_REGISTERS.OCPD: {
+          if (!this.cgbMode) return 0xff;
+          return this.objPaletteRam[this.objPaletteIndex & 0x3f];
+        }
+        // vram bank
         case IO_REGISTERS.VBK: {
           // bit 0: VRAM bank, upper bits read as 1
           return 0xfe | (this.cpuVramBank & 0x01);
         }
+        // wram bank
         case IO_REGISTERS.SVBK: {
           // bits 0-2: WRAM bank (1-7), upper bits read as 1
           // in DMG mode, this register doesnt exist
@@ -338,6 +400,51 @@ export class AddressBus {
           this.ioRegisters[address - 0xff00] = value & 0x01;
           return;
         }
+
+        /* GBC SPECIFIC */
+
+        case IO_REGISTERS.BCPS: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.bgPaletteIndex = value & 0x3f;
+          this.bgPaletteAutoInc = (value & 0x80) !== 0;
+          this.ioRegisters[address - 0xff00] = value;
+          return;
+        }
+        case IO_REGISTERS.BCPD: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.bgPaletteRam[this.bgPaletteIndex & 0x3f] = value;
+          if (this.bgPaletteAutoInc) {
+            this.bgPaletteIndex = (this.bgPaletteIndex + 1) & 0x3f;
+          }
+          return;
+        }
+        case IO_REGISTERS.OCPS: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.objPaletteIndex = value & 0x3f;
+          this.objPaletteAutoInc = (value & 0x80) !== 0;
+          this.ioRegisters[address - 0xff00] = value;
+          return;
+        }
+        case IO_REGISTERS.OCPD: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.objPaletteRam[this.objPaletteIndex & 0x3f] = value;
+          if (this.objPaletteAutoInc) {
+            this.objPaletteIndex = (this.objPaletteIndex + 1) & 0x3f;
+          }
+          return;
+        }
         case IO_REGISTERS.DMA: {
           /* copy 160 bytes from source page value << 8 to OAM
           TODO: CPU is blocked during DMA?
@@ -403,6 +510,13 @@ export class AddressBus {
 
     this.cgbDoubleSpeed = false;
     this.speedSwitchRequested = false;
+
+    this.bgPaletteRam.fill(0);
+    this.objPaletteRam.fill(0);
+    this.bgPaletteIndex = 0;
+    this.bgPaletteAutoInc = false;
+    this.objPaletteIndex = 0;
+    this.objPaletteAutoInc = false;
   }
 
   getVRAMBank0View(): Uint8Array {
