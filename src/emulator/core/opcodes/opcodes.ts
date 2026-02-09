@@ -45,6 +45,19 @@ register(0x76, "HALT", 1, 4, (cpu) => {
   return 4;
 });
 
+register(0x10, "STOP", 2, 4, (cpu, bus) => {
+  // STOP is encoded as 0x10 0x00, read and discard the padding byte
+  void read8(cpu, bus);
+
+  if (bus.isCGBMode() && bus.isSpeedSwitchPrepared()) {
+    bus.performSpeedSwitch();
+    return 4;
+  }
+
+  cpu.stop();
+  return 4;
+});
+
 // 16-bit immediates
 register(0x01, "LD BC,nn", 3, 12, (cpu, bus) => {
   const nn = read16(cpu, bus);
