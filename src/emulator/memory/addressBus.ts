@@ -24,6 +24,9 @@ export class AddressBus {
 
   private cgbMode: boolean;
 
+  private cgbDoubleSpeed: boolean;
+  private speedSwitchRequested: boolean;
+
   /* private debugVramWriteCount = 0;
   private debugOamWriteCount = 0; */
 
@@ -43,6 +46,8 @@ export class AddressBus {
     this.oam = new Uint8Array(0xa0);
 
     this.cgbMode = false;
+    this.cgbDoubleSpeed = false;
+    this.speedSwitchRequested = false;
   }
 
   setCGBMode(enabled: boolean): void {
@@ -51,6 +56,28 @@ export class AddressBus {
       this.cpuVramBank = 0;
       this.currentWramBank = 1;
     }
+
+    this.cgbDoubleSpeed = false;
+    this.speedSwitchRequested = false;
+  }
+
+  isCGBMode(): boolean {
+    return this.cgbMode;
+  }
+
+  isDoubleSpeed(): boolean {
+    return this.cgbDoubleSpeed;
+  }
+
+  isSpeedSwitchPrepared(): boolean {
+    return this.speedSwitchRequested;
+  }
+
+  performSpeedSwitch(): void {
+    if (!this.cgbMode) return;
+    if (!this.speedSwitchRequested) return;
+    this.cgbDoubleSpeed = !this.cgbDoubleSpeed;
+    this.speedSwitchRequested = false;
   }
 
   /* RAM BANKING READ/WRITE */
@@ -163,6 +190,12 @@ export class AddressBus {
           return this.timer.readTAC();
         case IO_REGISTERS.IF:
           return this.interrupts.getIF();
+        case IO_REGISTERS.KEY1: {
+          if (!this.cgbMode) return 0xff;
+          const speedBit = this.cgbDoubleSpeed ? 0x80 : 0x00;
+          const prepareBit = this.speedSwitchRequested ? 0x01 : 0x00;
+          return 0x7e | speedBit | prepareBit;
+        }
         case IO_REGISTERS.VBK: {
           // bit 0: VRAM bank, upper bits read as 1
           return 0xfe | (this.cpuVramBank & 0x01);
@@ -295,6 +328,16 @@ export class AddressBus {
         case IO_REGISTERS.IF:
           this.interrupts.setIF(value);
           return;
+        case IO_REGISTERS.KEY1: {
+          // bit 0: prepare speed switch (CGB only). bits 1-6 unused. bit 7 read-only speed.
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.speedSwitchRequested = (value & 0x01) === 0x01;
+          this.ioRegisters[address - 0xff00] = value & 0x01;
+          return;
+        }
         case IO_REGISTERS.DMA: {
           /* copy 160 bytes from source page value << 8 to OAM
           TODO: CPU is blocked during DMA?
@@ -357,6 +400,9 @@ export class AddressBus {
 
     this.currentWramBank = 1;
     this.cpuVramBank = 0;
+
+    this.cgbDoubleSpeed = false;
+    this.speedSwitchRequested = false;
   }
 
   getVRAMBank0View(): Uint8Array {
