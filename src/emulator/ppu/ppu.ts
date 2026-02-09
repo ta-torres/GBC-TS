@@ -95,7 +95,6 @@ export class PPU {
   /* GCB SPECIFIC */
   private cgbMode: boolean;
   private cgbBgPaletteRam: Uint8Array;
-  // @ts-expect-error todo CGB OBJ palette
   private cgbObjPaletteRam: Uint8Array;
 
   /*
@@ -266,6 +265,18 @@ export class PPU {
     const idx = (pal * 8 + color * 2) & 0x3f;
     const low = this.cgbBgPaletteRam[idx] ?? 0x00;
     const high = this.cgbBgPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
+    const rgb555 = low | (high << 8);
+    return this.cgbRgb555ToRgba(rgb555);
+  }
+
+  private mapCGBObjPalette(
+    paletteNumber: number,
+    color: 0 | 1 | 2 | 3,
+  ): number {
+    const pal = paletteNumber & 0x07;
+    const idx = (pal * 8 + color * 2) & 0x3f;
+    const low = this.cgbObjPaletteRam[idx] ?? 0x00;
+    const high = this.cgbObjPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
     const rgb555 = low | (high << 8);
     return this.cgbRgb555ToRgba(rgb555);
   }
@@ -500,6 +511,8 @@ export class PPU {
       const priorityBehindBg = (attribute & 0x80) !== 0;
       const yFlip = (attribute & 0x40) !== 0;
       const xFlip = (attribute & 0x20) !== 0;
+      const cgbObjPaletteNumber = attribute & 0x07;
+      const cgbVramBank1 = (attribute & 0x08) !== 0;
       const useDMGPalette = (attribute & 0x10) !== 0;
       const obp = useDMGPalette ? obp1 : obp0;
 
@@ -518,7 +531,7 @@ export class PPU {
       const rowInTile = lineInSprite & 7; // wrap to 0-7
 
       const { low, high } = fetchTileRow(
-        this.vram,
+        this.cgbMode && cgbVramBank1 ? this.vramBank1 : this.vram,
         tileBaseAddress,
         tileIndex,
         rowInTile,
@@ -540,7 +553,9 @@ export class PPU {
         }
 
         // same as bg
-        const color = this.mapOBPPalette(obp, paletteIndex);
+        const color = this.cgbMode
+          ? this.mapCGBObjPalette(cgbObjPaletteNumber, paletteIndex)
+          : this.mapOBPPalette(obp, paletteIndex);
         const bufIndex = scanlineOffset + screenX;
 
         // don't draw over non‑transparent background colors
