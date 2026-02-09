@@ -94,3 +94,53 @@ describe("STOP opcode (0x10 0x00)", () => {
     expect(bus.isDoubleSpeed()).toBe(false);
   });
 });
+
+describe("CGB palette registers", () => {
+  it("BCPS/BCPD writes palette RAM and auto-increments index when bit 7 is set", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(true);
+
+    bus.write(IO_REGISTERS.BCPS, 0x80 | 0x3e);
+    expect(bus.read(IO_REGISTERS.BCPS)).toBe(0x80 | 0x3e);
+
+    bus.write(IO_REGISTERS.BCPD, 0x12);
+    expect(bus.read(IO_REGISTERS.BCPS)).toBe(0x80 | 0x3f);
+
+    bus.write(IO_REGISTERS.BCPD, 0x34);
+    expect(bus.read(IO_REGISTERS.BCPS)).toBe(0x80 | 0x00);
+
+    bus.write(IO_REGISTERS.BCPS, 0x00 | 0x3e);
+    expect(bus.read(IO_REGISTERS.BCPD)).toBe(0x12);
+    bus.write(IO_REGISTERS.BCPS, 0x00 | 0x3f);
+    expect(bus.read(IO_REGISTERS.BCPD)).toBe(0x34);
+  });
+
+  it("OCPS/OCPD works like BCPS/BCPD for OBJ palette RAM", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(true);
+
+    bus.write(IO_REGISTERS.OCPS, 0x80 | 0x00);
+    bus.write(IO_REGISTERS.OCPD, 0xab);
+    bus.write(IO_REGISTERS.OCPD, 0xcd);
+
+    bus.write(IO_REGISTERS.OCPS, 0x00 | 0x00);
+    expect(bus.read(IO_REGISTERS.OCPD)).toBe(0xab);
+    bus.write(IO_REGISTERS.OCPS, 0x00 | 0x01);
+    expect(bus.read(IO_REGISTERS.OCPD)).toBe(0xcd);
+  });
+
+  it("palette registers are unmapped when not in CGB mode", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(false);
+
+    bus.write(IO_REGISTERS.BCPS, 0x80 | 0x10);
+    bus.write(IO_REGISTERS.BCPD, 0x55);
+    expect(bus.read(IO_REGISTERS.BCPS)).toBe(0xff);
+    expect(bus.read(IO_REGISTERS.BCPD)).toBe(0xff);
+
+    bus.write(IO_REGISTERS.OCPS, 0x80 | 0x10);
+    bus.write(IO_REGISTERS.OCPD, 0x66);
+    expect(bus.read(IO_REGISTERS.OCPS)).toBe(0xff);
+    expect(bus.read(IO_REGISTERS.OCPD)).toBe(0xff);
+  });
+});
