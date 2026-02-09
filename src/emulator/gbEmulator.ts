@@ -100,11 +100,15 @@ export class GBEmulator {
   stepInstruction(): void {
     if (!this.cartridge.isLoaded()) return;
     try {
-      const cycles = this.cpu.step();
-      // update based on t-cycles
-      this.timer.step(cycles);
-      this.ppu.step(cycles);
-      this.ticks += cycles;
+      const timeCycles = this.cpu.step();
+      const baseCycles = this.bus.isDoubleSpeed()
+        ? Math.floor(timeCycles / 2)
+        : timeCycles;
+
+      // update PPU/timer at base clock speed
+      this.timer.step(baseCycles);
+      this.ppu.step(baseCycles);
+      this.ticks += baseCycles;
 
       //console.log(this.getCPUState());
       //console.log(this.cpu.getInstruction());
