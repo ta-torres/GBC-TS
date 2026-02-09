@@ -79,8 +79,7 @@ const getBGPixelIndex = (
 
 export class PPU {
   private vram: Uint8Array;
-  // @ts-expect-error used in future CGB work
-  private vramBank1: Uint8Array;
+  private vramBank1: Uint8Array; // gbc specific
   private oam: Uint8Array;
   private io: Uint8Array;
   private interrupts: Interrupts;
@@ -92,6 +91,12 @@ export class PPU {
   private cyclesInLine: number;
   private frameReady: boolean;
   private windowScanline: number;
+
+  /* GCB SPECIFIC */
+  private cgbMode: boolean;
+  private cgbBgPaletteRam: Uint8Array;
+  // @ts-expect-error todo CGB OBJ palette
+  private cgbObjPaletteRam: Uint8Array;
 
   /*
   LCD_STAT interrupt
@@ -111,12 +116,18 @@ export class PPU {
     oam: Uint8Array,
     io: Uint8Array,
     interrupts: Interrupts,
+    cgbMode: boolean,
+    cgbBgPaletteRam: Uint8Array,
+    cgbObjPaletteRam: Uint8Array,
   ) {
     this.vram = vramBank0;
     this.vramBank1 = vramBank1;
     this.oam = oam;
     this.io = io;
     this.interrupts = interrupts;
+    this.cgbMode = cgbMode;
+    this.cgbBgPaletteRam = cgbBgPaletteRam;
+    this.cgbObjPaletteRam = cgbObjPaletteRam;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
     this.actualFramebufferDrawnToTheScreen = new Uint32Array(
       SCREEN_WIDTH * SCREEN_HEIGHT,
@@ -240,6 +251,25 @@ export class PPU {
     return this.DMG_RGBA[shade];
   }
 
+  private cgbRgb555ToRgba(color15: number): number {
+    const r5 = color15 & 0x1f;
+    const g5 = (color15 >> 5) & 0x1f;
+    const b5 = (color15 >> 10) & 0x1f;
+    const r8 = (r5 << 3) | (r5 >> 2);
+    const g8 = (g5 << 3) | (g5 >> 2);
+    const b8 = (b5 << 3) | (b5 >> 2);
+    return (0xff << 24) | (r8 << 16) | (g8 << 8) | b8;
+  }
+
+  private mapCGBBgPalette(paletteNumber: number, color: 0 | 1 | 2 | 3): number {
+    const pal = paletteNumber & 0x07;
+    const idx = (pal * 8 + color * 2) & 0x3f;
+    const low = this.cgbBgPaletteRam[idx] ?? 0x00;
+    const high = this.cgbBgPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
+    const rgb555 = low | (high << 8);
+    return this.cgbRgb555ToRgba(rgb555);
+  }
+
   private renderBackgroundLine(): void {
     // si BG está deshabilitado, rellenar scanline con color 0
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
@@ -283,6 +313,12 @@ export class PPU {
       const tileNumber =
         this.vram[bgTileMapBaseAddress - 0x8000 + tileMapIndex];
 
+      // GBC SPECIFIC
+      const cgbPaletteAddress = this.cgbMode
+        ? this.vramBank1[bgTileMapBaseAddress - 0x8000 + tileMapIndex]
+        : 0x00;
+      const cgbPaletteNumber = cgbPaletteAddress & 0x07;
+
       // convierte número de tile en tile data index (address con/sin signo)
       let tileIndex: number;
       if (signedIndex) {
@@ -307,7 +343,9 @@ export class PPU {
         highTilePlaneByte,
         pixelBitIndex,
       );
-      const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
+      const pixelColor = this.cgbMode
+        ? this.mapCGBBgPalette(cgbPaletteNumber, paletteIndex)
+        : this.mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
@@ -355,6 +393,12 @@ export class PPU {
       const tileNumber =
         this.vram[windowTileMapBaseAddress - 0x8000 + tileMapIndex];
 
+      // GBC SPECIFIC
+      const cgbPaletteAddress = this.cgbMode
+        ? this.vramBank1[windowTileMapBaseAddress - 0x8000 + tileMapIndex]
+        : 0x00;
+      const cgbPaletteNumber = cgbPaletteAddress & 0x07;
+
       let tileIndex: number;
       if (signedIndex) {
         const tileNumberSigned = (tileNumber << 24) >> 24;
@@ -376,7 +420,9 @@ export class PPU {
         highTilePlaneByte,
         pixelBitIndex,
       );
-      const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
+      const pixelColor = this.cgbMode
+        ? this.mapCGBBgPalette(cgbPaletteNumber, paletteIndex)
+        : this.mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;

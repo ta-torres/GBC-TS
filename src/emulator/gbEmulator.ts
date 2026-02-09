@@ -39,6 +39,9 @@ export class GBEmulator {
       this.bus.getOAMView(),
       this.bus.getIORegistersView(),
       this.interrupts,
+      this.cgbMode,
+      this.bus.getCGBBackgroundPaletteRAMView(),
+      this.bus.getCGBObjectPaletteRAMView(),
     );
   }
 

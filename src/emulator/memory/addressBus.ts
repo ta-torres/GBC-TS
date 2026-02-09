@@ -536,6 +536,14 @@ export class AddressBus {
     return this.ioRegisters;
   }
 
+  getCGBBackgroundPaletteRAMView(): Uint8Array {
+    return this.bgPaletteRam;
+  }
+
+  getCGBObjectPaletteRAMView(): Uint8Array {
+    return this.objPaletteRam;
+  }
+
   getOAMView(): Uint8Array {
     return this.oam;
   }
