@@ -156,15 +156,16 @@ export class Registers {
   }
 
   // reset to power on state
-  reset(): void {
-    this.a = 0x01;
-    this.f = 0xb0;
+  reset(cgbMode: boolean = false): void {
+    // only setting A might be necessary for CGB mode?
+    this.a = cgbMode ? 0x11 : 0x01;
+    this.f = cgbMode ? 0x80 : 0xb0;
     this.b = 0x00;
-    this.c = 0x13;
-    this.d = 0x00;
-    this.e = 0xd8;
-    this.h = 0x01;
-    this.l = 0x4d;
+    this.c = cgbMode ? 0x00 : 0x13;
+    this.d = cgbMode ? 0xff : 0x00;
+    this.e = cgbMode ? 0x56 : 0xd8;
+    this.h = cgbMode ? 0x00 : 0x01;
+    this.l = cgbMode ? 0x0d : 0x4d;
   }
 
   toString(): string {

@@ -146,6 +146,10 @@ export class PPU {
     // dont request interrupts on class init?
   }
 
+  setCGBMode(enabled: boolean): void {
+    this.cgbMode = enabled;
+  }
+
   reset(): void {
     this.framebuffer.fill(0);
     this.actualFramebufferDrawnToTheScreen.fill(0);

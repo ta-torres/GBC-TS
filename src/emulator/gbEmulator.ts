@@ -87,9 +87,12 @@ export class GBEmulator {
   }
 
   reset(): void {
+    // this can get fucked up if I reset cpu mode in the wrong order, initialize default values later
+    this.cpu.setCGBMode(this.cgbMode);
     this.cpu.reset();
     this.bus.reset();
     this.bus.setCGBMode(this.cgbMode);
+    this.ppu.setCGBMode(this.cgbMode);
     this.timer.reset();
     this.interrupts.reset();
     this.joypad.reset();

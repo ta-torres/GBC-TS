@@ -6,6 +6,7 @@ import { toHex16, toHex8 } from "../utils/bitwise";
 import { Interrupts, InterruptType, INTERRUPT_ADDRESSES } from "./interrupts";
 
 export class CPU {
+  // only setting A might be necessary for CGB mode?
   public registers: Registers;
   private bus: AddressBus;
   public programCounter: number;
@@ -17,6 +18,8 @@ export class CPU {
   private haltBug: boolean;
 
   private interrupts: Interrupts;
+
+  private cgbMode: boolean = false;
 
   constructor(bus: AddressBus, interrupts: Interrupts) {
     this.registers = new Registers();
@@ -31,6 +34,10 @@ export class CPU {
     this.halted = false;
     this.stopped = false;
     this.haltBug = false;
+  }
+
+  setCGBMode(enabled: boolean): void {
+    this.cgbMode = enabled;
   }
 
   step(): number {
@@ -162,7 +169,7 @@ export class CPU {
   }
 
   reset(): void {
-    this.registers.reset();
+    this.registers.reset(this.cgbMode);
     this.programCounter = 0x0100;
     this.stackPointer = 0xfffe;
     this.interruptMasterEnable = false;
