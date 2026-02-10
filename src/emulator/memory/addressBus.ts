@@ -74,7 +74,7 @@ export class AddressBus {
 
   setCGBMode(enabled: boolean): void {
     this.cgbMode = enabled;
-    if (!enabled) {
+    if (!this.cgbMode) {
       this.cpuVramBank = 0;
       this.currentWramBank = 1;
     }
@@ -137,6 +137,29 @@ export class AddressBus {
 
   attachJoypad(joypad: Joypad): void {
     this.joypad = joypad;
+  }
+
+  reset(cgbMode: boolean = this.cgbMode): void {
+    this.setCGBMode(cgbMode);
+    this.wramBank0.fill(0);
+    this.wramBanks.forEach((bank) => bank.fill(0));
+    this.vramBanks.forEach((bank) => bank.fill(0));
+    this.hram.fill(0);
+    this.ioRegisters.fill(0);
+    this.oam.fill(0);
+
+    this.currentWramBank = 1;
+    this.cpuVramBank = 0;
+
+    this.cgbDoubleSpeed = false;
+    this.speedSwitchRequested = false;
+
+    this.bgPaletteRam.fill(0);
+    this.objPaletteRam.fill(0);
+    this.bgPaletteIndex = 0;
+    this.bgPaletteAutoInc = false;
+    this.objPaletteIndex = 0;
+    this.objPaletteAutoInc = false;
   }
 
   read(address: number): number {
@@ -495,28 +518,6 @@ export class AddressBus {
     console.warn(
       `Write to unmapped address: 0x${address.toString(16)} = 0x${value.toString(16)}`,
     );
-  }
-
-  reset(): void {
-    this.wramBank0.fill(0);
-    for (const bank of this.wramBanks) bank.fill(0);
-    for (const bank of this.vramBanks) bank.fill(0);
-    this.hram.fill(0);
-    this.ioRegisters.fill(0);
-    this.oam.fill(0);
-
-    this.currentWramBank = 1;
-    this.cpuVramBank = 0;
-
-    this.cgbDoubleSpeed = false;
-    this.speedSwitchRequested = false;
-
-    this.bgPaletteRam.fill(0);
-    this.objPaletteRam.fill(0);
-    this.bgPaletteIndex = 0;
-    this.bgPaletteAutoInc = false;
-    this.objPaletteIndex = 0;
-    this.objPaletteAutoInc = false;
   }
 
   getVRAMBank0View(): Uint8Array {

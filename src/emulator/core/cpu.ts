@@ -36,10 +36,6 @@ export class CPU {
     this.haltBug = false;
   }
 
-  setCGBMode(enabled: boolean): void {
-    this.cgbMode = enabled;
-  }
-
   step(): number {
     // handle interrupts before running current instruction
     if (this.interruptMasterEnable) {
@@ -168,8 +164,9 @@ export class CPU {
     this.stopped = true;
   }
 
-  reset(): void {
-    this.registers.reset(this.cgbMode);
+  reset(cgbMode: boolean = this.cgbMode): void {
+    this.cgbMode = cgbMode;
+    this.registers.reset(cgbMode);
     this.programCounter = 0x0100;
     this.stackPointer = 0xfffe;
     this.interruptMasterEnable = false;

@@ -18,7 +18,7 @@ export class GBEmulator {
   private ppu: PPU;
   private joypad: Joypad;
 
-  private cgbMode = false;
+  private cgbMode: boolean = false;
 
   private running = false;
   private paused = false;
@@ -56,7 +56,8 @@ export class GBEmulator {
       const header = this.cartridge.getHeader();
       const cgbFlag = header?.cgbFlag ?? 0x00;
       // either CGB compatible or CGB only
-      this.cgbMode = cgbFlag === 0x80 || cgbFlag === 0xc0;
+      const isCgb = cgbFlag === 0x80 || cgbFlag === 0xc0;
+      this.cgbMode = isCgb;
 
       this.reset();
       return true;
@@ -87,16 +88,12 @@ export class GBEmulator {
   }
 
   reset(): void {
-    // this can get fucked up if I reset cpu mode in the wrong order, initialize default values later
-    this.cpu.setCGBMode(this.cgbMode);
-    this.cpu.reset();
-    this.bus.reset();
-    this.bus.setCGBMode(this.cgbMode);
-    this.ppu.setCGBMode(this.cgbMode);
+    this.cpu.reset(this.cgbMode);
+    this.bus.reset(this.cgbMode);
+    this.ppu.reset(this.cgbMode);
     this.timer.reset();
     this.interrupts.reset();
     this.joypad.reset();
-    this.ppu.reset();
     this.ticks = 0;
     this.running = false;
     this.paused = false;

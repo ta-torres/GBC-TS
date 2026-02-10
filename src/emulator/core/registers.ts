@@ -157,7 +157,6 @@ export class Registers {
 
   // reset to power on state
   reset(cgbMode: boolean = false): void {
-    // only setting A might be necessary for CGB mode?
     this.a = cgbMode ? 0x11 : 0x01;
     this.f = cgbMode ? 0x80 : 0xb0;
     this.b = 0x00;

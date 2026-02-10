@@ -150,7 +150,8 @@ export class PPU {
     this.cgbMode = enabled;
   }
 
-  reset(): void {
+  reset(cgbMode: boolean = this.cgbMode): void {
+    this.setCGBMode(cgbMode);
     this.framebuffer.fill(0);
     this.actualFramebufferDrawnToTheScreen.fill(0);
     this.bgIndexLine.fill(0);
