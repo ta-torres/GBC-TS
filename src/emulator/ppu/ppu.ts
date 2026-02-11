@@ -289,10 +289,13 @@ export class PPU {
   }
 
   private renderBackgroundLine(): void {
-    // si BG está deshabilitado, rellenar scanline con color 0
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
-    const bgEnabled = (lcdc & 0x01) !== 0;
-    if (!bgEnabled) {
+
+    const cgbMasterPriority = (lcdc & 0x01) !== 0;
+
+    // DMG: si BG está deshabilitado, rellenar scanline con color 0
+    const dmgBgEnabled = (lcdc & 0x01) !== 0;
+    if (!this.cgbMode && !dmgBgEnabled) {
       const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
       const backgroundColor = this.mapDMGPalette(bgPalette, 0);
       const scanlineY = this.currentScanlineLY | 0;
@@ -376,13 +379,17 @@ export class PPU {
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
-      this.bgPriorityLine[screenX] = this.cgbMode && cgbBgPriority ? 1 : 0;
+      this.bgPriorityLine[screenX] =
+        this.cgbMode && cgbMasterPriority && cgbBgPriority ? 1 : 0;
     }
   }
 
   private renderWindowLine(): void {
     // same as renderBackground but drawn on top (uses same readTileDataIndex)
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+
+    if (!this.cgbMode && (lcdc & 0x01) === 0) return;
+
     const windowEnabled = (lcdc & 0x20) !== 0;
     if (!windowEnabled) return;
 
@@ -401,6 +408,8 @@ export class PPU {
     );
     const windowTileMapBaseAddress = windowTileMapBase(this.io);
     const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
+
+    const cgbMasterPriority = (lcdc & 0x01) !== 0;
 
     // same as BG but use windowScanline instead of windowY (only count lines where the window is actually drawn)
     const windowRowInPixels = this.windowScanline & 0xff;
@@ -461,7 +470,8 @@ export class PPU {
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
-      this.bgPriorityLine[screenX] = this.cgbMode && cgbBgPriority ? 1 : 0;
+      this.bgPriorityLine[screenX] =
+        this.cgbMode && cgbMasterPriority && cgbBgPriority ? 1 : 0;
     }
   }
 
@@ -511,6 +521,8 @@ export class PPU {
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
     const isObjEnabled = (lcdc & 0x02) !== 0;
     if (!isObjEnabled) return;
+
+    const cgbMasterPriority = (lcdc & 0x01) !== 0;
 
     const sprites = this.evalSpritesForScanline();
     if (sprites.length === 0) return;
@@ -586,12 +598,23 @@ export class PPU {
         // don't draw over non‑transparent background colors
         const bgIndex = this.bgIndexLine[screenX];
         if (bgIndex !== 0) {
-          if (priorityBehindBg) {
-            continue;
-          }
-          if (this.cgbMode) {
-            const bgHasPriority = this.bgPriorityLine[screenX] !== 0;
-            if (bgHasPriority) continue;
+          /* 
+          que carajo
+          https://gbdev.io/pandocs/single.html#bg-to-obj-priority-in-cgb-mode
+          */
+
+          if (!this.cgbMode) {
+            if (priorityBehindBg) continue;
+          } else {
+            // CGB: si LCDC.0 es 0, BG/WIN pierden prioridad y el OBJ (sprite) siempre se dibuja por encima
+            if (cgbMasterPriority) {
+              // Si LCDC.0 es 1, el BG tiene prioridad si OAM bit7 es 1 o BG attr bit7 es 1
+              if (priorityBehindBg) continue;
+
+              // DMG: BG siempre tiene prioridad
+              const bgHasPriority = this.bgPriorityLine[screenX] !== 0;
+              if (bgHasPriority) continue;
+            }
           }
         }
 
