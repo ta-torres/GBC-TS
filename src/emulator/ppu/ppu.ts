@@ -86,6 +86,7 @@ export class PPU {
   private framebuffer: Uint32Array;
   private actualFramebufferDrawnToTheScreen: Uint32Array;
   private bgIndexLine: Uint8Array;
+  private bgPriorityLine: Uint8Array;
   private mode: PpuMode;
   private currentScanlineLY: number;
   private cyclesInLine: number;
@@ -132,6 +133,7 @@ export class PPU {
       SCREEN_WIDTH * SCREEN_HEIGHT,
     );
     this.bgIndexLine = new Uint8Array(SCREEN_WIDTH);
+    this.bgPriorityLine = new Uint8Array(SCREEN_WIDTH);
     this.mode = PpuMode.OAM;
     this.currentScanlineLY = 0;
     this.cyclesInLine = 0;
@@ -298,6 +300,7 @@ export class PPU {
       for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
         this.framebuffer[scanlineOffset + screenX] = backgroundColor;
         this.bgIndexLine[screenX] = 0;
+        this.bgPriorityLine[screenX] = 0;
       }
       return;
     }
@@ -330,10 +333,15 @@ export class PPU {
         this.vram[bgTileMapBaseAddress - 0x8000 + tileMapIndex];
 
       // GBC SPECIFIC
-      const cgbPaletteAddress = this.cgbMode
+      const cgbAttributeAddress = this.cgbMode
         ? this.vramBank1[bgTileMapBaseAddress - 0x8000 + tileMapIndex]
         : 0x00;
-      const cgbPaletteNumber = cgbPaletteAddress & 0x07;
+      const cgbPaletteNumber = cgbAttributeAddress & 0x07;
+      const cgbTileBank1 = (cgbAttributeAddress & 0x08) !== 0;
+      const cgbXFlip = (cgbAttributeAddress & 0x20) !== 0;
+      const cgbYFlip = (cgbAttributeAddress & 0x40) !== 0;
+      // https://gbdev.io/pandocs/single.html#bg-to-obj-priority-in-cgb-mode
+      const cgbBgPriority = (cgbAttributeAddress & 0x80) !== 0;
 
       // convierte número de tile en tile data index (address con/sin signo)
       let tileIndex: number;
@@ -345,15 +353,18 @@ export class PPU {
       }
 
       // obtiene los dos bytes de bitplanes para esta tile row
+      const cgbTileRowOffset =
+        this.cgbMode && cgbYFlip ? 7 - tileRowOffset : tileRowOffset;
+
+      // si está en cgbMode y tile bank 1 está habilitado, fetchea de vramBank1, sino de vram
       const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
-        this.vram,
+        this.cgbMode && cgbTileBank1 ? this.vramBank1 : this.vram,
         tileDataBaseAddress,
         tileIndex,
-        tileRowOffset,
+        cgbTileRowOffset,
       );
       // elige qué bit dentro de la fila corresponde a este píxel, fusiona bitplane a 2-bit y mapea a color final
-      const pixelBitIndex = 7 - (bgX & 7);
-
+      const pixelBitIndex = this.cgbMode && cgbXFlip ? bgX & 7 : 7 - (bgX & 7);
       const paletteIndex = getBGPixelIndex(
         lowTilePlaneByte,
         highTilePlaneByte,
@@ -365,6 +376,7 @@ export class PPU {
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
+      this.bgPriorityLine[screenX] = this.cgbMode && cgbBgPriority ? 1 : 0;
     }
   }
 
@@ -410,10 +422,14 @@ export class PPU {
         this.vram[windowTileMapBaseAddress - 0x8000 + tileMapIndex];
 
       // GBC SPECIFIC
-      const cgbPaletteAddress = this.cgbMode
+      const cgbAttributeAddress = this.cgbMode
         ? this.vramBank1[windowTileMapBaseAddress - 0x8000 + tileMapIndex]
         : 0x00;
-      const cgbPaletteNumber = cgbPaletteAddress & 0x07;
+      const cgbPaletteNumber = cgbAttributeAddress & 0x07;
+      const cgbTileBank1 = (cgbAttributeAddress & 0x08) !== 0;
+      const cgbXFlip = (cgbAttributeAddress & 0x20) !== 0;
+      const cgbYFlip = (cgbAttributeAddress & 0x40) !== 0;
+      const cgbBgPriority = (cgbAttributeAddress & 0x80) !== 0;
 
       let tileIndex: number;
       if (signedIndex) {
@@ -424,13 +440,16 @@ export class PPU {
       }
 
       const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
-        this.vram,
+        this.cgbMode && cgbTileBank1 ? this.vramBank1 : this.vram,
         tileDataBaseAddress,
         tileIndex,
-        windowTileRowOffset,
+        this.cgbMode && cgbYFlip
+          ? 7 - windowTileRowOffset
+          : windowTileRowOffset,
       );
 
-      const pixelBitIndex = 7 - (windowX & 7);
+      const pixelBitIndex =
+        this.cgbMode && cgbXFlip ? windowX & 7 : 7 - (windowX & 7);
       const paletteIndex = getBGPixelIndex(
         lowTilePlaneByte,
         highTilePlaneByte,
@@ -442,6 +461,7 @@ export class PPU {
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
+      this.bgPriorityLine[screenX] = this.cgbMode && cgbBgPriority ? 1 : 0;
     }
   }
 
@@ -564,10 +584,14 @@ export class PPU {
         const bufIndex = scanlineOffset + screenX;
 
         // don't draw over non‑transparent background colors
-        if (priorityBehindBg) {
-          const bgIndex = this.bgIndexLine[screenX];
-          if (bgIndex !== 0) {
+        const bgIndex = this.bgIndexLine[screenX];
+        if (bgIndex !== 0) {
+          if (priorityBehindBg) {
             continue;
+          }
+          if (this.cgbMode) {
+            const bgHasPriority = this.bgPriorityLine[screenX] !== 0;
+            if (bgHasPriority) continue;
           }
         }
 
