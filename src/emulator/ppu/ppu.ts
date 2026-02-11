@@ -264,7 +264,7 @@ export class PPU {
     const r8 = (r5 << 3) | (r5 >> 2);
     const g8 = (g5 << 3) | (g5 >> 2);
     const b8 = (b5 << 3) | (b5 >> 2);
-    return (0xff << 24) | (r8 << 16) | (g8 << 8) | b8;
+    return (0xff << 24) | (b8 << 16) | (g8 << 8) | r8;
   }
 
   private mapCGBBgPalette(paletteNumber: number, color: 0 | 1 | 2 | 3): number {
