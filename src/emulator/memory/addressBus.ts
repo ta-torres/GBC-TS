@@ -40,6 +40,11 @@ export class AddressBus {
   private objPaletteIndex: number;
   private objPaletteAutoInc: boolean;
 
+  private hdmaSourceHigh: number;
+  private hdmaSourceLow: number;
+  private hdmaDestHigh: number;
+  private hdmaDestLow: number;
+
   /* private debugVramWriteCount = 0;
   private debugOamWriteCount = 0; */
 
@@ -70,6 +75,11 @@ export class AddressBus {
     this.bgPaletteAutoInc = false;
     this.objPaletteIndex = 0;
     this.objPaletteAutoInc = false;
+
+    this.hdmaSourceHigh = 0;
+    this.hdmaSourceLow = 0;
+    this.hdmaDestHigh = 0;
+    this.hdmaDestLow = 0;
   }
 
   setCGBMode(enabled: boolean): void {
@@ -86,6 +96,11 @@ export class AddressBus {
     this.bgPaletteAutoInc = false;
     this.objPaletteIndex = 0;
     this.objPaletteAutoInc = false;
+
+    this.hdmaSourceHigh = 0;
+    this.hdmaSourceLow = 0;
+    this.hdmaDestHigh = 0;
+    this.hdmaDestLow = 0;
   }
 
   /* GBC SPECIFIC GETTERS/SETTERS */
@@ -107,6 +122,18 @@ export class AddressBus {
     if (!this.speedSwitchRequested) return;
     this.cgbDoubleSpeed = !this.cgbDoubleSpeed;
     this.speedSwitchRequested = false;
+  }
+
+  private getHDMASourceAddress(): number {
+    return (
+      (((this.hdmaSourceHigh & 0xff) << 8) | (this.hdmaSourceLow & 0xf0)) &
+      0xfff0
+    );
+  }
+
+  private getHDMADestAddress(): number {
+    const raw = ((this.hdmaDestHigh & 0x1f) << 8) | (this.hdmaDestLow & 0xf0);
+    return (0x8000 | (raw & 0x1ff0)) & 0xffff;
   }
 
   /* RAM BANKING READ/WRITE */
@@ -160,6 +187,11 @@ export class AddressBus {
     this.bgPaletteAutoInc = false;
     this.objPaletteIndex = 0;
     this.objPaletteAutoInc = false;
+
+    this.hdmaSourceHigh = 0;
+    this.hdmaSourceLow = 0;
+    this.hdmaDestHigh = 0;
+    this.hdmaDestLow = 0;
   }
 
   read(address: number): number {
@@ -253,6 +285,16 @@ export class AddressBus {
           const prepareBit = this.speedSwitchRequested ? 0x01 : 0x00;
           return 0x7e | speedBit | prepareBit;
         }
+        case IO_REGISTERS.HDMA1:
+          return this.cgbMode ? this.hdmaSourceHigh : 0xff;
+        case IO_REGISTERS.HDMA2:
+          return this.cgbMode ? this.hdmaSourceLow : 0xff;
+        case IO_REGISTERS.HDMA3:
+          return this.cgbMode ? this.hdmaDestHigh : 0xff;
+        case IO_REGISTERS.HDMA4:
+          return this.cgbMode ? this.hdmaDestLow : 0xff;
+        case IO_REGISTERS.HDMA5:
+          return this.cgbMode ? 0xff : 0xff;
         // background palette index
         // https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
         case IO_REGISTERS.BCPS: {
@@ -421,6 +463,62 @@ export class AddressBus {
           }
           this.speedSwitchRequested = (value & 0x01) === 0x01;
           this.ioRegisters[address - 0xff00] = value & 0x01;
+          return;
+        }
+
+        case IO_REGISTERS.HDMA1: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaSourceHigh = value;
+          return;
+        }
+        case IO_REGISTERS.HDMA2: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaSourceLow = value & 0xf0;
+          return;
+        }
+        case IO_REGISTERS.HDMA3: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaDestHigh = value & 0x1f;
+          return;
+        }
+        case IO_REGISTERS.HDMA4: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaDestLow = value & 0xf0;
+          return;
+        }
+        case IO_REGISTERS.HDMA5: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+
+          const blocks = (value & 0x7f) + 1;
+          const length = blocks * 0x10;
+          const srcBase = this.getHDMASourceAddress();
+          const dstBase = this.getHDMADestAddress();
+
+          if ((value & 0x80) === 0) {
+            for (let i = 0; i < length; i += 1) {
+              const b = this.read((srcBase + i) & 0xffff);
+              const dst = (dstBase + i) & 0xffff;
+              if (dst >= 0x8000 && dst <= 0x9fff) {
+                this.vramBanks[this.cpuVramBank][dst - 0x8000] = b;
+              }
+            }
+          }
+
           return;
         }
 

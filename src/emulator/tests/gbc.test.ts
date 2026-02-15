@@ -144,3 +144,58 @@ describe("CGB palette registers", () => {
     expect(bus.read(IO_REGISTERS.OCPD)).toBe(0xff);
   });
 });
+
+describe("CGB GDMA (HDMA1-HDMA5)", () => {
+  it("HDMA1-HDMA4 store masked source/dest and read back in CGB mode", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(true);
+
+    bus.write(IO_REGISTERS.HDMA1, 0xc0);
+    bus.write(IO_REGISTERS.HDMA2, 0x0f);
+    bus.write(IO_REGISTERS.HDMA3, 0xff);
+    bus.write(IO_REGISTERS.HDMA4, 0x0f);
+
+    expect(bus.read(IO_REGISTERS.HDMA1)).toBe(0xc0);
+    expect(bus.read(IO_REGISTERS.HDMA2)).toBe(0x00);
+    expect(bus.read(IO_REGISTERS.HDMA3)).toBe(0x1f);
+    expect(bus.read(IO_REGISTERS.HDMA4)).toBe(0x00);
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0xff);
+  });
+
+  it("GDMA copies (len = (n+1)*0x10) bytes from source to VRAM dest when HDMA5 bit7=0", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(true);
+
+    for (let i = 0; i < 0x10; i += 1) {
+      bus.write(0xc000 + i, (0x80 + i) & 0xff);
+    }
+
+    bus.write(IO_REGISTERS.HDMA1, 0xc0);
+    bus.write(IO_REGISTERS.HDMA2, 0x00);
+    bus.write(IO_REGISTERS.HDMA3, 0x00);
+    bus.write(IO_REGISTERS.HDMA4, 0x00);
+
+    bus.write(IO_REGISTERS.HDMA5, 0x00);
+
+    for (let i = 0; i < 0x10; i += 1) {
+      expect(bus.read(0x8000 + i)).toBe((0x80 + i) & 0xff);
+    }
+  });
+
+  it("HDMA registers are unmapped when not in CGB mode", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(false);
+
+    bus.write(IO_REGISTERS.HDMA1, 0xc0);
+    bus.write(IO_REGISTERS.HDMA2, 0x00);
+    bus.write(IO_REGISTERS.HDMA3, 0x00);
+    bus.write(IO_REGISTERS.HDMA4, 0x00);
+    bus.write(IO_REGISTERS.HDMA5, 0x00);
+
+    expect(bus.read(IO_REGISTERS.HDMA1)).toBe(0xff);
+    expect(bus.read(IO_REGISTERS.HDMA2)).toBe(0xff);
+    expect(bus.read(IO_REGISTERS.HDMA3)).toBe(0xff);
+    expect(bus.read(IO_REGISTERS.HDMA4)).toBe(0xff);
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0xff);
+  });
+});
