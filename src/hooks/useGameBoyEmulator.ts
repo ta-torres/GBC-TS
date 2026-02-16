@@ -206,7 +206,12 @@ export const useGameBoyEmulator = () => {
     if (!emu) return;
     saveSRAMToLocalStorage(emu);
     emu.reset();
-    setIsRunning(false);
+    if (isLoaded) {
+      emu.start();
+      setIsRunning(true);
+    } else {
+      setIsRunning(false);
+    }
   };
 
   const handleStep = () => {
