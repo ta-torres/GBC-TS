@@ -29,7 +29,7 @@ export const GameboyDpad = ({
   const [debugAngle, setDebugAngle] = useState<number | null>(null);
   const [debugDistance, setDebugDistance] = useState<number | null>(null);
 
-  const DEADZONE_RADIUS_PX = 16;
+  const DEADZONE_RADIUS_PX = 20;
   // 0 = no diagonal directions
   // 10 = -+10° 45/135/225/315 degrees
   const DIAGONAL_SLICE_WIDTH_DEG = 10;
@@ -57,8 +57,11 @@ export const GameboyDpad = ({
       let angleDeg = (angleRad * 180) / Math.PI;
       // shift so 0° is up, and wrap to [0,360)
       angleDeg = (angleDeg + 90 + 360) % 360;
-      setDebugAngle(angleDeg);
-      setDebugDistance(distance);
+
+      if (showDebugBounds) {
+        setDebugAngle(angleDeg);
+        setDebugDistance(distance);
+      }
 
       if (distance >= DEADZONE_RADIUS_PX) {
         const d = DIAGONAL_SLICE_WIDTH_DEG;
