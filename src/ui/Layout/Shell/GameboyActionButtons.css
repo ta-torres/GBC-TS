@@ -6,6 +6,7 @@
   transform: translateY(8px) translateX(-20px) rotate(36deg);
   position: relative;
   padding: 16px 18px;
+  touch-action: none;
 }
 
 .gameboy-ab-buttons::before {
