@@ -30,6 +30,9 @@ export const GameboyDpad = ({
   const [debugDistance, setDebugDistance] = useState<number | null>(null);
 
   const DEADZONE_RADIUS_PX = 16;
+  // 0 = no diagonal directions
+  // 10 = -+10° 45/135/225/315 degrees
+  const DIAGONAL_SLICE_WIDTH_DEG = 10;
 
   const updateDirectionFromCoordinates = (x: number, y: number) => {
     const centerPoint = dpadCenterPointRef.current;
@@ -58,22 +61,27 @@ export const GameboyDpad = ({
       setDebugDistance(distance);
 
       if (distance >= DEADZONE_RADIUS_PX) {
-        if (angleDeg >= 337.5 || angleDeg < 22.5) {
-          nextDirection = ["up"];
-        } else if (angleDeg >= 22.5 && angleDeg < 67.5) {
+        const d = DIAGONAL_SLICE_WIDTH_DEG;
+
+        // diagonal
+        if (angleDeg >= 45 - d && angleDeg < 45 + d) {
           nextDirection = ["up", "right"];
-        } else if (angleDeg >= 67.5 && angleDeg < 112.5) {
-          nextDirection = ["right"];
-        } else if (angleDeg >= 112.5 && angleDeg < 157.5) {
+        } else if (angleDeg >= 135 - d && angleDeg < 135 + d) {
           nextDirection = ["down", "right"];
-        } else if (angleDeg >= 157.5 && angleDeg < 202.5) {
-          nextDirection = ["down"];
-        } else if (angleDeg >= 202.5 && angleDeg < 247.5) {
+        } else if (angleDeg >= 225 - d && angleDeg < 225 + d) {
           nextDirection = ["down", "left"];
-        } else if (angleDeg >= 247.5 && angleDeg < 292.5) {
-          nextDirection = ["left"];
-        } else if (angleDeg >= 292.5 && angleDeg < 337.5) {
+        } else if (angleDeg >= 315 - d && angleDeg < 315 + d) {
           nextDirection = ["up", "left"];
+        }
+        // cardinal
+        else if (angleDeg >= 315 + d || angleDeg < 45 - d) {
+          nextDirection = ["up"];
+        } else if (angleDeg >= 45 + d && angleDeg < 135 - d) {
+          nextDirection = ["right"];
+        } else if (angleDeg >= 135 + d && angleDeg < 225 - d) {
+          nextDirection = ["down"];
+        } else if (angleDeg >= 225 + d || angleDeg < 315 - d) {
+          nextDirection = ["left"];
         }
       }
     } else {
