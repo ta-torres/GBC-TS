@@ -10,6 +10,8 @@ export class Cartridge {
   private ram: Uint8Array | null = null;
   private mbc: MBC | null = null;
 
+  private errorMessage: string | null = null;
+
   private sramWrite = false;
 
   constructor() {
@@ -18,6 +20,7 @@ export class Cartridge {
 
   load(data: ArrayBuffer | SharedArrayBuffer): boolean {
     try {
+      this.errorMessage = null;
       this.rom = new Uint8Array(data);
       this.parseHeader();
 
@@ -26,7 +29,10 @@ export class Cartridge {
       }
 
       this.initializeRAM();
-      this.initializeMBC();
+      const mbcOk = this.initializeMBC();
+      if (!mbcOk) {
+        return false;
+      }
 
       /* console.log(`Loaded ROM: ${this.header!.title}`);
       console.log(`Type: 0x${this.header!.cartridgeType.toString(16)}`);
@@ -37,8 +43,13 @@ export class Cartridge {
       return true;
     } catch (error) {
       console.error("Failed to load ROM:", error);
+      this.errorMessage = "Failed to load ROM";
       return false;
     }
+  }
+
+  getErrorMessage(): string | null {
+    return this.errorMessage;
   }
 
   private parseHeader(): void {
@@ -93,7 +104,7 @@ export class Cartridge {
     void this.ram?.length;
   }
 
-  private initializeMBC(): void {
+  private initializeMBC(): boolean {
     const type = this.header!.cartridgeType;
     switch (type) {
       // type 1: rom only carts
@@ -101,7 +112,7 @@ export class Cartridge {
       case CARTRIDGE_TYPE.ROM_RAM:
       case CARTRIDGE_TYPE.ROM_RAM_BATTERY:
         this.mbc = null;
-        break;
+        return true;
       // type 2: mbc1 carts
       case CARTRIDGE_TYPE.MBC1:
       case CARTRIDGE_TYPE.MBC1_RAM:
@@ -109,7 +120,7 @@ export class Cartridge {
         this.mbc = new MBC1(this.rom, this.ram);
         console.log("MBC1 initialized");
         console.log(this.mbc);
-        break;
+        return true;
       // type 3: mbc3 carts
       case CARTRIDGE_TYPE.MBC3_TIMER_BATTERY:
       case CARTRIDGE_TYPE.MBC3_TIMER_RAM_BATTERY:
@@ -122,11 +133,13 @@ export class Cartridge {
         this.mbc = new MBC3(this.rom, this.ram, hasRTC);
         console.log("MBC3 initialized");
         console.log(this.mbc);
-        break;
+        return true;
       }
       default:
-        console.warn(`Unsupported cartridge type: 0x${type.toString(16)}`);
+        this.errorMessage = `Unsupported cartridge type: 0x${type.toString(16)}`;
+        console.warn(this.errorMessage);
         this.mbc = null;
+        return false;
     }
   }
 

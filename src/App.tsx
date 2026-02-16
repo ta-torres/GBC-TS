@@ -5,6 +5,7 @@ import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
 import { CommandMenu } from "./ui/Layout/CommandMenu";
 import { useGameBoyEmulator } from "./hooks/useGameBoyEmulator";
+import { Toaster } from "@/components/ui/sonner";
 import {
   exportSRAMSavesToFile,
   importSRAMSavesFromFile,
@@ -117,6 +118,7 @@ function App() {
 
   return (
     <div className="app-emulator-container min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
+      <Toaster />
       <div className="mx-auto max-w-6xl">
         <input
           ref={fileInputRef}

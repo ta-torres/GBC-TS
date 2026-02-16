@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GBEmulator } from "@/emulator/gbEmulator";
 import type { JoypadButton } from "@/emulator/input/joypad";
+import { toast } from "sonner";
 
 export const useGameBoyEmulator = () => {
   const emulatorRef = useRef<GBEmulator | null>(null);
@@ -174,6 +175,15 @@ export const useGameBoyEmulator = () => {
       setSpeedMultiplier(emu.getSpeedMultiplier());
       emu.start();
       setIsRunning(true);
+    } else {
+      const errorMessage = emu.getErrorMessage();
+
+      toast.error("Game not supported yet :(", {
+        description: errorMessage,
+        className: "bg-gray-100! text-gray-700! border-gray-300!",
+        descriptionClassName: "text-gray-700!",
+        duration: 10000,
+      });
     }
   };
 

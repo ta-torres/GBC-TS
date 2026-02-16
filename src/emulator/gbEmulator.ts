@@ -22,6 +22,7 @@ export class GBEmulator {
   private paused = false;
   private ticks = 0;
   private speedMultiplier = 1.0;
+  private errorMessage: string | null = null;
 
   constructor() {
     this.cartridge = new Cartridge();
@@ -39,11 +40,16 @@ export class GBEmulator {
     );
   }
 
+  getErrorMessage(): string | null {
+    return this.errorMessage;
+  }
+
   async loadROM(file: File): Promise<boolean> {
     try {
+      this.errorMessage = null;
       const data = await loadROMFile(file);
       if (!this.cartridge.load(data)) {
-        console.error("Failed to load cartridge");
+        this.errorMessage = this.cartridge.getErrorMessage();
         return false;
       }
 
@@ -51,6 +57,7 @@ export class GBEmulator {
       return true;
     } catch (error) {
       console.error("Error loading ROM:", error);
+      this.errorMessage = "Error loading ROM";
       return false;
     }
   }
