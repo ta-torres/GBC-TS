@@ -5,11 +5,21 @@ import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
 import { CommandMenu } from "./ui/Layout/CommandMenu";
 import { useGameBoyEmulator } from "./hooks/useGameBoyEmulator";
-import { Toaster } from "@/components/ui/sonner";
 import {
   exportSRAMSavesToFile,
   importSRAMSavesFromFile,
 } from "./emulator/utils/savesTransfer";
+
+import { Toaster } from "@/components/ui/sonner";
+import {
+  Dialog,
+  DialogContent,
+  //DialogDescription,
+  //DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/pixelact-ui/dialog";
+import { SiGithub } from "@icons-pack/react-simple-icons";
 
 function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -18,6 +28,7 @@ function App() {
   const [showDpadDebug, setShowDpadDebug] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
   const {
     emulatorRef,
@@ -116,9 +127,14 @@ function App() {
     setShowCommandMenu(false);
   };
 
+  const handleOpenAbout = () => {
+    setAboutOpen(true);
+  };
+
   return (
     <div className="app-emulator-container min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
       <Toaster />
+
       <div className="mx-auto max-w-6xl">
         <input
           ref={fileInputRef}
@@ -164,6 +180,7 @@ function App() {
                         onToggleDpadDebug: toggleDpadDebug,
                         onIncreaseSpeed: handleIncreaseSpeed,
                         onDecreaseSpeed: handleDecreaseSpeed,
+                        onOpenAbout: handleOpenAbout,
                       }}
                     />
                   }
@@ -198,6 +215,37 @@ function App() {
           </div>
         </div>
       </div>
+
+      <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
+        <DialogContent className="border-slate-500 bg-slate-400 max-sm:w-[90vw] max-sm:translate-x-[-55%] max-sm:translate-y-[-55%]">
+          <DialogHeader>
+            <DialogTitle className="text-muted-foreground">About</DialogTitle>
+          </DialogHeader>
+
+          <div className="text-sm text-gray-800">
+            <p>
+              GBC-TS is an open-source Game Boy emulator (soon to be Game Boy
+              Color)
+            </p>
+          </div>
+
+          <div className="text-sm text-gray-800">
+            <p>Developed by Thomás. Built with TypeScript and React.</p>
+          </div>
+
+          <div className="flex items-center gap-2 text-[0.70rem]">
+            <SiGithub />
+            <a
+              className="text-primary underline underline-offset-4"
+              href="https://github.com/ta-torres/GBC-TS"
+              target="_blank"
+              rel="noreferrer"
+            >
+              https://github.com/ta-torres/GBC-TS
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -27,6 +27,7 @@ interface CommandMenuActionProps {
   onToggleDpadDebug: () => void;
   onIncreaseSpeed: () => void;
   onDecreaseSpeed: () => void;
+  onOpenAbout: () => void;
 }
 
 interface CommandMenuProps {
@@ -51,7 +52,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
   };
 
   return (
-    <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
+    <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4 max-sm:scale-[1.2]">
       <CommandList>
         {fileName && (
           <div className="mt-1 text-xs text-gray-700">{fileName}</div>
@@ -70,6 +71,9 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
           >
             Restart
           </CommandItem>
+        </CommandGroup>
+
+        <CommandGroup heading="Emulator">
           <div className="flex items-center justify-between rounded px-2 py-1.5 text-sm">
             <div className="flex items-center gap-1">
               <span>Speed:</span>
@@ -80,7 +84,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
               >
                 -
               </button>
-              <span className="min-w-10 text-center">{speedMultiplier}x</span>
+              <span className="w-18 text-center">{speedMultiplier}x</span>
               <button
                 type="button"
                 className="inline-flex h-6 w-6 items-center justify-center rounded bg-slate-500 text-white hover:bg-slate-600"
@@ -107,8 +111,6 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
           </CommandItem>
         </CommandGroup>
 
-        {/* <CommandSeparator /> */}
-
         <CommandGroup heading="Settings">
           <CommandItem
             value="toggle-overlay"
@@ -127,6 +129,14 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
             onSelect={() => handleAction(actions.onToggleDpadDebug)}
           >
             D-pad debug: {showDpadDebug ? "On" : "Off"}
+          </CommandItem>
+        </CommandGroup>
+        <CommandGroup heading="About">
+          <CommandItem
+            value="about"
+            onSelect={() => handleAction(actions.onOpenAbout)}
+          >
+            About GBC-TS
           </CommandItem>
         </CommandGroup>
       </CommandList>
