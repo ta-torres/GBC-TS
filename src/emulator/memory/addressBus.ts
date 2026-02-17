@@ -40,10 +40,16 @@ export class AddressBus {
   private objPaletteIndex: number;
   private objPaletteAutoInc: boolean;
 
+  // https://gbdev.io/pandocs/CGB_Registers.html#ff55--hdma5-cgb-mode-only-vram-dma-lengthmodestart
   private hdmaSourceHigh: number;
   private hdmaSourceLow: number;
   private hdmaDestHigh: number;
   private hdmaDestLow: number;
+
+  private hdmaActive: boolean;
+  private hdmaBlocksRemaining: number;
+  private hdmaCurrentSource: number;
+  private hdmaCurrentDest: number;
 
   /* private debugVramWriteCount = 0;
   private debugOamWriteCount = 0; */
@@ -80,6 +86,11 @@ export class AddressBus {
     this.hdmaSourceLow = 0;
     this.hdmaDestHigh = 0;
     this.hdmaDestLow = 0;
+
+    this.hdmaActive = false;
+    this.hdmaBlocksRemaining = 0;
+    this.hdmaCurrentSource = 0;
+    this.hdmaCurrentDest = 0;
   }
 
   setCGBMode(enabled: boolean): void {
@@ -134,6 +145,52 @@ export class AddressBus {
   private getHDMADestAddress(): number {
     const raw = ((this.hdmaDestHigh & 0x1f) << 8) | (this.hdmaDestLow & 0xf0);
     return (0x8000 | (raw & 0x1ff0)) & 0xffff;
+  }
+
+  private isPpuInHBlankMode0(): boolean {
+    const stat = this.ioRegisters[IO_REGISTERS.STAT - 0xff00] ?? 0;
+    return (stat & 0x03) === 0;
+  }
+
+  private isLcdEnabled(): boolean {
+    const lcdc = this.ioRegisters[IO_REGISTERS.LCDC - 0xff00] ?? 0;
+    return (lcdc & 0x80) !== 0;
+  }
+
+  private endHDMA(): void {
+    this.hdmaActive = false;
+    this.hdmaBlocksRemaining = 0;
+  }
+
+  stepHDMAHBlank(): void {
+    // hdma transfer only during hblank
+    if (!this.cgbMode) return;
+    if (!this.hdmaActive) return;
+    if (!this.isLcdEnabled()) {
+      this.endHDMA();
+      return;
+    }
+
+    if (this.hdmaBlocksRemaining <= 0) {
+      this.endHDMA();
+      return;
+    }
+
+    for (let i = 0; i < 0x10; i += 1) {
+      const byte = this.read((this.hdmaCurrentSource + i) & 0xffff);
+      const destination = (this.hdmaCurrentDest + i) & 0xffff;
+      if (destination >= 0x8000 && destination <= 0x9fff) {
+        this.vramBanks[this.cpuVramBank][destination - 0x8000] = byte;
+      }
+    }
+
+    this.hdmaCurrentSource = (this.hdmaCurrentSource + 0x10) & 0xffff;
+    this.hdmaCurrentDest = (this.hdmaCurrentDest + 0x10) & 0xffff;
+    this.hdmaBlocksRemaining -= 1;
+
+    if (this.hdmaBlocksRemaining <= 0) {
+      this.endHDMA();
+    }
   }
 
   /* RAM BANKING READ/WRITE */
@@ -294,7 +351,13 @@ export class AddressBus {
         case IO_REGISTERS.HDMA4:
           return this.cgbMode ? this.hdmaDestLow : 0xff;
         case IO_REGISTERS.HDMA5:
-          return this.cgbMode ? 0xff : 0xff;
+          if (!this.cgbMode) return 0xff;
+          if (!this.hdmaActive && this.hdmaBlocksRemaining === 0) return 0xff;
+          if (this.hdmaActive) {
+            const blocksRemaining = Math.max(1, this.hdmaBlocksRemaining);
+            return (blocksRemaining - 1) & 0x7f;
+          }
+          return 0x80 | ((this.hdmaBlocksRemaining - 1) & 0x7f);
         // background palette index
         // https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
         case IO_REGISTERS.BCPS: {
@@ -504,11 +567,18 @@ export class AddressBus {
             return;
           }
 
+          // abort HDMA if active and bit7 is written as 0
+          if (this.hdmaActive && (value & 0x80) === 0) {
+            this.endHDMA();
+            return;
+          }
+
           const blocks = (value & 0x7f) + 1;
           const length = blocks * 0x10;
           const srcBase = this.getHDMASourceAddress();
           const dstBase = this.getHDMADestAddress();
 
+          // if bit7 is written as 0, it is an immediate (General Direct Memory Access) copy
           if ((value & 0x80) === 0) {
             for (let i = 0; i < length; i += 1) {
               const b = this.read((srcBase + i) & 0xffff);
@@ -517,7 +587,22 @@ export class AddressBus {
                 this.vramBanks[this.cpuVramBank][dst - 0x8000] = b;
               }
             }
+
+            this.endHDMA();
+            return;
           }
+
+          // HDMA copies CANNOT start while the PPU is already in HBlank mode 0
+          // first a write to HDMA5 outside of HBlank mode 0 needs to happen before the hardware can start the copy on the next HBlank
+          if (this.isPpuInHBlankMode0()) {
+            this.endHDMA();
+            return;
+          }
+
+          this.hdmaActive = true;
+          this.hdmaBlocksRemaining = blocks;
+          this.hdmaCurrentSource = srcBase;
+          this.hdmaCurrentDest = dstBase;
 
           return;
         }

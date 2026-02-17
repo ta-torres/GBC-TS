@@ -92,6 +92,7 @@ export class PPU {
   private cyclesInLine: number;
   private frameReady: boolean;
   private windowScanline: number;
+  private enteredHBlank: boolean;
 
   /* GCB SPECIFIC */
   private cgbMode: boolean;
@@ -139,6 +140,7 @@ export class PPU {
     this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
+    this.enteredHBlank = false;
 
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
 
@@ -162,6 +164,7 @@ export class PPU {
     this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
+    this.enteredHBlank = false;
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
 
     this.io[IO_REGISTERS.LY - 0xff00] = 0;
@@ -195,6 +198,9 @@ export class PPU {
         this.setMode(PpuMode.Transfer);
       } else if (this.cyclesInLine < CYCLES_PER_LINE) {
         this.setMode(PpuMode.HBlank);
+        if (previousMode === PpuMode.Transfer) {
+          this.enteredHBlank = true;
+        }
         // only render bg once per scanline at the start of hblank
         if (previousMode === PpuMode.Transfer && this.currentScanlineLY < 144) {
           this.renderBackgroundLine();
@@ -631,6 +637,12 @@ export class PPU {
     const ready = this.frameReady;
     this.frameReady = false;
     return ready;
+  }
+
+  hasEnteredHBlank(): boolean {
+    const entered = this.enteredHBlank;
+    this.enteredHBlank = false;
+    return entered;
   }
 
   getTileViewerData(): { width: number; height: number; data: Uint8Array } {

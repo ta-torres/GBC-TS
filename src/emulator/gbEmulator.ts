@@ -111,6 +111,8 @@ export class GBEmulator {
       // update PPU/timer at base clock speed
       this.timer.step(baseCycles);
       this.ppu.step(baseCycles);
+      if (this.ppu.hasEnteredHBlank()) this.bus.stepHDMAHBlank();
+
       this.ticks += baseCycles;
 
       //console.log(this.getCPUState());

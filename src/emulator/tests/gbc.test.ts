@@ -199,3 +199,87 @@ describe("CGB GDMA (HDMA1-HDMA5)", () => {
     expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0xff);
   });
 });
+
+describe("CGB HDMA (HBlank DMA)", () => {
+  it("does not start HDMA when PPU is already in HBlank (STAT mode 0)", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(true);
+
+    // force STAT mode bits = 0 (HBlank)
+    bus.write(IO_REGISTERS.STAT, 0x00);
+
+    bus.write(IO_REGISTERS.HDMA1, 0xc0);
+    bus.write(IO_REGISTERS.HDMA2, 0x00);
+    bus.write(IO_REGISTERS.HDMA3, 0x00);
+    bus.write(IO_REGISTERS.HDMA4, 0x00);
+
+    bus.write(IO_REGISTERS.HDMA5, 0x80 | 0x00);
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0xff);
+  });
+
+  it("copies one 0x10-byte block per HBlank when active and updates FF55 remaining", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(true);
+
+    // LCD has to be enabled, HDMA stops when LCD is off
+    bus.write(IO_REGISTERS.LCDC, 0x80);
+
+    // not in HBlank
+    bus.write(IO_REGISTERS.STAT, 0x02);
+
+    for (let i = 0; i < 0x20; i += 1) {
+      bus.write(0xc000 + i, (0x40 + i) & 0xff);
+    }
+
+    bus.write(IO_REGISTERS.HDMA1, 0xc0);
+    bus.write(IO_REGISTERS.HDMA2, 0x00);
+    bus.write(IO_REGISTERS.HDMA3, 0x00);
+    bus.write(IO_REGISTERS.HDMA4, 0x00);
+
+    // 2 blocks total
+    bus.write(IO_REGISTERS.HDMA5, 0x80 | 0x01);
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0x01);
+
+    bus.stepHDMAHBlank();
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0x00);
+    for (let i = 0; i < 0x10; i += 1) {
+      expect(bus.read(0x8000 + i)).toBe((0x40 + i) & 0xff);
+    }
+
+    bus.stepHDMAHBlank();
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0xff);
+    for (let i = 0; i < 0x10; i += 1) {
+      expect(bus.read(0x8010 + i)).toBe((0x50 + i) & 0xff);
+    }
+  });
+
+  it("aborts active HDMA when writing FF55 with bit7=0", () => {
+    const { bus } = setupCPU([0x00]);
+    bus.setCGBMode(true);
+
+    // LCD has to be enabled, HDMA stops when LCD is off
+    bus.write(IO_REGISTERS.LCDC, 0x80);
+
+    // not in HBlank
+    bus.write(IO_REGISTERS.STAT, 0x02);
+
+    for (let i = 0; i < 0x20; i += 1) {
+      bus.write(0xc000 + i, (0x10 + i) & 0xff);
+    }
+
+    bus.write(IO_REGISTERS.HDMA1, 0xc0);
+    bus.write(IO_REGISTERS.HDMA2, 0x00);
+    bus.write(IO_REGISTERS.HDMA3, 0x00);
+    bus.write(IO_REGISTERS.HDMA4, 0x00);
+
+    bus.write(IO_REGISTERS.HDMA5, 0x80 | 0x01);
+    bus.stepHDMAHBlank();
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0x00);
+
+    bus.write(IO_REGISTERS.HDMA5, 0x00);
+    expect(bus.read(IO_REGISTERS.HDMA5)).toBe(0xff);
+
+    // second block should not be copied
+    expect(bus.read(0x8010)).toBe(0x00);
+  });
+});
