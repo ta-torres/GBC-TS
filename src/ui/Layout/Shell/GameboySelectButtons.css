@@ -46,3 +46,13 @@
   font-size: 9px;
   --pill-base-translate-y: 20px;
 }
+
+@media (max-width: 768px) {
+  .gameboy-pill label {
+    display: none;
+  }
+
+  .gameboy-pill span {
+    transform: translate(-2px, 20px);
+  }
+}

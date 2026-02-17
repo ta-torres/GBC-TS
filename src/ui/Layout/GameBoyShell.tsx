@@ -52,7 +52,6 @@ const DEFAULT_LAYOUT = {
   dpad: { left: 12, top: 58 },
   ab: { left: 64, top: 55, rotateDeg: 45 },
   selectStart: { left: 20, top: 82, rotateDeg: -25 },
-  speaker: { left: 62, top: 82 },
   batteryLed: { left: 12.3, top: 22 },
   settings: { left: 11.5, top: 15 },
 } satisfies Record<string, LayoutRect>;
@@ -196,20 +195,6 @@ export const GameBoyShell = ({
             onButtonUp={onButtonUp}
           />
         </div>
-        {/* 
-        <div
-          className="gb-slot gb-slot-speaker"
-          style={rectStyle(DEFAULT_LAYOUT.speaker)}
-        >
-          <div className="gameboy-speaker">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        </div> */}
       </div>
     </div>
   );

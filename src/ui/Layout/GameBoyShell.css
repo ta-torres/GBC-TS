@@ -6,17 +6,6 @@
   position: relative;
   margin: 0 auto;
   width: min(90vw, 360px);
-  /*   aspect-ratio: 0.6; */
-  border-radius: 15px 15px 50px 15px;
-  background: linear-gradient(
-    180deg,
-    #c2c3c7 0%,
-    #b9bcc5 45%,
-    #bcbfc8 80%,
-    #b7bac3 100%
-  );
-  box-shadow: 0 20px 35px rgba(0, 0, 0, 0.7);
-  padding: 18px 22px 50px;
   transform: scale(var(--gb-scale));
   transform-origin: top left;
   user-select: none;
@@ -64,94 +53,6 @@
 
 .gameboy-shell:fullscreen .gameboy-shell-bg--fullscreen {
   opacity: 1;
-}
-
-.gb-slot {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* z-index: 7; */
-}
-
-.gb-slot-screen {
-  position: absolute;
-  z-index: 6;
-}
-
-.gameboy-shell-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.gameboy-top-ridge-bottom {
-  position: relative;
-  transform: scalex(1.13);
-  width: 100%;
-  top: 8px;
-  height: 3px;
-  background: rgba(60, 62, 65, 0.85);
-}
-
-.gameboy-screen-area {
-  position: relative;
-  margin-top: 22px;
-  background: linear-gradient(180deg, #5f6b79 0%, #5f6b79 100%);
-  border-radius: 15px 15px 50px 15px;
-  /* border-radius: inherit; */
-  padding: 9px 25px 25px 10px;
-}
-
-.gameboy-screen-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: #f5f5f5;
-  margin-bottom: 10px;
-}
-
-.gameboy-header-stripes {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.gameboy-header-stripes span {
-  width: 50px;
-  height: 2px;
-  border-radius: 50px;
-}
-
-.gameboy-header-stripes span:nth-child(1) {
-  background: #5b3366;
-}
-
-.gameboy-header-stripes span:nth-child(2) {
-  background: #214a87;
-}
-
-.gameboy-header-text {
-  text-align: center;
-  white-space: nowrap;
-  color: #b5bfca;
-}
-
-.gameboy-screen-shell {
-  display: flex;
 }
 
 .gameboy-fullscreen-button {
@@ -229,29 +130,7 @@
 .gameboy-shell:fullscreen .gameboy-dpad {
   transform: translate(0px, 20px);
 }
-/* 
-.gameboy-shell:fullscreen .gameboy-screen-window {
-  max-width: none;
-  width: 100vw;
-}
 
-.gameboy-shell:fullscreen .gameboy-screen-area {
-  padding: 0;
-}
-
-.gameboy-shell:fullscreen .gameboy-screen-shell {
-  justify-content: center;
-}
-
-.gameboy-shell:fullscreen .gameboy-battery {
-  display: none;
-}
-
-.gameboy-shell:fullscreen .gameboy-screen-header {
-  padding: 0;
-  display: none;
-}
- */
 .gameboy-battery {
   position: relative;
 
@@ -279,39 +158,17 @@
   box-shadow: none;
 }
 
-.gameboy-battery-label {
-  position: relative;
-  right: 3px;
-  font-size: 8px;
-  /* letter-spacing: 0.18em; */
-  color: #b5bfca;
+.gb-slot {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* z-index: 7; */
 }
 
-.gameboy-bottom-area {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  margin-top: 32px;
-  /* height: calc(100% - 230px); */
-}
-
-.gameboy-controls-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.gameboy-middle-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-top: 22px;
-}
-
-.gameboy-speaker {
-  display: flex;
-  gap: 11px;
-  transform: rotate(-30deg) translateY(10px);
+.gb-slot-screen {
+  position: absolute;
+  z-index: 6;
 }
 
 .gb-slot-speaker .gameboy-speaker {
@@ -330,14 +187,6 @@
   transform: none;
 }
 
-.gameboy-speaker span {
-  width: 7px;
-  height: 48px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #505459 0%, #2b2e32 100%);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.75);
-}
-
 @media (min-width: 1024px) {
   :root {
     --gb-scale: 1.5;
@@ -349,6 +198,10 @@
 
   .gameboy-fullscreen-button {
     display: inline-flex;
+  }
+
+  .gameboy-stage {
+    transform: translateX(10%);
   }
 }
 
