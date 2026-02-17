@@ -14,7 +14,8 @@
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, #b7bac3, #bcbfc8);
+  background: none;
+  /* background: linear-gradient(90deg, #b7bac3, #bcbfc8); */
   transform: translate(20px, 0px) rotate(20deg);
   width: 70px;
   /* z-index: -3; */

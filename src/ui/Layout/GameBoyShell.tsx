@@ -1,10 +1,61 @@
 import type { ReactNode } from "react";
 import type { JoypadButton } from "../../emulator/input/joypad";
-import { SettingsIcon } from "lucide-react";
+import { Maximize2Icon, SettingsIcon } from "lucide-react";
 import { GameboyDpad } from "./Shell/GameboyDpad";
 import { GameboyActionButtons } from "./Shell/GameboyActionButtons";
 import { GameboySelectButtons } from "./Shell/GameboySelectButtons";
 import "./GameBoyShell.css";
+
+import shellImageUrl from "./Shell/GameBoy.png?url";
+import shellFullscreenImageUrl from "./Shell/GameBoy-Fullscreen.png?url";
+
+const SHELL_IMAGE_URL = shellImageUrl;
+const SHELL_FULLSCREEN_IMAGE_URL = shellFullscreenImageUrl;
+
+type LayoutRect = {
+  left: number;
+  top: number;
+  width?: number | "auto";
+  height?: number | "auto";
+  translateX?: number;
+  translateY?: number;
+  rotateDeg?: number;
+};
+
+const rectStyle = (rect: LayoutRect) => {
+  const style: Record<string, string> = {
+    left: `${rect.left}%`,
+    top: `${rect.top}%`,
+  };
+
+  if (typeof rect.width === "number") {
+    style.width = `${rect.width}%`;
+  }
+
+  if (typeof rect.height === "number") {
+    style.height = `${rect.height}%`;
+  }
+
+  const translateX = rect.translateX ?? 0;
+  const translateY = rect.translateY ?? 0;
+  const rotateDeg = rect.rotateDeg ?? 0;
+  if (translateX !== 0 || translateY !== 0 || rotateDeg !== 0) {
+    style.transform = `translate(${translateX}px, ${translateY}px) rotate(${rotateDeg}deg)`;
+  }
+
+  return style;
+};
+
+const DEFAULT_LAYOUT = {
+  screen: { left: 24, top: 12.9, width: 55, height: "auto" },
+  fullscreen: { left: 86, top: 9.5 },
+  dpad: { left: 12, top: 58 },
+  ab: { left: 64, top: 55, rotateDeg: 45 },
+  selectStart: { left: 20, top: 82, rotateDeg: -25 },
+  speaker: { left: 62, top: 82 },
+  batteryLed: { left: 12.3, top: 22 },
+  settings: { left: 11.5, top: 15 },
+} satisfies Record<string, LayoutRect>;
 
 interface GameBoyShellProps {
   children: ReactNode;
@@ -56,96 +107,109 @@ export const GameBoyShell = ({
   };
 
   return (
-    <div className="gameboy-shell">
-      <div className="gameboy-shell-inner">
-        <div className="gameboy-top-ridge">
-          <span />
-          <span />
-          <div className="gameboy-top-ridge-bottom" />
-        </div>
-        {/* <div className="gameboy-top-ridge-left" />
-          <div className="gameboy-top-ridge-right" /> */}
-        <div className="gameboy-screen-area">
-          <button
-            type="button"
-            className="gameboy-fullscreen-button"
-            onClick={handleFullscreen}
-            aria-label="Toggle fullscreen"
-          >
-            ⤢
-          </button>
+    <div className="gameboy-shell gameboy-shell--image">
+      <div className="gameboy-stage" role="presentation">
+        <img
+          className="gameboy-shell-bg gameboy-shell-bg--normal"
+          src={SHELL_IMAGE_URL}
+          alt="Game Boy shell"
+          draggable={false}
+        />
 
-          <div className="gameboy-screen-header">
-            <div className="gameboy-header-stripes">
-              <span />
-              <span />
-            </div>
-            <div className="gameboy-header-text">
-              DOT MATRIX WITH STEREO SOUND
-            </div>
-            <div className="gameboy-header-stripes gameboy-header-stripes-right">
-              <span />
-              <span />
-            </div>
-          </div>
+        <img
+          className="gameboy-shell-bg gameboy-shell-bg--fullscreen"
+          src={SHELL_FULLSCREEN_IMAGE_URL}
+          alt="Game Boy shell (fullscreen)"
+          draggable={false}
+        />
 
-          <div className="gameboy-screen-shell">
-            <div className="gameboy-battery">
-              <div
-                className={`gameboy-battery-led ${isBatteryOn ? "" : "gameboy-battery-led--off"}`}
-              />
-              <div className="gameboy-battery-label">BATTERY</div>
-              <div className="relative inline-flex">
-                <button
-                  type="button"
-                  className="gameboy-settings-button"
-                  onClick={toggleCommandMenu}
-                  aria-label="Open settings menu"
-                >
-                  <SettingsIcon className="h-3 w-3 text-gray-300" />
-                </button>
-                {showCommandMenu && commandMenu && (
-                  <div className="absolute -top-35 z-500 ml-0 w-72 scale-70">
-                    {commandMenu}
-                  </div>
-                )}
+        <button
+          type="button"
+          className="gameboy-fullscreen-button"
+          onClick={handleFullscreen}
+          aria-label="Toggle fullscreen"
+          style={rectStyle(DEFAULT_LAYOUT.fullscreen)}
+        >
+          <Maximize2Icon className="h-2 w-2 text-gray-300" />
+        </button>
+
+        <div
+          className={`gameboy-battery-led gameboy-battery-led--overlay ${isBatteryOn ? "" : "gameboy-battery-led--off"}`}
+          style={rectStyle(DEFAULT_LAYOUT.batteryLed)}
+        />
+
+        <div
+          className="gb-slot gb-slot-settings"
+          style={rectStyle(DEFAULT_LAYOUT.settings)}
+        >
+          <div className="relative inline-flex">
+            <button
+              type="button"
+              className="gameboy-settings-button"
+              onClick={toggleCommandMenu}
+              aria-label="Open settings menu"
+            >
+              <SettingsIcon className="h-3 w-3 text-gray-300" />
+            </button>
+            {showCommandMenu && commandMenu && (
+              <div className="absolute -top-15 z-500 ml-0 w-72 scale-70 max-sm:-top-10 max-sm:left-5">
+                {commandMenu}
               </div>
-            </div>
-
-            <div className="gameboy-screen-window">{children}</div>
+            )}
           </div>
         </div>
 
-        <div className="gameboy-bottom-area">
-          <div className="gameboy-controls-row">
-            <GameboyDpad
-              onButtonDown={onButtonDown}
-              onButtonUp={onButtonUp}
-              showDebugBounds={showDpadDebug}
-            />
-
-            <GameboyActionButtons
-              onButtonDown={onButtonDown}
-              onButtonUp={onButtonUp}
-            />
-          </div>
-
-          <div className="gameboy-middle-row">
-            <GameboySelectButtons
-              onButtonDown={onButtonDown}
-              onButtonUp={onButtonUp}
-            />
-
-            <div className="gameboy-speaker">
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
+        <div
+          className="gb-slot gb-slot-screen"
+          style={rectStyle(DEFAULT_LAYOUT.screen)}
+        >
+          <div className="gameboy-screen-window">{children}</div>
         </div>
+
+        <div
+          className="gb-slot gb-slot-dpad"
+          style={rectStyle(DEFAULT_LAYOUT.dpad)}
+        >
+          <GameboyDpad
+            onButtonDown={onButtonDown}
+            onButtonUp={onButtonUp}
+            showDebugBounds={showDpadDebug}
+          />
+        </div>
+
+        <div
+          className="gb-slot gb-slot-ab"
+          style={rectStyle(DEFAULT_LAYOUT.ab)}
+        >
+          <GameboyActionButtons
+            onButtonDown={onButtonDown}
+            onButtonUp={onButtonUp}
+          />
+        </div>
+
+        <div
+          className="gb-slot gb-slot-select-start"
+          style={rectStyle(DEFAULT_LAYOUT.selectStart)}
+        >
+          <GameboySelectButtons
+            onButtonDown={onButtonDown}
+            onButtonUp={onButtonUp}
+          />
+        </div>
+        {/* 
+        <div
+          className="gb-slot gb-slot-speaker"
+          style={rectStyle(DEFAULT_LAYOUT.speaker)}
+        >
+          <div className="gameboy-speaker">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+        </div> */}
       </div>
     </div>
   );
