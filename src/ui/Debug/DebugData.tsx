@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/pixelact-ui/card";
-import type { GBEmulator } from "@/emulator/gbEmulator";
+import type { GBCEmulator } from "@/emulator/gbcEmulator";
 
 interface DebugDataProps {
-  emulator: GBEmulator | null;
+  emulator: GBCEmulator | null;
 }
 
 export const DebugData = ({ emulator }: DebugDataProps) => {

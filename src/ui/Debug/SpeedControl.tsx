@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { GBEmulator } from "@/emulator/gbEmulator";
+import type { GBCEmulator } from "@/emulator/gbcEmulator";
 import { Card } from "@/components/ui/pixelact-ui/card";
 import { Button } from "@/components/ui/pixelact-ui/button";
 
 interface SpeedControlProps {
-  emulator: GBEmulator;
+  emulator: GBCEmulator;
 }
 
 const SPEED_PRESETS = [1, 2, 4] as const;

@@ -9,7 +9,7 @@ import { PPU } from "./ppu/ppu";
 import { Joypad } from "./input/joypad";
 import type { JoypadButton } from "./input/joypad";
 
-export class GBEmulator {
+export class GBCEmulator {
   private cartridge: Cartridge;
   private cpu: CPU;
   private bus: AddressBus;
@@ -126,7 +126,7 @@ export class GBEmulator {
   stepFrameCycle(): void {
     /* 
     154 scanlines/frame * 456 cycles/scanline = 70224 cycles/frame 
-    Each RAF iteration in useGameBoyEmulator calls this function by one frame worth of cpu cycles (70224)
+    Each RAF iteration in useGBCEmulator calls this function by one frame worth of cpu cycles (70224)
     
     stepInstruction adds t-cycles to ticks, which are used by this function to stop running the current frame once 70224 cycles have been consumed
     */

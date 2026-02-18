@@ -1,4 +1,4 @@
-import type { GBEmulator } from "@/emulator/gbEmulator";
+import type { GBCEmulator } from "@/emulator/gbcEmulator";
 import { EmuControllers } from "../Debug/EmuControllers";
 import { DebugData } from "../Debug/DebugData";
 import { TileViewer } from "../Debug/TileViewer";
@@ -24,7 +24,7 @@ interface DebugPanelActionProps {
 interface DebugPanelProps {
   state: DebugPanelStateProps;
   actions: DebugPanelActionProps;
-  emulator: GBEmulator | null;
+  emulator: GBCEmulator | null;
 }
 
 export const DebugPanel = ({ state, actions, emulator }: DebugPanelProps) => {

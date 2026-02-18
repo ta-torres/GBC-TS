@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { GBEmulator } from "@/emulator/gbEmulator";
+import { GBCEmulator } from "@/emulator/gbcEmulator";
 import type { JoypadButton } from "@/emulator/input/joypad";
 
-export const useGameBoyEmulator = () => {
-  const emulatorRef = useRef<GBEmulator | null>(null);
+export const useGBCEmulator = () => {
+  const emulatorRef = useRef<GBCEmulator | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
 
   if (!emulatorRef.current) {
-    emulatorRef.current = new GBEmulator();
+    emulatorRef.current = new GBCEmulator();
   }
 
   useEffect(() => {
@@ -117,7 +117,7 @@ export const useGameBoyEmulator = () => {
     };
   }, []);
 
-  const saveSRAMToLocalStorage = (emu: GBEmulator) => {
+  const saveSRAMToLocalStorage = (emu: GBCEmulator) => {
     const saveKey = emu.getSaveKey();
     if (!saveKey || typeof window === "undefined") return;
 

@@ -51,9 +51,9 @@ vi.mock("../ppu/ppu", () => {
 
 describe("PPU wiring", () => {
   it("constructs PPU with both VRAM banks (bank0, bank1) and shared OAM/IO/interrupts", async () => {
-    const { GBEmulator } = await import("../gbEmulator");
+    const { GBCEmulator } = await import("../gbcEmulator");
 
-    new GBEmulator();
+    new GBCEmulator();
 
     expect(ppuConstructorSpy).toHaveBeenCalledTimes(1);
 
