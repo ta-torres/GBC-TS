@@ -6,6 +6,7 @@ import { toHex16, toHex8 } from "../utils/bitwise";
 import { Interrupts, InterruptType, INTERRUPT_ADDRESSES } from "./interrupts";
 
 export class CPU {
+  // only setting A might be necessary for CGB mode?
   public registers: Registers;
   private bus: AddressBus;
   public programCounter: number;
@@ -13,11 +14,12 @@ export class CPU {
   private interruptMasterEnable: boolean = false;
   private imeScheduled: boolean;
   private halted: boolean;
-  // @ts-expect-error unused
   private stopped: boolean;
   private haltBug: boolean;
 
   private interrupts: Interrupts;
+
+  private cgbMode: boolean = false;
 
   constructor(bus: AddressBus, interrupts: Interrupts) {
     this.registers = new Registers();
@@ -42,6 +44,14 @@ export class CPU {
         this.handleInterrupt(interrupt);
         return 20;
       }
+    }
+
+    if (this.stopped) {
+      // wake from STOP when any interrupt becomes pending
+      if (this.interrupts.getPending() !== 0) {
+        this.stopped = false;
+      }
+      return 4;
     }
 
     if (this.halted) {
@@ -150,8 +160,13 @@ export class CPU {
     this.halted = true;
   }
 
-  reset(): void {
-    this.registers.reset();
+  stop(): void {
+    this.stopped = true;
+  }
+
+  reset(cgbMode: boolean = this.cgbMode): void {
+    this.cgbMode = cgbMode;
+    this.registers.reset(cgbMode);
     this.programCounter = 0x0100;
     this.stackPointer = 0xfffe;
     this.interruptMasterEnable = false;

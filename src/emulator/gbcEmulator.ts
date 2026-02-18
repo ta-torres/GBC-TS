@@ -2,14 +2,14 @@ import { Cartridge } from "./cartridge/cartridge";
 import { CPU } from "./core/cpu";
 import { AddressBus } from "./memory/addressBus";
 import { loadROMFile } from "./utils/fileLoader";
-import { toHex16 } from "@/emulator/utils/bitwise";
+import { toHex16 } from "./utils/bitwise";
 import { Interrupts } from "./core/interrupts";
 import { Timer } from "./core/timer";
 import { PPU } from "./ppu/ppu";
 import { Joypad } from "./input/joypad";
 import type { JoypadButton } from "./input/joypad";
 
-export class GBEmulator {
+export class GBCEmulator {
   private cartridge: Cartridge;
   private cpu: CPU;
   private bus: AddressBus;
@@ -17,6 +17,8 @@ export class GBEmulator {
   private timer: Timer;
   private ppu: PPU;
   private joypad: Joypad;
+
+  private cgbMode: boolean = false;
 
   private running = false;
   private paused = false;
@@ -33,10 +35,14 @@ export class GBEmulator {
     this.bus.attachJoypad(this.joypad);
     this.cpu = new CPU(this.bus, this.interrupts);
     this.ppu = new PPU(
-      this.bus.getVRAMView(),
+      this.bus.getVRAMBank0View(),
+      this.bus.getVRAMBank1View(),
       this.bus.getOAMView(),
       this.bus.getIORegistersView(),
       this.interrupts,
+      this.cgbMode,
+      this.bus.getCGBBackgroundPaletteRAMView(),
+      this.bus.getCGBObjectPaletteRAMView(),
     );
   }
 
@@ -52,6 +58,12 @@ export class GBEmulator {
         this.errorMessage = this.cartridge.getErrorMessage();
         return false;
       }
+
+      const header = this.cartridge.getHeader();
+      const cgbFlag = header?.cgbFlag ?? 0x00;
+      // either CGB compatible or CGB only
+      const isCgb = cgbFlag === 0x80 || cgbFlag === 0xc0;
+      this.cgbMode = isCgb;
 
       this.reset();
       return true;
@@ -83,12 +95,12 @@ export class GBEmulator {
   }
 
   reset(): void {
-    this.cpu.reset();
-    this.bus.reset();
+    this.cpu.reset(this.cgbMode);
+    this.bus.reset(this.cgbMode);
+    this.ppu.reset(this.cgbMode);
     this.timer.reset();
     this.interrupts.reset();
     this.joypad.reset();
-    this.ppu.reset();
     this.ticks = 0;
     this.running = false;
     this.paused = false;
@@ -98,11 +110,17 @@ export class GBEmulator {
   stepInstruction(): void {
     if (!this.cartridge.isLoaded()) return;
     try {
-      const cycles = this.cpu.step();
-      // update based on t-cycles
-      this.timer.step(cycles);
-      this.ppu.step(cycles);
-      this.ticks += cycles;
+      const timeCycles = this.cpu.step();
+      const baseCycles = this.bus.isDoubleSpeed()
+        ? Math.floor(timeCycles / 2)
+        : timeCycles;
+
+      // update PPU/timer at base clock speed
+      this.timer.step(baseCycles);
+      this.ppu.step(baseCycles);
+      if (this.ppu.hasEnteredHBlank()) this.bus.stepHDMAHBlank();
+
+      this.ticks += baseCycles;
 
       //console.log(this.getCPUState());
       //console.log(this.cpu.getInstruction());
@@ -115,7 +133,7 @@ export class GBEmulator {
   stepFrameCycle(): void {
     /* 
     154 scanlines/frame * 456 cycles/scanline = 70224 cycles/frame 
-    Each RAF iteration in useGameBoyEmulator calls this function by one frame worth of cpu cycles (70224)
+    Each RAF iteration in useGBCEmulator calls this function by one frame worth of cpu cycles (70224)
     
     stepInstruction adds t-cycles to ticks, which are used by this function to stop running the current frame once 70224 cycles have been consumed
     */

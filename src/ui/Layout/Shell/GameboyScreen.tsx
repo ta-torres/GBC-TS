@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { GBEmulator } from "../../../emulator/gbEmulator";
+import type { GBCEmulator } from "../../../emulator/gbcEmulator";
 import { Overlay } from "./Overlay";
 import "./GameboyScreen.css";
 
@@ -9,7 +9,7 @@ export const GBScreen = ({
   emulator,
   showOverlay,
 }: {
-  emulator: GBEmulator;
+  emulator: GBCEmulator;
   showOverlay: boolean;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

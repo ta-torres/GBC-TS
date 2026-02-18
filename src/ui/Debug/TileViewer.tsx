@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import type { GBEmulator } from "@/emulator/gbEmulator";
+import type { GBCEmulator } from "@/emulator/gbcEmulator";
 import { Card } from "@/components/ui/pixelact-ui/card";
 
 interface TileViewerProps {
-  emulator: GBEmulator | null;
+  emulator: GBCEmulator | null;
 }
 
 export const TileViewer = ({ emulator }: TileViewerProps) => {

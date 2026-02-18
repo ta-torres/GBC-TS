@@ -79,17 +79,25 @@ const getBGPixelIndex = (
 
 export class PPU {
   private vram: Uint8Array;
+  private vramBank1: Uint8Array; // gbc specific
   private oam: Uint8Array;
   private io: Uint8Array;
   private interrupts: Interrupts;
   private framebuffer: Uint32Array;
   private actualFramebufferDrawnToTheScreen: Uint32Array;
   private bgIndexLine: Uint8Array;
+  private bgPriorityLine: Uint8Array;
   private mode: PpuMode;
   private currentScanlineLY: number;
   private cyclesInLine: number;
   private frameReady: boolean;
   private windowScanline: number;
+  private enteredHBlank: boolean;
+
+  /* GCB SPECIFIC */
+  private cgbMode: boolean;
+  private cgbBgPaletteRam: Uint8Array;
+  private cgbObjPaletteRam: Uint8Array;
 
   /*
   LCD_STAT interrupt
@@ -104,25 +112,35 @@ export class PPU {
   };
 
   constructor(
-    vram: Uint8Array,
+    vramBank0: Uint8Array,
+    vramBank1: Uint8Array,
     oam: Uint8Array,
     io: Uint8Array,
     interrupts: Interrupts,
+    cgbMode: boolean,
+    cgbBgPaletteRam: Uint8Array,
+    cgbObjPaletteRam: Uint8Array,
   ) {
-    this.vram = vram;
+    this.vram = vramBank0;
+    this.vramBank1 = vramBank1;
     this.oam = oam;
     this.io = io;
     this.interrupts = interrupts;
+    this.cgbMode = cgbMode;
+    this.cgbBgPaletteRam = cgbBgPaletteRam;
+    this.cgbObjPaletteRam = cgbObjPaletteRam;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
     this.actualFramebufferDrawnToTheScreen = new Uint32Array(
       SCREEN_WIDTH * SCREEN_HEIGHT,
     );
     this.bgIndexLine = new Uint8Array(SCREEN_WIDTH);
+    this.bgPriorityLine = new Uint8Array(SCREEN_WIDTH);
     this.mode = PpuMode.OAM;
     this.currentScanlineLY = 0;
     this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
+    this.enteredHBlank = false;
 
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
 
@@ -132,7 +150,12 @@ export class PPU {
     // dont request interrupts on class init?
   }
 
-  reset(): void {
+  setCGBMode(enabled: boolean): void {
+    this.cgbMode = enabled;
+  }
+
+  reset(cgbMode: boolean = this.cgbMode): void {
+    this.setCGBMode(cgbMode);
     this.framebuffer.fill(0);
     this.actualFramebufferDrawnToTheScreen.fill(0);
     this.bgIndexLine.fill(0);
@@ -141,6 +164,7 @@ export class PPU {
     this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
+    this.enteredHBlank = false;
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
 
     this.io[IO_REGISTERS.LY - 0xff00] = 0;
@@ -174,6 +198,9 @@ export class PPU {
         this.setMode(PpuMode.Transfer);
       } else if (this.cyclesInLine < CYCLES_PER_LINE) {
         this.setMode(PpuMode.HBlank);
+        if (previousMode === PpuMode.Transfer) {
+          this.enteredHBlank = true;
+        }
         // only render bg once per scanline at the start of hblank
         if (previousMode === PpuMode.Transfer && this.currentScanlineLY < 144) {
           this.renderBackgroundLine();
@@ -236,11 +263,45 @@ export class PPU {
     return this.DMG_RGBA[shade];
   }
 
+  private cgbRgb555ToRgba(color15: number): number {
+    const r5 = color15 & 0x1f;
+    const g5 = (color15 >> 5) & 0x1f;
+    const b5 = (color15 >> 10) & 0x1f;
+    const r8 = (r5 << 3) | (r5 >> 2);
+    const g8 = (g5 << 3) | (g5 >> 2);
+    const b8 = (b5 << 3) | (b5 >> 2);
+    return (0xff << 24) | (b8 << 16) | (g8 << 8) | r8;
+  }
+
+  private mapCGBBgPalette(paletteNumber: number, color: 0 | 1 | 2 | 3): number {
+    const pal = paletteNumber & 0x07;
+    const idx = (pal * 8 + color * 2) & 0x3f;
+    const low = this.cgbBgPaletteRam[idx] ?? 0x00;
+    const high = this.cgbBgPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
+    const rgb555 = low | (high << 8);
+    return this.cgbRgb555ToRgba(rgb555);
+  }
+
+  private mapCGBObjPalette(
+    paletteNumber: number,
+    color: 0 | 1 | 2 | 3,
+  ): number {
+    const pal = paletteNumber & 0x07;
+    const idx = (pal * 8 + color * 2) & 0x3f;
+    const low = this.cgbObjPaletteRam[idx] ?? 0x00;
+    const high = this.cgbObjPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
+    const rgb555 = low | (high << 8);
+    return this.cgbRgb555ToRgba(rgb555);
+  }
+
   private renderBackgroundLine(): void {
-    // si BG está deshabilitado, rellenar scanline con color 0
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
-    const bgEnabled = (lcdc & 0x01) !== 0;
-    if (!bgEnabled) {
+
+    const cgbMasterPriority = (lcdc & 0x01) !== 0;
+
+    // DMG: si BG está deshabilitado, rellenar scanline con color 0
+    const dmgBgEnabled = (lcdc & 0x01) !== 0;
+    if (!this.cgbMode && !dmgBgEnabled) {
       const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
       const backgroundColor = this.mapDMGPalette(bgPalette, 0);
       const scanlineY = this.currentScanlineLY | 0;
@@ -248,6 +309,7 @@ export class PPU {
       for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
         this.framebuffer[scanlineOffset + screenX] = backgroundColor;
         this.bgIndexLine[screenX] = 0;
+        this.bgPriorityLine[screenX] = 0;
       }
       return;
     }
@@ -279,6 +341,17 @@ export class PPU {
       const tileNumber =
         this.vram[bgTileMapBaseAddress - 0x8000 + tileMapIndex];
 
+      // GBC SPECIFIC
+      const cgbAttributeAddress = this.cgbMode
+        ? this.vramBank1[bgTileMapBaseAddress - 0x8000 + tileMapIndex]
+        : 0x00;
+      const cgbPaletteNumber = cgbAttributeAddress & 0x07;
+      const cgbTileBank1 = (cgbAttributeAddress & 0x08) !== 0;
+      const cgbXFlip = (cgbAttributeAddress & 0x20) !== 0;
+      const cgbYFlip = (cgbAttributeAddress & 0x40) !== 0;
+      // https://gbdev.io/pandocs/single.html#bg-to-obj-priority-in-cgb-mode
+      const cgbBgPriority = (cgbAttributeAddress & 0x80) !== 0;
+
       // convierte número de tile en tile data index (address con/sin signo)
       let tileIndex: number;
       if (signedIndex) {
@@ -289,30 +362,40 @@ export class PPU {
       }
 
       // obtiene los dos bytes de bitplanes para esta tile row
+      const cgbTileRowOffset =
+        this.cgbMode && cgbYFlip ? 7 - tileRowOffset : tileRowOffset;
+
+      // si está en cgbMode y tile bank 1 está habilitado, fetchea de vramBank1, sino de vram
       const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
-        this.vram,
+        this.cgbMode && cgbTileBank1 ? this.vramBank1 : this.vram,
         tileDataBaseAddress,
         tileIndex,
-        tileRowOffset,
+        cgbTileRowOffset,
       );
       // elige qué bit dentro de la fila corresponde a este píxel, fusiona bitplane a 2-bit y mapea a color final
-      const pixelBitIndex = 7 - (bgX & 7);
-
+      const pixelBitIndex = this.cgbMode && cgbXFlip ? bgX & 7 : 7 - (bgX & 7);
       const paletteIndex = getBGPixelIndex(
         lowTilePlaneByte,
         highTilePlaneByte,
         pixelBitIndex,
       );
-      const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
+      const pixelColor = this.cgbMode
+        ? this.mapCGBBgPalette(cgbPaletteNumber, paletteIndex)
+        : this.mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
+      this.bgPriorityLine[screenX] =
+        this.cgbMode && cgbMasterPriority && cgbBgPriority ? 1 : 0;
     }
   }
 
   private renderWindowLine(): void {
     // same as renderBackground but drawn on top (uses same readTileDataIndex)
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
+
+    if (!this.cgbMode && (lcdc & 0x01) === 0) return;
+
     const windowEnabled = (lcdc & 0x20) !== 0;
     if (!windowEnabled) return;
 
@@ -331,6 +414,8 @@ export class PPU {
     );
     const windowTileMapBaseAddress = windowTileMapBase(this.io);
     const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
+
+    const cgbMasterPriority = (lcdc & 0x01) !== 0;
 
     // same as BG but use windowScanline instead of windowY (only count lines where the window is actually drawn)
     const windowRowInPixels = this.windowScanline & 0xff;
@@ -351,6 +436,16 @@ export class PPU {
       const tileNumber =
         this.vram[windowTileMapBaseAddress - 0x8000 + tileMapIndex];
 
+      // GBC SPECIFIC
+      const cgbAttributeAddress = this.cgbMode
+        ? this.vramBank1[windowTileMapBaseAddress - 0x8000 + tileMapIndex]
+        : 0x00;
+      const cgbPaletteNumber = cgbAttributeAddress & 0x07;
+      const cgbTileBank1 = (cgbAttributeAddress & 0x08) !== 0;
+      const cgbXFlip = (cgbAttributeAddress & 0x20) !== 0;
+      const cgbYFlip = (cgbAttributeAddress & 0x40) !== 0;
+      const cgbBgPriority = (cgbAttributeAddress & 0x80) !== 0;
+
       let tileIndex: number;
       if (signedIndex) {
         const tileNumberSigned = (tileNumber << 24) >> 24;
@@ -360,22 +455,29 @@ export class PPU {
       }
 
       const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
-        this.vram,
+        this.cgbMode && cgbTileBank1 ? this.vramBank1 : this.vram,
         tileDataBaseAddress,
         tileIndex,
-        windowTileRowOffset,
+        this.cgbMode && cgbYFlip
+          ? 7 - windowTileRowOffset
+          : windowTileRowOffset,
       );
 
-      const pixelBitIndex = 7 - (windowX & 7);
+      const pixelBitIndex =
+        this.cgbMode && cgbXFlip ? windowX & 7 : 7 - (windowX & 7);
       const paletteIndex = getBGPixelIndex(
         lowTilePlaneByte,
         highTilePlaneByte,
         pixelBitIndex,
       );
-      const pixelColor = this.mapDMGPalette(bgPalette, paletteIndex);
+      const pixelColor = this.cgbMode
+        ? this.mapCGBBgPalette(cgbPaletteNumber, paletteIndex)
+        : this.mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
+      this.bgPriorityLine[screenX] =
+        this.cgbMode && cgbMasterPriority && cgbBgPriority ? 1 : 0;
     }
   }
 
@@ -426,6 +528,8 @@ export class PPU {
     const isObjEnabled = (lcdc & 0x02) !== 0;
     if (!isObjEnabled) return;
 
+    const cgbMasterPriority = (lcdc & 0x01) !== 0;
+
     const sprites = this.evalSpritesForScanline();
     if (sprites.length === 0) return;
 
@@ -450,6 +554,8 @@ export class PPU {
       const priorityBehindBg = (attribute & 0x80) !== 0;
       const yFlip = (attribute & 0x40) !== 0;
       const xFlip = (attribute & 0x20) !== 0;
+      const cgbObjPaletteNumber = attribute & 0x07;
+      const cgbVramBank1 = (attribute & 0x08) !== 0;
       const useDMGPalette = (attribute & 0x10) !== 0;
       const obp = useDMGPalette ? obp1 : obp0;
 
@@ -468,7 +574,7 @@ export class PPU {
       const rowInTile = lineInSprite & 7; // wrap to 0-7
 
       const { low, high } = fetchTileRow(
-        this.vram,
+        this.cgbMode && cgbVramBank1 ? this.vramBank1 : this.vram,
         tileBaseAddress,
         tileIndex,
         rowInTile,
@@ -490,14 +596,31 @@ export class PPU {
         }
 
         // same as bg
-        const color = this.mapOBPPalette(obp, paletteIndex);
+        const color = this.cgbMode
+          ? this.mapCGBObjPalette(cgbObjPaletteNumber, paletteIndex)
+          : this.mapOBPPalette(obp, paletteIndex);
         const bufIndex = scanlineOffset + screenX;
 
         // don't draw over non‑transparent background colors
-        if (priorityBehindBg) {
-          const bgIndex = this.bgIndexLine[screenX];
-          if (bgIndex !== 0) {
-            continue;
+        const bgIndex = this.bgIndexLine[screenX];
+        if (bgIndex !== 0) {
+          /* 
+          que carajo
+          https://gbdev.io/pandocs/single.html#bg-to-obj-priority-in-cgb-mode
+          */
+
+          if (!this.cgbMode) {
+            if (priorityBehindBg) continue;
+          } else {
+            // CGB: si LCDC.0 es 0, BG/WIN pierden prioridad y el OBJ (sprite) siempre se dibuja por encima
+            if (cgbMasterPriority) {
+              // Si LCDC.0 es 1, el BG tiene prioridad si OAM bit7 es 1 o BG attr bit7 es 1
+              if (priorityBehindBg) continue;
+
+              // DMG: BG siempre tiene prioridad
+              const bgHasPriority = this.bgPriorityLine[screenX] !== 0;
+              if (bgHasPriority) continue;
+            }
           }
         }
 
@@ -514,6 +637,12 @@ export class PPU {
     const ready = this.frameReady;
     this.frameReady = false;
     return ready;
+  }
+
+  hasEnteredHBlank(): boolean {
+    const entered = this.enteredHBlank;
+    this.enteredHBlank = false;
+    return entered;
   }
 
   getTileViewerData(): { width: number; height: number; data: Uint8Array } {

@@ -4,7 +4,7 @@ import { GBScreen } from "./ui/Layout/Shell/GameboyScreen";
 import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
 import { CommandMenu } from "./ui/Layout/CommandMenu";
-import { useGameBoyEmulator } from "./hooks/useGameBoyEmulator";
+import { useGBCEmulator } from "./hooks/useGBCEmulator";
 import {
   exportSRAMSavesToFile,
   importSRAMSavesFromFile,
@@ -46,7 +46,7 @@ function App() {
     handleStep,
     handleStepFrame,
     handleSRAMSave,
-  } = useGameBoyEmulator();
+  } = useGBCEmulator();
 
   const handleRequestLoadRom = () => {
     fileInputRef.current?.click();

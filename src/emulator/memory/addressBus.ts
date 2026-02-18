@@ -6,8 +6,14 @@ import { Joypad } from "../input/joypad";
 
 export class AddressBus {
   private cartridge: Cartridge;
-  private wram: Uint8Array; // 0xC000-0xDFFF (8KB)
-  private vram: Uint8Array; // 0x8000-0x9FFF (8KB)
+
+  /* RAM BANKING */
+  private wramBank0: Uint8Array;
+  private wramBanks: Uint8Array[];
+  private currentWramBank: number;
+  private vramBanks: Uint8Array[];
+  private cpuVramBank: 0 | 1;
+
   private hram: Uint8Array; // 0xFF80-0xFFFE (127 bytes)
   private ioRegisters: Uint8Array; // 0xFF00-0xFF7F (128 bytes)
   private oam: Uint8Array; // 0xFE00-0xFE9F (160 bytes)
@@ -16,6 +22,35 @@ export class AddressBus {
   private interrupts: Interrupts;
   private joypad?: Joypad;
 
+  /* GBC SPECIFIC */
+  /* 
+    https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
+    https://gbdev.io/pandocs/CGB_Registers.html
+  */
+
+  private cgbMode: boolean;
+
+  private cgbDoubleSpeed: boolean;
+  private speedSwitchRequested: boolean;
+
+  private bgPaletteRam: Uint8Array;
+  private objPaletteRam: Uint8Array;
+  private bgPaletteIndex: number;
+  private bgPaletteAutoInc: boolean;
+  private objPaletteIndex: number;
+  private objPaletteAutoInc: boolean;
+
+  // https://gbdev.io/pandocs/CGB_Registers.html#ff55--hdma5-cgb-mode-only-vram-dma-lengthmodestart
+  private hdmaSourceHigh: number;
+  private hdmaSourceLow: number;
+  private hdmaDestHigh: number;
+  private hdmaDestLow: number;
+
+  private hdmaActive: boolean;
+  private hdmaBlocksRemaining: number;
+  private hdmaCurrentSource: number;
+  private hdmaCurrentDest: number;
+
   /* private debugVramWriteCount = 0;
   private debugOamWriteCount = 0; */
 
@@ -23,15 +58,197 @@ export class AddressBus {
     this.cartridge = cartridge;
     this.timer = timer;
     this.interrupts = interrupts;
-    this.wram = new Uint8Array(0x2000); // 8KB
-    this.vram = new Uint8Array(0x2000); // 8KB
+    this.wramBank0 = new Uint8Array(0x1000);
+    this.wramBanks = Array.from({ length: 7 }, () => new Uint8Array(0x1000));
+    this.currentWramBank = 1;
+
+    this.vramBanks = [new Uint8Array(0x2000), new Uint8Array(0x2000)];
+    this.cpuVramBank = 0;
+
     this.hram = new Uint8Array(0x7f); // 127 bytes
     this.ioRegisters = new Uint8Array(0x80);
     this.oam = new Uint8Array(0xa0);
+
+    /* GBC SPECIFIC */
+
+    this.cgbMode = false;
+    this.cgbDoubleSpeed = false;
+    this.speedSwitchRequested = false;
+
+    this.bgPaletteRam = new Uint8Array(0x40);
+    this.objPaletteRam = new Uint8Array(0x40);
+    this.bgPaletteIndex = 0;
+    this.bgPaletteAutoInc = false;
+    this.objPaletteIndex = 0;
+    this.objPaletteAutoInc = false;
+
+    this.hdmaSourceHigh = 0;
+    this.hdmaSourceLow = 0;
+    this.hdmaDestHigh = 0;
+    this.hdmaDestLow = 0;
+
+    this.hdmaActive = false;
+    this.hdmaBlocksRemaining = 0;
+    this.hdmaCurrentSource = 0;
+    this.hdmaCurrentDest = 0;
+  }
+
+  setCGBMode(enabled: boolean): void {
+    this.cgbMode = enabled;
+    if (!this.cgbMode) {
+      this.cpuVramBank = 0;
+      this.currentWramBank = 1;
+    }
+
+    this.cgbDoubleSpeed = false;
+    this.speedSwitchRequested = false;
+
+    this.bgPaletteIndex = 0;
+    this.bgPaletteAutoInc = false;
+    this.objPaletteIndex = 0;
+    this.objPaletteAutoInc = false;
+
+    this.hdmaSourceHigh = 0;
+    this.hdmaSourceLow = 0;
+    this.hdmaDestHigh = 0;
+    this.hdmaDestLow = 0;
+  }
+
+  /* GBC SPECIFIC GETTERS/SETTERS */
+
+  isCGBMode(): boolean {
+    return this.cgbMode;
+  }
+
+  isDoubleSpeed(): boolean {
+    return this.cgbDoubleSpeed;
+  }
+
+  isSpeedSwitchPrepared(): boolean {
+    return this.speedSwitchRequested;
+  }
+
+  performSpeedSwitch(): void {
+    if (!this.cgbMode) return;
+    if (!this.speedSwitchRequested) return;
+    this.cgbDoubleSpeed = !this.cgbDoubleSpeed;
+    this.speedSwitchRequested = false;
+  }
+
+  private getHDMASourceAddress(): number {
+    return (
+      (((this.hdmaSourceHigh & 0xff) << 8) | (this.hdmaSourceLow & 0xf0)) &
+      0xfff0
+    );
+  }
+
+  private getHDMADestAddress(): number {
+    const raw = ((this.hdmaDestHigh & 0x1f) << 8) | (this.hdmaDestLow & 0xf0);
+    return (0x8000 | (raw & 0x1ff0)) & 0xffff;
+  }
+
+  private isPpuInHBlankMode0(): boolean {
+    const stat = this.ioRegisters[IO_REGISTERS.STAT - 0xff00] ?? 0;
+    return (stat & 0x03) === 0;
+  }
+
+  private isLcdEnabled(): boolean {
+    const lcdc = this.ioRegisters[IO_REGISTERS.LCDC - 0xff00] ?? 0;
+    return (lcdc & 0x80) !== 0;
+  }
+
+  private endHDMA(): void {
+    this.hdmaActive = false;
+    this.hdmaBlocksRemaining = 0;
+  }
+
+  stepHDMAHBlank(): void {
+    // hdma transfer only during hblank
+    if (!this.cgbMode) return;
+    if (!this.hdmaActive) return;
+    if (!this.isLcdEnabled()) {
+      this.endHDMA();
+      return;
+    }
+
+    if (this.hdmaBlocksRemaining <= 0) {
+      this.endHDMA();
+      return;
+    }
+
+    for (let i = 0; i < 0x10; i += 1) {
+      const byte = this.read((this.hdmaCurrentSource + i) & 0xffff);
+      const destination = (this.hdmaCurrentDest + i) & 0xffff;
+      if (destination >= 0x8000 && destination <= 0x9fff) {
+        this.vramBanks[this.cpuVramBank][destination - 0x8000] = byte;
+      }
+    }
+
+    this.hdmaCurrentSource = (this.hdmaCurrentSource + 0x10) & 0xffff;
+    this.hdmaCurrentDest = (this.hdmaCurrentDest + 0x10) & 0xffff;
+    this.hdmaBlocksRemaining -= 1;
+
+    if (this.hdmaBlocksRemaining <= 0) {
+      this.endHDMA();
+    }
+  }
+
+  /* RAM BANKING READ/WRITE */
+  private readWram(address: number): number {
+    if (address >= 0xc000 && address <= 0xcfff) {
+      return this.wramBank0[address - 0xc000];
+    }
+
+    if (address >= 0xd000 && address <= 0xdfff) {
+      const bankIndex = Math.max(1, Math.min(7, this.currentWramBank)) - 1;
+      return this.wramBanks[bankIndex][address - 0xd000];
+    }
+
+    return 0xff;
+  }
+
+  private writeWram(address: number, value: number): void {
+    if (address >= 0xc000 && address <= 0xcfff) {
+      this.wramBank0[address - 0xc000] = value;
+      return;
+    }
+
+    if (address >= 0xd000 && address <= 0xdfff) {
+      const bankIndex = Math.max(1, Math.min(7, this.currentWramBank)) - 1;
+      this.wramBanks[bankIndex][address - 0xd000] = value;
+    }
   }
 
   attachJoypad(joypad: Joypad): void {
     this.joypad = joypad;
+  }
+
+  reset(cgbMode: boolean = this.cgbMode): void {
+    this.setCGBMode(cgbMode);
+    this.wramBank0.fill(0);
+    this.wramBanks.forEach((bank) => bank.fill(0));
+    this.vramBanks.forEach((bank) => bank.fill(0));
+    this.hram.fill(0);
+    this.ioRegisters.fill(0);
+    this.oam.fill(0);
+
+    this.currentWramBank = 1;
+    this.cpuVramBank = 0;
+
+    this.cgbDoubleSpeed = false;
+    this.speedSwitchRequested = false;
+
+    this.bgPaletteRam.fill(0);
+    this.objPaletteRam.fill(0);
+    this.bgPaletteIndex = 0;
+    this.bgPaletteAutoInc = false;
+    this.objPaletteIndex = 0;
+    this.objPaletteAutoInc = false;
+
+    this.hdmaSourceHigh = 0;
+    this.hdmaSourceLow = 0;
+    this.hdmaDestHigh = 0;
+    this.hdmaDestLow = 0;
   }
 
   read(address: number): number {
@@ -44,7 +261,7 @@ export class AddressBus {
 
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
-      return this.vram[address - 0x8000];
+      return this.vramBanks[this.cpuVramBank][address - 0x8000];
     }
 
     // External RAM (0xA000-0xBFFF)
@@ -60,7 +277,7 @@ export class AddressBus {
       address >= MEMORY_MAP.WRAM_BANK_0.start &&
       address <= MEMORY_MAP.WRAM_BANK_N.end
     ) {
-      return this.wram[address - 0xc000];
+      return this.readWram(address);
     }
 
     // Echo RAM (0xE000-0xFDFF) - mirrors WRAM
@@ -68,7 +285,8 @@ export class AddressBus {
       address >= MEMORY_MAP.ECHO_RAM.start &&
       address <= MEMORY_MAP.ECHO_RAM.end
     ) {
-      return this.wram[address - 0xe000];
+      const mirrored = (address - 0x2000) & 0xffff; // E000->C000, FDFF->DDFF
+      return this.readWram(mirrored);
     }
 
     // OAM (0xFE00-0xFE9F)
@@ -113,6 +331,71 @@ export class AddressBus {
           return this.timer.readTAC();
         case IO_REGISTERS.IF:
           return this.interrupts.getIF();
+
+        /* GBC SPECIFIC REGISTERS */
+
+        // speed switch
+        // https://gbdev.io/pandocs/CGB_Registers.html#ff4d--key1spd-cgb-mode-only-prepare-speed-switch
+        case IO_REGISTERS.KEY1: {
+          if (!this.cgbMode) return 0xff;
+          const speedBit = this.cgbDoubleSpeed ? 0x80 : 0x00;
+          const prepareBit = this.speedSwitchRequested ? 0x01 : 0x00;
+          return 0x7e | speedBit | prepareBit;
+        }
+        case IO_REGISTERS.HDMA1:
+          return this.cgbMode ? this.hdmaSourceHigh : 0xff;
+        case IO_REGISTERS.HDMA2:
+          return this.cgbMode ? this.hdmaSourceLow : 0xff;
+        case IO_REGISTERS.HDMA3:
+          return this.cgbMode ? this.hdmaDestHigh : 0xff;
+        case IO_REGISTERS.HDMA4:
+          return this.cgbMode ? this.hdmaDestLow : 0xff;
+        case IO_REGISTERS.HDMA5:
+          if (!this.cgbMode) return 0xff;
+          if (!this.hdmaActive && this.hdmaBlocksRemaining === 0) return 0xff;
+          if (this.hdmaActive) {
+            const blocksRemaining = Math.max(1, this.hdmaBlocksRemaining);
+            return (blocksRemaining - 1) & 0x7f;
+          }
+          return 0x80 | ((this.hdmaBlocksRemaining - 1) & 0x7f);
+        // background palette index
+        // https://gbdev.io/pandocs/Palettes.html#lcd-color-palettes-cgb-only
+        case IO_REGISTERS.BCPS: {
+          if (!this.cgbMode) return 0xff;
+          return (
+            (this.bgPaletteAutoInc ? 0x80 : 0x00) | (this.bgPaletteIndex & 0x3f)
+          );
+        }
+        // background palette data
+        case IO_REGISTERS.BCPD: {
+          if (!this.cgbMode) return 0xff;
+          return this.bgPaletteRam[this.bgPaletteIndex & 0x3f];
+        }
+        // object palette index
+        case IO_REGISTERS.OCPS: {
+          if (!this.cgbMode) return 0xff;
+          return (
+            (this.objPaletteAutoInc ? 0x80 : 0x00) |
+            (this.objPaletteIndex & 0x3f)
+          );
+        }
+        // object palette data
+        case IO_REGISTERS.OCPD: {
+          if (!this.cgbMode) return 0xff;
+          return this.objPaletteRam[this.objPaletteIndex & 0x3f];
+        }
+        // vram bank
+        case IO_REGISTERS.VBK: {
+          // bit 0: VRAM bank, upper bits read as 1
+          return 0xfe | (this.cpuVramBank & 0x01);
+        }
+        // wram bank
+        case IO_REGISTERS.SVBK: {
+          // bits 0-2: WRAM bank (1-7), upper bits read as 1
+          // in DMG mode, this register doesnt exist
+          if (!this.cgbMode) return 0xff;
+          return 0xf8 | (this.currentWramBank & 0x07);
+        }
         default:
           return this.ioRegisters[address - 0xff00];
       }
@@ -144,7 +427,7 @@ export class AddressBus {
 
     // VRAM (0x8000-0x9FFF)
     if (address >= MEMORY_MAP.VRAM.start && address <= MEMORY_MAP.VRAM.end) {
-      this.vram[address - 0x8000] = value;
+      this.vramBanks[this.cpuVramBank][address - 0x8000] = value;
 
       /* if (this.debugVramWriteCount < 64) {
         console.log(
@@ -171,7 +454,7 @@ export class AddressBus {
       address >= MEMORY_MAP.WRAM_BANK_0.start &&
       address <= MEMORY_MAP.WRAM_BANK_N.end
     ) {
-      this.wram[address - 0xc000] = value;
+      this.writeWram(address, value);
       return;
     }
 
@@ -180,7 +463,8 @@ export class AddressBus {
       address >= MEMORY_MAP.ECHO_RAM.start &&
       address <= MEMORY_MAP.ECHO_RAM.end
     ) {
-      this.wram[address - 0xe000] = value;
+      const mirrored = (address - 0x2000) & 0xffff;
+      this.writeWram(mirrored, value);
       return;
     }
 
@@ -234,6 +518,139 @@ export class AddressBus {
         case IO_REGISTERS.IF:
           this.interrupts.setIF(value);
           return;
+        case IO_REGISTERS.KEY1: {
+          // bit 0: prepare speed switch (CGB only). bits 1-6 unused. bit 7 read-only speed.
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.speedSwitchRequested = (value & 0x01) === 0x01;
+          this.ioRegisters[address - 0xff00] = value & 0x01;
+          return;
+        }
+
+        case IO_REGISTERS.HDMA1: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaSourceHigh = value;
+          return;
+        }
+        case IO_REGISTERS.HDMA2: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaSourceLow = value & 0xf0;
+          return;
+        }
+        case IO_REGISTERS.HDMA3: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaDestHigh = value & 0x1f;
+          return;
+        }
+        case IO_REGISTERS.HDMA4: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.hdmaDestLow = value & 0xf0;
+          return;
+        }
+        case IO_REGISTERS.HDMA5: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+
+          // abort HDMA if active and bit7 is written as 0
+          if (this.hdmaActive && (value & 0x80) === 0) {
+            this.endHDMA();
+            return;
+          }
+
+          const blocks = (value & 0x7f) + 1;
+          const length = blocks * 0x10;
+          const srcBase = this.getHDMASourceAddress();
+          const dstBase = this.getHDMADestAddress();
+
+          // if bit7 is written as 0, it is an immediate (General Direct Memory Access) copy
+          if ((value & 0x80) === 0) {
+            for (let i = 0; i < length; i += 1) {
+              const b = this.read((srcBase + i) & 0xffff);
+              const dst = (dstBase + i) & 0xffff;
+              if (dst >= 0x8000 && dst <= 0x9fff) {
+                this.vramBanks[this.cpuVramBank][dst - 0x8000] = b;
+              }
+            }
+
+            this.endHDMA();
+            return;
+          }
+
+          // HDMA copies CANNOT start while the PPU is already in HBlank mode 0
+          // first a write to HDMA5 outside of HBlank mode 0 needs to happen before the hardware can start the copy on the next HBlank
+          if (this.isPpuInHBlankMode0()) {
+            this.endHDMA();
+            return;
+          }
+
+          this.hdmaActive = true;
+          this.hdmaBlocksRemaining = blocks;
+          this.hdmaCurrentSource = srcBase;
+          this.hdmaCurrentDest = dstBase;
+
+          return;
+        }
+
+        /* GBC SPECIFIC */
+
+        case IO_REGISTERS.BCPS: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.bgPaletteIndex = value & 0x3f;
+          this.bgPaletteAutoInc = (value & 0x80) !== 0;
+          this.ioRegisters[address - 0xff00] = value;
+          return;
+        }
+        case IO_REGISTERS.BCPD: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.bgPaletteRam[this.bgPaletteIndex & 0x3f] = value;
+          if (this.bgPaletteAutoInc) {
+            this.bgPaletteIndex = (this.bgPaletteIndex + 1) & 0x3f;
+          }
+          return;
+        }
+        case IO_REGISTERS.OCPS: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.objPaletteIndex = value & 0x3f;
+          this.objPaletteAutoInc = (value & 0x80) !== 0;
+          this.ioRegisters[address - 0xff00] = value;
+          return;
+        }
+        case IO_REGISTERS.OCPD: {
+          if (!this.cgbMode) {
+            this.ioRegisters[address - 0xff00] = value;
+            return;
+          }
+          this.objPaletteRam[this.objPaletteIndex & 0x3f] = value;
+          if (this.objPaletteAutoInc) {
+            this.objPaletteIndex = (this.objPaletteIndex + 1) & 0x3f;
+          }
+          return;
+        }
         case IO_REGISTERS.DMA: {
           /* copy 160 bytes from source page value << 8 to OAM
           TODO: CPU is blocked during DMA?
@@ -243,6 +660,23 @@ export class AddressBus {
           for (let i = 0; i < 0xa0; i += 1) {
             const byte = this.read((srcBase + i) & 0xffff);
             this.write(0xfe00 + i, byte);
+          }
+          return;
+        }
+        case IO_REGISTERS.VBK: {
+          // only bit 0 is used
+          this.ioRegisters[address - 0xff00] = value & 0x01;
+          if (this.cgbMode) {
+            this.cpuVramBank = (value & 0x01) as 0 | 1;
+          }
+          return;
+        }
+        case IO_REGISTERS.SVBK: {
+          this.ioRegisters[address - 0xff00] = value & 0x07;
+          if (this.cgbMode) {
+            let bank = value & 0x07;
+            if (bank === 0) bank = 1;
+            this.currentWramBank = bank;
           }
           return;
         }
@@ -269,20 +703,29 @@ export class AddressBus {
     );
   }
 
-  reset(): void {
-    this.wram.fill(0);
-    this.vram.fill(0);
-    this.hram.fill(0);
-    this.ioRegisters.fill(0);
-    this.oam.fill(0);
+  getVRAMBank0View(): Uint8Array {
+    return this.vramBanks[0];
   }
 
+  getVRAMBank1View(): Uint8Array {
+    return this.vramBanks[1];
+  }
+
+  // DMG-only view, change when cgb is enabled?
   getVRAMView(): Uint8Array {
-    return this.vram;
+    return this.vramBanks[0];
   }
 
   getIORegistersView(): Uint8Array {
     return this.ioRegisters;
+  }
+
+  getCGBBackgroundPaletteRAMView(): Uint8Array {
+    return this.bgPaletteRam;
+  }
+
+  getCGBObjectPaletteRAMView(): Uint8Array {
+    return this.objPaletteRam;
   }
 
   getOAMView(): Uint8Array {
