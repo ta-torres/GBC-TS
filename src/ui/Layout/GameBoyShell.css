@@ -218,4 +218,9 @@
     width: 100vw;
     height: auto;
   }
+
+  #root {
+    height: 100dvh;
+    overflow-x: hidden;
+  }
 }

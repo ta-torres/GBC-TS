@@ -60,7 +60,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[25vw] border-none bg-transparent p-0 shadow-none max-sm:w-[90vw] max-sm:translate-x-[-60%] max-sm:translate-y-[-60%]">
+      <DialogContent className="w-[25vw] border-none bg-transparent p-0 shadow-none max-sm:w-[90vw] max-sm:translate-x-[-52%]">
         <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
           <CommandList>
             {fileName && (

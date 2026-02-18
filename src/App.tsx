@@ -217,7 +217,7 @@ function App() {
       </div>
 
       <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
-        <DialogContent className="border-slate-500 bg-slate-400 max-sm:w-[90vw] max-sm:translate-x-[-55%] max-sm:translate-y-[-55%]">
+        <DialogContent className="border-slate-500 bg-slate-400 max-sm:w-[90vw] max-sm:translate-x-[-51%] max-sm:translate-y-[-55%]">
           <DialogHeader>
             <DialogTitle className="text-muted-foreground">About</DialogTitle>
           </DialogHeader>
