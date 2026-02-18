@@ -223,10 +223,7 @@ function App() {
           </DialogHeader>
 
           <div className="text-sm text-gray-800">
-            <p>
-              GBC-TS is an open-source Game Boy emulator (soon to be Game Boy
-              Color)
-            </p>
+            <p>GBC-TS is an open-source Game Boy and Game Boy Color emulator</p>
           </div>
 
           <div className="text-sm text-gray-800">
