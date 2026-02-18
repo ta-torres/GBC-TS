@@ -1,6 +1,6 @@
 # GBC-TS
 
-GBC-TS is a Gameboy emulator written in TypeScript and React. You can try out the project live at https://gbc-ts.vercel.app
+GBC-TS is a Game Boy and Game Boy Color emulator written in TypeScript and React. You can try out the project live at https://gbc-ts.vercel.app
 
 ## Features
 
@@ -31,11 +31,13 @@ Most Game Boy games rely on a Memory Bank Controller, a chip inside their cartri
 
 So far I implemented the behavior of MBC1 and MBC3 chips. I'm not able to test every single game, but in theory most titles using these cartridge types should work (which is about 85%+ of the console's library including most critically acclaimed titles). Some games that require a stricter emulation of the console's timer or rendering might contain graphical glitches.
 
+Game Boy Color is supported, games boot and are playable, still work in progress though.
+
 For copyright reasons game backups are not included, so you have to provide your own .gb files
 
-**Known compatible games**
+### Known compatible games
 
-```
+```markdown
 Tetris
 Super Mario Land
 Kirby's Dream Land
@@ -59,33 +61,42 @@ Assuming that [Git](https://www.theodinproject.com/lessons/foundations-setting-u
 
 Clone the repository and enter the folder
 
-```
+```bash
 git clone https://github.com/ta-torres/GBC-TS.git
 cd GBC-TS
 ```
 
 Install dependencies
 
-```
+```bash
 npm install
 ```
 
 Run the local http server
 
-```
+```bash
 npm run dev
 ```
 
 If you wish to run the unit/integration tests through Vitest
 
-```
+```bash
 npm run test
 ```
 
 ## Features to add
 
-- [ ] Sound
-- [ ] Game Boy Color support
+- [ ] Sound - WIP
+- [x] Game Boy Color support - WIP
+  - [x] CGB mode detection + CPU post-boot registers wiring
+  - [x] VRAM/WRAM banking (VBK/SVBK)
+  - [x] CGB BG palette registers + mapping (BCPS/BCPD)
+  - [x] CGB OBJ palette registers + mapping (OCPS/OCPD)
+  - [x] BG additional attributes (per-tile priority, tile bank) + CGB BG/WIN behavior
+  - [x] CGB BG-to-OBJ priority rules
+  - [x] Double-speed mode (KEY1) + 0x10 STOP handling
+  - [x] HDMA registers + H-Blank VRAM DMA transfers (HDMA1-5)
+  - [ ] MBC5 support
 - [ ] Controller support
 - [ ] Custom button mapping
 - [ ] MBC1M multi-game compilation carts
@@ -140,3 +151,4 @@ PPU
 | PPU       | Passes                                     |
 | --------- | ------------------------------------------ |
 | dmg-acid2 | ✔️ (window internal line counter mismatch) |
+| cgb-acid2 | ✔️ (window internal line counter mismatch) |
