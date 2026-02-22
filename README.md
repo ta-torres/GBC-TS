@@ -152,3 +152,15 @@ PPU
 | --------- | ------------------------------------------ |
 | dmg-acid2 | ✔️ (window internal line counter mismatch) |
 | cgb-acid2 | ✔️ (window internal line counter mismatch) |
+
+Game Boy Color Mode (MagenTests)
+
+| PPU                   | Passes |
+| --------------------- | ------ |
+| bg_oam_priority       | ✔️     |
+| hblank_vram_dma       | ✔️     |
+| key0_lock_after_boot  | ✔️     |
+| mbc_oob_sram_mbc1     | ✔️     |
+| mbc_oob_sram_mbc3     | ✔️     |
+| oam_internal_priority | ✔️     |
+| ppu_disabled_state    | ✔️     |
