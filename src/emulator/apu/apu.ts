@@ -1,4 +1,5 @@
 import { DEFAULT_APU_SETTINGS, type APUSettings } from "./types";
+import { FrameSequencer } from "./frameSequencer";
 
 const NR10_ADDRESS = 0xff10;
 const NR52_ADDRESS = 0xff26;
@@ -24,11 +25,14 @@ export class APU {
 
   private apuSettings: APUSettings = DEFAULT_APU_SETTINGS;
 
+  private frameSequencer: FrameSequencer;
+
   constructor(sampleRate: number = 48000) {
     this.sampleRate = sampleRate;
 
     this.nrRegisters = new Uint8Array(0x17);
     this.waveRam = new Uint8Array(0x10);
+    this.frameSequencer = new FrameSequencer();
   }
 
   reset(): void {
@@ -36,6 +40,7 @@ export class APU {
     this.nrRegisters.fill(0);
     // NR52 power off does not clear wave RAM per docs?
     this.apuSettings = DEFAULT_APU_SETTINGS;
+    this.frameSequencer = new FrameSequencer();
   }
 
   getAPUSettings(): APUSettings {
@@ -51,7 +56,8 @@ export class APU {
   }
 
   step(baseCycles: number): void {
-    void baseCycles;
+    if (!this.powered) return;
+    this.frameSequencer.stepCycles(baseCycles);
   }
 
   consumeSamples(frameCount: number): Float32Array {
@@ -96,6 +102,12 @@ export class APU {
         // power off clears NR10-NR51 but NOT NR52
         this.powered = false;
         this.nrRegisters.fill(0);
+        return;
+      }
+
+      if (!this.powered) {
+        this.powered = true;
+        this.frameSequencer.resetOnApuPowerOn();
         return;
       }
 
