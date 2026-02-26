@@ -9,6 +9,11 @@ const NR52_ADDRESS = 0xff26;
 const NR50_ADDRESS = 0xff24;
 const NR51_ADDRESS = 0xff25;
 
+const NR14_ADDRESS = 0xff14;
+const NR24_ADDRESS = 0xff19;
+const NR34_ADDRESS = 0xff1e;
+const NR44_ADDRESS = 0xff23;
+
 const WAVE_RAM_START = 0xff30;
 const WAVE_RAM_END = 0xff3f;
 
@@ -23,6 +28,11 @@ function isWaveRamAddr(address: number): boolean {
 export class APU {
   private sampleRate: number;
   private powered: boolean = false;
+
+  private ch1Enabled = false;
+  private ch2Enabled = false;
+  private ch3Enabled = false;
+  private ch4Enabled = false;
 
   // Shadow copy of NR10-NR51 (used internally)
   private nrRegisters: Uint8Array;
@@ -50,6 +60,11 @@ export class APU {
     this.apuSettings = DEFAULT_APU_SETTINGS;
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
+
+    this.ch1Enabled = false;
+    this.ch2Enabled = false;
+    this.ch3Enabled = false;
+    this.ch4Enabled = false;
   }
 
   getAPUSettings(): APUSettings {
@@ -103,10 +118,16 @@ export class APU {
 
     if (!isAudioReg(address)) return 0xff;
 
+    // https://gbdev.io/pandocs/Audio_Registers.html#ff26--nr52-audio-master-control
     if (address === NR52_ADDRESS) {
       const powerBit = this.powered ? 0x80 : 0x00;
-      // todo: channel status bits
-      return powerBit | 0x70;
+      const statusBits =
+        (this.ch1Enabled ? 0x01 : 0x00) |
+        (this.ch2Enabled ? 0x02 : 0x00) |
+        (this.ch3Enabled ? 0x04 : 0x00) |
+        (this.ch4Enabled ? 0x08 : 0x00);
+
+      return powerBit | 0x70 | statusBits;
     }
 
     if (!this.powered) return 0x00;
@@ -130,6 +151,11 @@ export class APU {
         // power off clears NR10-NR51 but NOT NR52
         this.powered = false;
         this.nrRegisters.fill(0);
+
+        this.ch1Enabled = false;
+        this.ch2Enabled = false;
+        this.ch3Enabled = false;
+        this.ch4Enabled = false;
         return;
       }
 
@@ -148,6 +174,14 @@ export class APU {
 
     if (address >= NR10_ADDRESS && address <= 0xff25) {
       this.nrRegisters[address - NR10_ADDRESS] = value;
+
+      const isTrigger = (value & 0x80) !== 0;
+      if (isTrigger) {
+        if (address === NR14_ADDRESS) this.ch1Enabled = true;
+        else if (address === NR24_ADDRESS) this.ch2Enabled = true;
+        else if (address === NR34_ADDRESS) this.ch3Enabled = true;
+        else if (address === NR44_ADDRESS) this.ch4Enabled = true;
+      }
       return;
     }
 
