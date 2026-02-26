@@ -1,8 +1,14 @@
 import { DEFAULT_APU_SETTINGS, type APUSettings } from "./types";
 import { FrameSequencer } from "./frameSequencer";
+import { Mixer } from "./mixer";
 
 const NR10_ADDRESS = 0xff10;
 const NR52_ADDRESS = 0xff26;
+// volume/mixer registers
+// https://gbdev.io/pandocs/Audio_Registers.html#ff25--nr51-sound-panning
+const NR50_ADDRESS = 0xff24;
+const NR51_ADDRESS = 0xff25;
+
 const WAVE_RAM_START = 0xff30;
 const WAVE_RAM_END = 0xff3f;
 
@@ -26,6 +32,7 @@ export class APU {
   private apuSettings: APUSettings = DEFAULT_APU_SETTINGS;
 
   private frameSequencer: FrameSequencer;
+  private mixer: Mixer;
 
   constructor(sampleRate: number = 48000) {
     this.sampleRate = sampleRate;
@@ -33,6 +40,7 @@ export class APU {
     this.nrRegisters = new Uint8Array(0x17);
     this.waveRam = new Uint8Array(0x10);
     this.frameSequencer = new FrameSequencer();
+    this.mixer = new Mixer();
   }
 
   reset(): void {
@@ -41,6 +49,7 @@ export class APU {
     // NR52 power off does not clear wave RAM per docs?
     this.apuSettings = DEFAULT_APU_SETTINGS;
     this.frameSequencer = new FrameSequencer();
+    this.mixer = new Mixer();
   }
 
   getAPUSettings(): APUSettings {
@@ -66,6 +75,25 @@ export class APU {
 
     if (!this.apuSettings.enabled) return out;
     if (!this.powered) return out;
+
+    /*
+    NR51: routes CH1–CH4 to left/right (bits 4–7 left, 0–3 right)
+    NR50: per-side master volume (0–7) as a gain
+    */
+    const nr50 = this.nrRegisters[NR50_ADDRESS - NR10_ADDRESS] ?? 0x00;
+    const nr51 = this.nrRegisters[NR51_ADDRESS - NR10_ADDRESS] ?? 0x00;
+
+    const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
+      ch1: 0,
+      ch2: 0,
+      ch3: 0,
+      ch4: 0,
+    });
+
+    for (let sampleIndex = 0; sampleIndex < frames; sampleIndex++) {
+      out[sampleIndex * 2] = mixed.left;
+      out[sampleIndex * 2 + 1] = mixed.right;
+    }
 
     return out;
   }
