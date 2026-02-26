@@ -3,6 +3,7 @@ import { MEMORY_MAP, IO_REGISTERS } from "../types/memory";
 import { Timer } from "../core/timer";
 import { Interrupts } from "../core/interrupts";
 import { Joypad } from "../input/joypad";
+import { APU } from "../apu/apu";
 
 export class AddressBus {
   private cartridge: Cartridge;
@@ -21,6 +22,8 @@ export class AddressBus {
   private timer: Timer;
   private interrupts: Interrupts;
   private joypad?: Joypad;
+
+  private apu: APU;
 
   /* GBC SPECIFIC */
   /* 
@@ -54,10 +57,16 @@ export class AddressBus {
   /* private debugVramWriteCount = 0;
   private debugOamWriteCount = 0; */
 
-  constructor(cartridge: Cartridge, timer: Timer, interrupts: Interrupts) {
+  constructor(
+    cartridge: Cartridge,
+    timer: Timer,
+    interrupts: Interrupts,
+    apu: APU,
+  ) {
     this.cartridge = cartridge;
     this.timer = timer;
     this.interrupts = interrupts;
+    this.apu = apu;
     this.wramBank0 = new Uint8Array(0x1000);
     this.wramBanks = Array.from({ length: 7 }, () => new Uint8Array(0x1000));
     this.currentWramBank = 1;
@@ -307,6 +316,21 @@ export class AddressBus {
       address >= MEMORY_MAP.IO_REGISTERS.start &&
       address <= MEMORY_MAP.IO_REGISTERS.end
     ) {
+      if (address >= IO_REGISTERS.NR10 && address <= IO_REGISTERS.NR52) {
+        return this.apu.readRegister(address);
+      }
+
+      if (
+        address >= IO_REGISTERS.WAVE_RAM_START &&
+        address <= IO_REGISTERS.WAVE_RAM_END
+      ) {
+        return this.apu.readWaveRam(address);
+      }
+
+      if (address >= 0xff27 && address <= 0xff2f) {
+        return 0xff;
+      }
+
       switch (address) {
         case IO_REGISTERS.P1: {
           const currentP1 = this.ioRegisters[IO_REGISTERS.P1 - 0xff00];
@@ -496,6 +520,23 @@ export class AddressBus {
       address >= MEMORY_MAP.IO_REGISTERS.start &&
       address <= MEMORY_MAP.IO_REGISTERS.end
     ) {
+      if (address >= IO_REGISTERS.NR10 && address <= IO_REGISTERS.NR52) {
+        this.apu.writeRegister(address, value);
+        return;
+      }
+
+      if (
+        address >= IO_REGISTERS.WAVE_RAM_START &&
+        address <= IO_REGISTERS.WAVE_RAM_END
+      ) {
+        this.apu.writeWaveRam(address, value);
+        return;
+      }
+
+      if (address >= 0xff27 && address <= 0xff2f) {
+        return;
+      }
+
       switch (address) {
         case IO_REGISTERS.P1: {
           // store only selection bits (4-5), other bits are synthesized on read

@@ -5,6 +5,7 @@ import { CPU } from "../core/cpu";
 import { Interrupts, InterruptType } from "../core/interrupts";
 import { Timer } from "../core/timer";
 import { IO_REGISTERS } from "../types/memory";
+import { APU } from "../apu/apu";
 
 function makeROM(program: number[]): Uint8Array {
   const rom = new Uint8Array(0x8000);
@@ -34,7 +35,8 @@ function setupCPU(program: number[]): {
   cart.load(rom.buffer);
   const interrupts = new Interrupts();
   const timer = new Timer(interrupts);
-  const bus = new AddressBus(cart, timer, interrupts);
+  const apu = new APU();
+  const bus = new AddressBus(cart, timer, interrupts, apu);
   const cpu = new CPU(bus, interrupts);
   return { cpu, bus, interrupts };
 }

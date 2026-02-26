@@ -4,6 +4,7 @@ import { AddressBus } from "../memory/addressBus";
 import { CPU } from "../core/cpu";
 import { Interrupts } from "../core/interrupts";
 import { Timer } from "../core/timer";
+import { APU } from "../apu/apu";
 
 function makeROM(program: number[]): Uint8Array {
   const rom = new Uint8Array(0x8000);
@@ -29,7 +30,8 @@ function setupCPU(program: number[]): CPU {
   cart.load(rom.buffer);
   const interrupts = new Interrupts();
   const timer = new Timer(interrupts);
-  const bus = new AddressBus(cart, timer, interrupts);
+  const apu = new APU();
+  const bus = new AddressBus(cart, timer, interrupts, apu);
   const cpu = new CPU(bus, interrupts);
   return cpu;
 }
@@ -40,7 +42,8 @@ function setupCPUWithBus(program: number[]): { cpu: CPU; bus: AddressBus } {
   cart.load(rom.buffer);
   const interrupts = new Interrupts();
   const timer = new Timer(interrupts);
-  const bus = new AddressBus(cart, timer, interrupts);
+  const apu = new APU();
+  const bus = new AddressBus(cart, timer, interrupts, apu);
   const cpu = new CPU(bus, interrupts);
   return { cpu, bus };
 }
@@ -175,7 +178,8 @@ describe("Opcodes", () => {
       cart.load(rom.buffer);
       const interrupts = new Interrupts();
       const timer = new Timer(interrupts);
-      const bus = new AddressBus(cart, timer, interrupts);
+      const apu = new APU();
+      const bus = new AddressBus(cart, timer, interrupts, apu);
       const cpu = new CPU(bus, interrupts);
 
       // CALL
