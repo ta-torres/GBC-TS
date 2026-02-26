@@ -126,7 +126,10 @@ export class APU {
 
     const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
       ch1: 0,
-      ch2: this.ch2Enabled ? this.ch2.getAmplitude() : 0,
+      ch2:
+        this.ch2Enabled && !this.apuSettings.muteCh2
+          ? this.ch2.getAmplitude()
+          : 0,
       ch3: 0,
       ch4: 0,
     });

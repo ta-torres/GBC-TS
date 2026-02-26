@@ -66,7 +66,9 @@ export class Channel2Pulse {
   getAmplitude(): number {
     void this.getFrequency11Bit();
     // todo: waveform generation
-    return 0;
+    if (!this.isDacEnabled()) return 0;
+
+    return this.getVolume() / 15;
   }
 
   reset(): void {

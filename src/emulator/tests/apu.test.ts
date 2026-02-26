@@ -39,3 +39,25 @@ describe("APU", () => {
     expect(apu.readRegister(0xff27)).toBe(0xff);
   });
 });
+
+describe("channel 2", () => {
+  // https://gbdev.io/pandocs/Audio_Registers.html#ff14--nr14-channel-1-period-high--control
+  it("CH2 length expiry disables CH2 after a length tick", () => {
+    const apu = new APU();
+    // power on and enable dac
+    apu.writeRegister(IO_REGISTERS.NR52, 0x80);
+    apu.writeRegister(IO_REGISTERS.NR22, 0xf1);
+
+    // Set length counter to 1 (64 - (NR21 & 0x3F) => 1 when value is 63)
+    apu.writeRegister(IO_REGISTERS.NR21, 0x3f);
+
+    // Trigger with length enabled
+    apu.writeRegister(IO_REGISTERS.NR24, 0xc0);
+    expect(apu.readRegister(IO_REGISTERS.NR52) & 0x02).toBe(0x02);
+
+    // After power-on reset, next frame sequencer tick is step 0 (length clock)
+    apu.step(8192);
+
+    expect(apu.readRegister(IO_REGISTERS.NR52) & 0x02).toBe(0x00);
+  });
+});
