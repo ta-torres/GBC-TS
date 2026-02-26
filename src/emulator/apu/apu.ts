@@ -1,6 +1,7 @@
 import { DEFAULT_APU_SETTINGS, type APUSettings } from "./types";
 import { FrameSequencer } from "./frameSequencer";
 import { Mixer } from "./mixer";
+import { Channel2Pulse } from "./channels/channel2Pulse";
 
 const NR10_ADDRESS = 0xff10;
 const NR52_ADDRESS = 0xff26;
@@ -10,8 +11,14 @@ const NR50_ADDRESS = 0xff24;
 const NR51_ADDRESS = 0xff25;
 
 const NR14_ADDRESS = 0xff14;
+
+const NR21_ADDRESS = 0xff16;
+const NR22_ADDRESS = 0xff17;
+const NR23_ADDRESS = 0xff18;
 const NR24_ADDRESS = 0xff19;
+
 const NR34_ADDRESS = 0xff1e;
+
 const NR44_ADDRESS = 0xff23;
 
 const WAVE_RAM_START = 0xff30;
@@ -44,6 +51,8 @@ export class APU {
   private frameSequencer: FrameSequencer;
   private mixer: Mixer;
 
+  private ch2: Channel2Pulse;
+
   constructor(sampleRate: number = 48000) {
     this.sampleRate = sampleRate;
 
@@ -51,6 +60,7 @@ export class APU {
     this.waveRam = new Uint8Array(0x10);
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
+    this.ch2 = new Channel2Pulse();
   }
 
   reset(): void {
@@ -60,6 +70,7 @@ export class APU {
     this.apuSettings = DEFAULT_APU_SETTINGS;
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
+    this.ch2 = new Channel2Pulse();
 
     this.ch1Enabled = false;
     this.ch2Enabled = false;
@@ -81,7 +92,22 @@ export class APU {
 
   step(baseCycles: number): void {
     if (!this.powered) return;
-    this.frameSequencer.stepCycles(baseCycles);
+
+    const ticks = this.frameSequencer.stepCycles(baseCycles);
+    for (const tick of ticks) {
+      if (tick.clockLength) {
+        if (this.ch2Enabled) {
+          const expired = this.ch2.clockLength();
+          if (expired) this.ch2Enabled = false;
+        }
+      }
+
+      if (tick.clockEnvelope) {
+        if (this.ch2Enabled) {
+          this.ch2.clockEnvelope();
+        }
+      }
+    }
   }
 
   consumeSamples(frameCount: number): Float32Array {
@@ -100,7 +126,7 @@ export class APU {
 
     const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
       ch1: 0,
-      ch2: 0,
+      ch2: this.ch2Enabled ? this.ch2.getAmplitude() : 0,
       ch3: 0,
       ch4: 0,
     });
@@ -156,12 +182,15 @@ export class APU {
         this.ch2Enabled = false;
         this.ch3Enabled = false;
         this.ch4Enabled = false;
+
+        this.ch2.reset();
         return;
       }
 
       if (!this.powered) {
         this.powered = true;
         this.frameSequencer.resetOnApuPowerOn();
+        this.ch2.reset();
         return;
       }
 
@@ -172,13 +201,40 @@ export class APU {
     // ignore APU writes except for wave RAM when powered off
     if (!this.powered) return;
 
+    // CH2 register handling
+    if (address === NR21_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      this.ch2.writeNR21(value);
+      return;
+    }
+    if (address === NR22_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      this.ch2.writeNR22(value);
+      return;
+    }
+    if (address === NR23_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      this.ch2.writeNR23(value);
+      return;
+    }
+    if (address === NR24_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      const { triggered } = this.ch2.writeNR24(value);
+
+      if (triggered) {
+        // If DAC is off, channel is forced off on real hardware.
+        this.ch2Enabled = this.ch2.isDacEnabled();
+      }
+
+      return;
+    }
+
     if (address >= NR10_ADDRESS && address <= 0xff25) {
       this.nrRegisters[address - NR10_ADDRESS] = value;
 
       const isTrigger = (value & 0x80) !== 0;
       if (isTrigger) {
         if (address === NR14_ADDRESS) this.ch1Enabled = true;
-        else if (address === NR24_ADDRESS) this.ch2Enabled = true;
         else if (address === NR34_ADDRESS) this.ch3Enabled = true;
         else if (address === NR44_ADDRESS) this.ch4Enabled = true;
       }
