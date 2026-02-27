@@ -124,17 +124,19 @@ export class APU {
     const nr50 = this.nrRegisters[NR50_ADDRESS - NR10_ADDRESS] ?? 0x00;
     const nr51 = this.nrRegisters[NR51_ADDRESS - NR10_ADDRESS] ?? 0x00;
 
-    const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
-      ch1: 0,
-      ch2:
+    for (let sampleIndex = 0; sampleIndex < frames; sampleIndex++) {
+      const ch2Amp =
         this.ch2Enabled && !this.apuSettings.muteCh2
           ? this.ch2.getAmplitude()
-          : 0,
-      ch3: 0,
-      ch4: 0,
-    });
+          : 0;
 
-    for (let sampleIndex = 0; sampleIndex < frames; sampleIndex++) {
+      const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
+        ch1: 0,
+        ch2: ch2Amp,
+        ch3: 0,
+        ch4: 0,
+      });
+
       out[sampleIndex * 2] = mixed.left;
       out[sampleIndex * 2 + 1] = mixed.right;
     }
