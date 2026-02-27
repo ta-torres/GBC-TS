@@ -219,6 +219,11 @@ export class APU {
     if (address === NR22_ADDRESS) {
       this.nrRegisters[address - NR10_ADDRESS] = value;
       this.ch2.writeNR22(value);
+
+      // if DAC is turned off force ch2 off
+      if (this.ch2Enabled && !this.ch2.isDacEnabled()) {
+        this.ch2Enabled = false;
+      }
       return;
     }
     if (address === NR23_ADDRESS) {
