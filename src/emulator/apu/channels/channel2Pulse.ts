@@ -135,8 +135,13 @@ export class Channel2Pulse {
     // getAmplitude only samples the duty bit, don't advance duty in here since it's called from step()
     const dutyBit = this.getDutyBit(this.dutyStep);
 
-    if (dutyBit === 0) return 0;
-    return this.getVolume() / 15;
+    /* 
+    https://gbdev.io/pandocs/Audio_details.html
+    The digital value produced by the generator, which ranges between $0 and $F (0 and 15), is linearly translated by the DAC into an analog value between -1 and 1 (the unit is arbitrary).
+    */
+    const dacLevel = dutyBit === 0 ? 0 : this.getVolume();
+    const dacAmplitude = (dacLevel / 15) * 2 - 1;
+    return dacAmplitude;
   }
 
   reset(): void {
