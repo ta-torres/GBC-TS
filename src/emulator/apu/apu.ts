@@ -93,6 +93,10 @@ export class APU {
   step(baseCycles: number): void {
     if (!this.powered) return;
 
+    if (this.ch2Enabled) {
+      this.ch2.step(baseCycles);
+    }
+
     const ticks = this.frameSequencer.stepCycles(baseCycles);
     for (const tick of ticks) {
       if (tick.clockLength) {

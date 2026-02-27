@@ -8,6 +8,10 @@ export class Channel2Pulse {
 
   private dutyStep = 0;
 
+  // initialize to 4 cycles per timer step
+  private timerPeriod = 4;
+  private timerCounter = 4;
+
   private nr21 = 0;
   private nr22 = 0;
   private nr23 = 0;
@@ -59,6 +63,7 @@ export class Channel2Pulse {
 
   writeNR23(value: number): void {
     this.nr23 = value & 0xff;
+    this.recomputeTimerPeriod();
   }
 
   //https://gbdev.io/pandocs/Audio_Registers.html#sound-channel-2--pulse
@@ -68,8 +73,18 @@ export class Channel2Pulse {
     return ((hi << 8) | lo) & 0x7ff;
   }
 
+  // timerPeriod = (timer-base - freq11) * t-cycles-per-step
+  // compute the 11-bit frequency from NR23 + NR24 & 0x07, derive timerPeriod = (2048 - freq) * 4 (base cycles), and advance dutyStep only when that timer elapses in step()
+  private recomputeTimerPeriod(): void {
+    const freq11 = this.getFrequency11Bit();
+    this.timerPeriod = (2048 - freq11) * 4;
+    if (this.timerPeriod <= 0) this.timerPeriod = 4;
+  }
+
   writeNR24(value: number): { triggered: boolean } {
     this.nr24 = value & 0xff;
+
+    this.recomputeTimerPeriod();
 
     const lengthEnable = (this.nr24 & 0x40) !== 0;
     this.length.writeLengthEnable(lengthEnable);
@@ -78,6 +93,7 @@ export class Channel2Pulse {
     if (triggered) {
       // reset duty step & envelope timer?
       this.dutyStep = 0;
+      this.timerCounter = this.timerPeriod;
       this.length.onTrigger();
       this.envelope.onTrigger();
     }
@@ -91,6 +107,15 @@ export class Channel2Pulse {
 
   clockEnvelope(): void {
     this.envelope.advanceVolumeEnvelope();
+  }
+
+  step(baseCycles: number): void {
+    this.timerCounter -= baseCycles;
+    while (this.timerCounter <= 0) {
+      // advance duty step only when timer elapses
+      this.timerCounter += this.timerPeriod;
+      this.dutyStep = (this.dutyStep + 1) & 7;
+    }
   }
 
   isDacEnabled(): boolean {
@@ -107,8 +132,8 @@ export class Channel2Pulse {
     if (!this.isDacEnabled()) return 0;
 
     // duty bit 1 - output the current envelope volume
+    // getAmplitude only samples the duty bit, don't advance duty in here since it's called from step()
     const dutyBit = this.getDutyBit(this.dutyStep);
-    this.dutyStep = (this.dutyStep + 1) & 7;
 
     if (dutyBit === 0) return 0;
     return this.getVolume() / 15;
@@ -119,6 +144,9 @@ export class Channel2Pulse {
     this.envelope = new VolumeEnvelope();
 
     this.dutyStep = 0;
+
+    this.timerPeriod = 4;
+    this.timerCounter = 4;
 
     this.nr21 = 0;
     this.nr22 = 0;
