@@ -3,6 +3,7 @@ import { getRAMSize, CARTRIDGE_TYPE } from "../types/cartridge";
 import type { MBC } from "./mbc";
 import { MBC1 } from "./mbc1";
 import { MBC3 } from "./mbc3";
+import { MBC5 } from "./mbc5";
 
 export class Cartridge {
   private rom: Uint8Array;
@@ -132,6 +133,22 @@ export class Cartridge {
           type === CARTRIDGE_TYPE.MBC3_TIMER_RAM_BATTERY;
         this.mbc = new MBC3(this.rom, this.ram, hasRTC);
         console.log("MBC3 initialized");
+        console.log(this.mbc);
+        return true;
+      }
+
+      case CARTRIDGE_TYPE.MBC5:
+      case CARTRIDGE_TYPE.MBC5_RAM:
+      case CARTRIDGE_TYPE.MBC5_RAM_BATTERY:
+      case CARTRIDGE_TYPE.MBC5_RUMBLE:
+      case CARTRIDGE_TYPE.MBC5_RUMBLE_RAM:
+      case CARTRIDGE_TYPE.MBC5_RUMBLE_RAM_BATTERY: {
+        const hasRumble =
+          type === CARTRIDGE_TYPE.MBC5_RUMBLE ||
+          type === CARTRIDGE_TYPE.MBC5_RUMBLE_RAM ||
+          type === CARTRIDGE_TYPE.MBC5_RUMBLE_RAM_BATTERY;
+        this.mbc = new MBC5(this.rom, this.ram, hasRumble);
+        console.log("MBC5 initialized");
         console.log(this.mbc);
         return true;
       }
