@@ -36,6 +36,25 @@ export class APU {
   private sampleRate: number;
   private powered: boolean = false;
 
+  /*
+  the cpu/emulator calls apu.step(baseCycles) as instructions run
+  apu.step() produces samples at a fixed sampleRate and enqueues them into sampleFifo
+  useGBCEmulator calls consumeSamples(n) whenever it needs audio
+  */
+
+  private static readonly CLOCK_HZ = 4194304;
+  // Sample phase accumulator in "base cycles * sampleRate" units, when it wraps CLOCK_HZ we emit one audio frame
+  private samplePhaseBaseCycles: number = 0;
+
+  // interleaved queue of stereo audio frames (left, right) produced by step()
+  private sampleFifo: Float32Array;
+  // fifo capacity in stereo frames (determined by sample rate and buffer size)
+  private sampleFifoFrameCapacity: number;
+  // fifo read/write frame index
+  private sampleFifoReadFrame = 0;
+  private sampleFifoWriteFrame = 0;
+  private sampleFifoBufferedFrames = 0;
+
   private ch1Enabled = false;
   private ch2Enabled = false;
   private ch3Enabled = false;
@@ -61,6 +80,12 @@ export class APU {
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
     this.ch2 = new Channel2Pulse();
+
+    this.sampleFifoFrameCapacity = Math.max(
+      1,
+      Math.floor(this.sampleRate * 0.2),
+    );
+    this.sampleFifo = new Float32Array(this.sampleFifoFrameCapacity * 2);
   }
 
   reset(): void {
@@ -76,6 +101,63 @@ export class APU {
     this.ch2Enabled = false;
     this.ch3Enabled = false;
     this.ch4Enabled = false;
+
+    this.samplePhaseBaseCycles = 0;
+    this.sampleFifoReadFrame = 0;
+    this.sampleFifoWriteFrame = 0;
+    this.sampleFifoBufferedFrames = 0;
+  }
+
+  private pushSample(left: number, right: number): void {
+    // push one interleaved stereo frame into the fifo (dropping oldest on overflow)
+    if (this.sampleFifoBufferedFrames >= this.sampleFifoFrameCapacity) {
+      // Drop oldest on overflow.
+      this.sampleFifoReadFrame =
+        (this.sampleFifoReadFrame + 1) % this.sampleFifoFrameCapacity;
+      this.sampleFifoBufferedFrames -= 1;
+    }
+
+    const writeIndex = this.sampleFifoWriteFrame;
+
+    this.sampleFifo[writeIndex * 2] = left;
+    this.sampleFifo[writeIndex * 2 + 1] = right;
+
+    this.sampleFifoWriteFrame = (writeIndex + 1) % this.sampleFifoFrameCapacity;
+
+    this.sampleFifoBufferedFrames += 1;
+  }
+
+  private renderOneSample(): void {
+    // render and enqueue one stereo output frame based on current channel amplitudes + mixer regs
+    if (!this.apuSettings.enabled) {
+      this.pushSample(0, 0);
+      return;
+    }
+
+    if (!this.powered) {
+      this.pushSample(0, 0);
+      return;
+    }
+    /*
+    NR51: routes CH1–CH4 to left/right (bits 4–7 left, 0–3 right)
+    NR50: per-side master volume (0–7) as a gain
+    */
+    const nr50 = this.nrRegisters[NR50_ADDRESS - NR10_ADDRESS] ?? 0x00;
+    const nr51 = this.nrRegisters[NR51_ADDRESS - NR10_ADDRESS] ?? 0x00;
+
+    const ch2Amp =
+      this.ch2Enabled && !this.apuSettings.muteCh2
+        ? this.ch2.getAmplitude()
+        : 0;
+
+    const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
+      ch1: 0,
+      ch2: ch2Amp,
+      ch3: 0,
+      ch4: 0,
+    });
+
+    this.pushSample(mixed.left, mixed.right);
   }
 
   getAPUSettings(): APUSettings {
@@ -91,61 +173,70 @@ export class APU {
   }
 
   step(baseCycles: number): void {
+    // avanzar estado de APU por baseCycles y renderizar frames de audio en el FIFO a sampleRate
     if (!this.powered) return;
 
-    if (this.ch2Enabled) {
-      this.ch2.step(baseCycles);
-    }
+    let remainingCycles = Math.max(0, baseCycles | 0);
+    while (remainingCycles > 0) {
+      // sampleRate es entero pero CLOCK_HZ no, por lo que hay redondear hacia arriba el número de ciclos necesarios para generar una muestra, pero si la frecuencia de reloj es mayor que la frecuencia de muestreo, entonces hay que garantizar que nunca se generen más ciclos que la frecuencia de muestreo.
+      const cyclesToNextSample = Math.min(
+        this.sampleRate,
+        Math.ceil(
+          (APU.CLOCK_HZ - this.samplePhaseBaseCycles + this.sampleRate - 1) /
+            this.sampleRate,
+        ),
+      );
+      // Math.min para que nunca se exceda la cantidad de ciclos disponibles en chunkCycles
+      const chunkCycles = Math.min(remainingCycles, cyclesToNextSample);
 
-    const ticks = this.frameSequencer.stepCycles(baseCycles);
-    for (const tick of ticks) {
-      if (tick.clockLength) {
-        if (this.ch2Enabled) {
-          const expired = this.ch2.clockLength();
-          if (expired) this.ch2Enabled = false;
+      if (this.ch2Enabled) {
+        this.ch2.step(chunkCycles);
+      }
+
+      const ticks = this.frameSequencer.stepCycles(chunkCycles);
+      for (const tick of ticks) {
+        if (tick.clockLength) {
+          if (this.ch2Enabled) {
+            const expired = this.ch2.clockLength();
+            if (expired) this.ch2Enabled = false;
+          }
+        }
+
+        if (tick.clockEnvelope) {
+          if (this.ch2Enabled) {
+            this.ch2.clockEnvelope();
+          }
         }
       }
 
-      if (tick.clockEnvelope) {
-        if (this.ch2Enabled) {
-          this.ch2.clockEnvelope();
-        }
+      this.samplePhaseBaseCycles += chunkCycles * this.sampleRate;
+      if (this.samplePhaseBaseCycles >= APU.CLOCK_HZ) {
+        this.samplePhaseBaseCycles -= APU.CLOCK_HZ;
+        this.renderOneSample();
       }
+
+      remainingCycles -= chunkCycles;
     }
   }
 
   consumeSamples(frameCount: number): Float32Array {
+    // drain up to frameCount stereo frames from the fifo into an interleaved float32 buffer (silence-filling remainder)
     const frames = Math.max(0, frameCount | 0);
-    const out = new Float32Array(frames * 2);
+    const output = new Float32Array(frames * 2);
 
-    if (!this.apuSettings.enabled) return out;
-    if (!this.powered) return out;
+    const available = Math.min(frames, this.sampleFifoBufferedFrames);
+    for (let i = 0; i < available; i++) {
+      const readFrameIndex = this.sampleFifoReadFrame;
 
-    /*
-    NR51: routes CH1–CH4 to left/right (bits 4–7 left, 0–3 right)
-    NR50: per-side master volume (0–7) as a gain
-    */
-    const nr50 = this.nrRegisters[NR50_ADDRESS - NR10_ADDRESS] ?? 0x00;
-    const nr51 = this.nrRegisters[NR51_ADDRESS - NR10_ADDRESS] ?? 0x00;
+      output[i * 2] = this.sampleFifo[readFrameIndex * 2] ?? 0;
+      output[i * 2 + 1] = this.sampleFifo[readFrameIndex * 2 + 1] ?? 0;
 
-    for (let sampleIndex = 0; sampleIndex < frames; sampleIndex++) {
-      const ch2Amp =
-        this.ch2Enabled && !this.apuSettings.muteCh2
-          ? this.ch2.getAmplitude()
-          : 0;
-
-      const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
-        ch1: 0,
-        ch2: ch2Amp,
-        ch3: 0,
-        ch4: 0,
-      });
-
-      out[sampleIndex * 2] = mixed.left;
-      out[sampleIndex * 2 + 1] = mixed.right;
+      this.sampleFifoReadFrame =
+        (readFrameIndex + 1) % this.sampleFifoFrameCapacity;
+      this.sampleFifoBufferedFrames -= 1;
     }
 
-    return out;
+    return output;
   }
 
   readRegister(address: number): number {

@@ -2,15 +2,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GBCEmulator } from "@/emulator/gbcEmulator";
 import type { JoypadButton } from "@/emulator/input/joypad";
 import { toast } from "sonner";
+import { AudioOutput } from "@/emulator/frontendAudio/audioOutput";
 
 export const useGBCEmulator = () => {
   const emulatorRef = useRef<GBCEmulator | null>(null);
+  const audioOutputRef = useRef<AudioOutput | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBCEmulator();
+  }
+
+  if (!audioOutputRef.current) {
+    audioOutputRef.current = new AudioOutput();
   }
 
   useEffect(() => {
@@ -51,6 +57,8 @@ export const useGBCEmulator = () => {
         }
 
         if (catchUpFrames === MAX_FRAMES_PER_RAF) accumulatedTimeMs = 0;
+
+        audioOutputRef.current?.pump();
       } else {
         accumulatedTimeMs = 0;
       }
@@ -60,6 +68,38 @@ export const useGBCEmulator = () => {
 
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  // don't recreate on render
+  const ensureAudioStarted = useCallback(async () => {
+    const emu = emulatorRef.current;
+    const audioOut = audioOutputRef.current;
+    if (!emu || !audioOut) return;
+
+    // associate APU sample source with the audio output pipeline
+    audioOut.attach({
+      consumeSamples: (frames: number) => emu.consumeAudioSamples(frames),
+    });
+    emu.setAudioEnabled(true);
+
+    try {
+      await audioOut.start();
+    } catch (error) {
+      console.error("Audio start failed", error);
+      toast.error("Audio failed to start", {
+        description: String(error),
+        className: "bg-gray-100! text-gray-700! border-gray-300!",
+        descriptionClassName: "text-gray-700!",
+        duration: 10000,
+      });
+    }
+  }, []);
+
+  // stop audio output when component unmounts but I don't think it's needed
+  useEffect(() => {
+    return () => {
+      audioOutputRef.current?.stop();
+    };
   }, []);
 
   useEffect(() => {
@@ -154,6 +194,8 @@ export const useGBCEmulator = () => {
   const handleLoadROM = async (file: File) => {
     const emu = emulatorRef.current;
     if (!emu) return;
+
+    void ensureAudioStarted();
     saveSRAMToLocalStorage(emu);
     const ok = await emu.loadROM(file);
 
@@ -175,6 +217,8 @@ export const useGBCEmulator = () => {
       setSpeedMultiplier(emu.getSpeedMultiplier());
       emu.start();
       setIsRunning(true);
+
+      await ensureAudioStarted();
     } else {
       const errorMessage = emu.getErrorMessage();
 
@@ -192,6 +236,8 @@ export const useGBCEmulator = () => {
     if (!emu || !isLoaded) return;
     emu.start();
     setIsRunning(true);
+
+    void ensureAudioStarted();
   };
 
   const handlePause = () => {
@@ -199,16 +245,27 @@ export const useGBCEmulator = () => {
     if (!emu) return;
     emu.pause();
     setIsRunning(!emu.isPaused());
+
+    if (emu.isPaused()) {
+      audioOutputRef.current?.setEnabled(false);
+    } else {
+      audioOutputRef.current?.setEnabled(true);
+      void ensureAudioStarted();
+    }
   };
 
   const handleReset = () => {
     const emu = emulatorRef.current;
     if (!emu) return;
     saveSRAMToLocalStorage(emu);
+
+    audioOutputRef.current?.stop();
     emu.reset();
     if (isLoaded) {
       emu.start();
       setIsRunning(true);
+
+      void ensureAudioStarted();
     } else {
       setIsRunning(false);
     }
