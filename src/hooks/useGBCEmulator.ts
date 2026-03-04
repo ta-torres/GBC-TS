@@ -10,6 +10,7 @@ export const useGBCEmulator = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const [audioEnabled, setAudioEnabled] = useState(true);
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBCEmulator();
@@ -18,6 +19,15 @@ export const useGBCEmulator = () => {
   if (!audioOutputRef.current) {
     audioOutputRef.current = new AudioOutput();
   }
+
+  useEffect(() => {
+    const emu = emulatorRef.current;
+    const audio = audioOutputRef.current;
+    if (!emu || !audio) return;
+
+    emu.setAudioEnabled(audioEnabled);
+    audio.setEnabled(audioEnabled);
+  }, [audioEnabled]);
 
   useEffect(() => {
     let rafId = 0;
@@ -68,22 +78,23 @@ export const useGBCEmulator = () => {
 
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
-  }, []);
+  }, [audioEnabled]);
 
   // don't recreate on render
   const ensureAudioStarted = useCallback(async () => {
     const emu = emulatorRef.current;
-    const audioOut = audioOutputRef.current;
-    if (!emu || !audioOut) return;
+    const audio = audioOutputRef.current;
+    if (!emu || !audio) return;
 
     // associate APU sample source with the audio output pipeline
-    audioOut.attach({
+    audio.attach({
       consumeSamples: (frames: number) => emu.consumeAudioSamples(frames),
     });
-    emu.setAudioEnabled(true);
+    emu.setAudioEnabled(audioEnabled);
+    audio.setEnabled(audioEnabled);
 
     try {
-      await audioOut.start();
+      await audio.start();
     } catch (error) {
       console.error("Audio start failed", error);
       toast.error("Audio failed to start", {
@@ -93,7 +104,7 @@ export const useGBCEmulator = () => {
         duration: 10000,
       });
     }
-  }, []);
+  }, [audioEnabled]);
 
   // stop audio output when component unmounts but I don't think it's needed
   useEffect(() => {
@@ -303,6 +314,10 @@ export const useGBCEmulator = () => {
     setEmulatorSpeedMultiplier(Math.max(1, speedMultiplier - 0.25));
   }, [setEmulatorSpeedMultiplier, speedMultiplier]);
 
+  const toggleAudioEnabled = useCallback(() => {
+    setAudioEnabled((prev) => !prev);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) return;
@@ -328,8 +343,10 @@ export const useGBCEmulator = () => {
     isLoaded,
     isRunning,
     speedMultiplier,
+    audioEnabled,
     handleIncreaseSpeed,
     handleDecreaseSpeed,
+    toggleAudioEnabled,
     handleSRAMSave,
     handleButtonDown,
     handleButtonUp,
