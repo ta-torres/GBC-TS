@@ -8,6 +8,8 @@ import { Timer } from "./core/timer";
 import { PPU } from "./ppu/ppu";
 import { Joypad } from "./input/joypad";
 import type { JoypadButton } from "./input/joypad";
+import { APU } from "./apu/apu";
+import type { APUSettings } from "./apu/types";
 
 export class GBCEmulator {
   private cartridge: Cartridge;
@@ -17,6 +19,7 @@ export class GBCEmulator {
   private timer: Timer;
   private ppu: PPU;
   private joypad: Joypad;
+  private apu: APU;
 
   private cgbMode: boolean = false;
 
@@ -30,7 +33,13 @@ export class GBCEmulator {
     this.cartridge = new Cartridge();
     this.interrupts = new Interrupts();
     this.timer = new Timer(this.interrupts);
-    this.bus = new AddressBus(this.cartridge, this.timer, this.interrupts);
+    this.apu = new APU();
+    this.bus = new AddressBus(
+      this.cartridge,
+      this.timer,
+      this.interrupts,
+      this.apu,
+    );
     this.joypad = new Joypad(this.interrupts);
     this.bus.attachJoypad(this.joypad);
     this.cpu = new CPU(this.bus, this.interrupts);
@@ -101,6 +110,7 @@ export class GBCEmulator {
     this.timer.reset();
     this.interrupts.reset();
     this.joypad.reset();
+    this.apu.reset();
     this.ticks = 0;
     this.running = false;
     this.paused = false;
@@ -118,6 +128,7 @@ export class GBCEmulator {
       // update PPU/timer at base clock speed
       this.timer.step(baseCycles);
       this.ppu.step(baseCycles);
+      this.apu.step(baseCycles);
       if (this.ppu.hasEnteredHBlank()) this.bus.stepHDMAHBlank();
 
       this.ticks += baseCycles;
@@ -238,5 +249,19 @@ export class GBCEmulator {
 
   clearSRAMWriteFlag(): void {
     this.cartridge.clearSRAMWriteFlag();
+  }
+
+  /* APU */
+
+  setAudioEnabled(enabled: boolean): void {
+    this.apu.setAPUSettings({ enabled });
+  }
+
+  consumeAudioSamples(frameCount: number): Float32Array {
+    return this.apu.consumeSamples(frameCount);
+  }
+
+  setAudioDebugConfig(cfg: Partial<APUSettings>): void {
+    this.apu.setAPUSettings(cfg);
   }
 }

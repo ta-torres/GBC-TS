@@ -15,6 +15,7 @@ interface CommandMenuStateProps {
   showDpadDebug: boolean;
   fileName: string | null;
   speedMultiplier: number;
+  audioEnabled: boolean;
 }
 
 interface CommandMenuActionProps {
@@ -26,6 +27,7 @@ interface CommandMenuActionProps {
   onToggleOverlay: () => void;
   onToggleDebugTools: () => void;
   onToggleDpadDebug: () => void;
+  onToggleAudioEnabled: () => void;
   onIncreaseSpeed: () => void;
   onDecreaseSpeed: () => void;
   onOpenAbout: () => void;
@@ -43,6 +45,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
     showDpadDebug,
     fileName,
     speedMultiplier,
+    audioEnabled,
   } = state;
 
   const handleAction = (action: () => void) => {
@@ -121,6 +124,12 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
             </CommandGroup>
 
             <CommandGroup heading="Settings">
+              <CommandItem
+                value="toggle-audio-enabled"
+                onSelect={() => handleAction(actions.onToggleAudioEnabled)}
+              >
+                Sound: {audioEnabled ? "On" : "Off"}
+              </CommandItem>
               <CommandItem
                 value="toggle-overlay"
                 onSelect={() => handleAction(actions.onToggleOverlay)}

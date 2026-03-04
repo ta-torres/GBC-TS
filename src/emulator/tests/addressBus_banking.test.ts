@@ -4,6 +4,7 @@ import { AddressBus } from "../memory/addressBus";
 import { Interrupts } from "../core/interrupts";
 import { Timer } from "../core/timer";
 import { IO_REGISTERS } from "../types/memory";
+import { APU } from "../apu/apu";
 
 function makeROM(): Uint8Array {
   const rom = new Uint8Array(0x8000);
@@ -24,7 +25,8 @@ function setupBus(): AddressBus {
   cart.load(rom.buffer);
   const interrupts = new Interrupts();
   const timer = new Timer(interrupts);
-  return new AddressBus(cart, timer, interrupts);
+  const apu = new APU();
+  return new AddressBus(cart, timer, interrupts, apu);
 }
 
 describe("AddressBus banking", () => {
