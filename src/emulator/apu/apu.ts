@@ -3,38 +3,22 @@ import { FrameSequencer } from "./frameSequencer";
 import { Mixer } from "./mixer";
 import { Channel2Pulse } from "./channels/channel2Pulse";
 import { Channel3Wave } from "./channels/channel3Wave";
-
-const NR10_ADDRESS = 0xff10;
-const NR52_ADDRESS = 0xff26;
-// volume/mixer registers
-// https://gbdev.io/pandocs/Audio_Registers.html#ff25--nr51-sound-panning
-const NR50_ADDRESS = 0xff24;
-const NR51_ADDRESS = 0xff25;
-
-const NR14_ADDRESS = 0xff14;
-
-const NR21_ADDRESS = 0xff16;
-const NR22_ADDRESS = 0xff17;
-const NR23_ADDRESS = 0xff18;
-const NR24_ADDRESS = 0xff19;
-
-const NR30_ADDRESS = 0xff1a;
-const NR31_ADDRESS = 0xff1b;
-const NR32_ADDRESS = 0xff1c;
-const NR33_ADDRESS = 0xff1d;
-const NR34_ADDRESS = 0xff1e;
-
-const NR44_ADDRESS = 0xff23;
-
-const WAVE_RAM_START = 0xff30;
-const WAVE_RAM_END = 0xff3f;
+import {
+  CH1,
+  CH2,
+  CH3,
+  CH4,
+  AUDIO_REG_START,
+  GLOBAL,
+  WAVE_RAM,
+} from "./apuRegisters";
 
 function isAudioReg(address: number): boolean {
-  return address >= NR10_ADDRESS && address <= NR52_ADDRESS;
+  return address >= AUDIO_REG_START && address <= GLOBAL.NR52;
 }
 
 function isWaveRamAddr(address: number): boolean {
-  return address >= WAVE_RAM_START && address <= WAVE_RAM_END;
+  return address >= WAVE_RAM.START && address <= WAVE_RAM.END;
 }
 
 export class APU {
@@ -150,8 +134,8 @@ export class APU {
     NR51: routes CH1–CH4 to left/right (bits 4–7 left, 0–3 right)
     NR50: per-side master volume (0–7) as a gain
     */
-    const nr50 = this.nrRegisters[NR50_ADDRESS - NR10_ADDRESS] ?? 0x00;
-    const nr51 = this.nrRegisters[NR51_ADDRESS - NR10_ADDRESS] ?? 0x00;
+    const nr50 = this.nrRegisters[GLOBAL.NR50 - AUDIO_REG_START] ?? 0x00;
+    const nr51 = this.nrRegisters[GLOBAL.NR51 - AUDIO_REG_START] ?? 0x00;
 
     const ch2Amp =
       this.ch2Enabled && !this.apuSettings.muteCh2
@@ -267,7 +251,7 @@ export class APU {
     if (!isAudioReg(address)) return 0xff;
 
     // https://gbdev.io/pandocs/Audio_Registers.html#ff26--nr52-audio-master-control
-    if (address === NR52_ADDRESS) {
+    if (address === GLOBAL.NR52) {
       const powerBit = this.powered ? 0x80 : 0x00;
       const statusBits =
         (this.ch1Enabled ? 0x01 : 0x00) |
@@ -280,8 +264,8 @@ export class APU {
 
     if (!this.powered) return 0x00;
 
-    if (address >= NR10_ADDRESS && address <= 0xff25) {
-      return this.nrRegisters[address - NR10_ADDRESS] ?? 0x00;
+    if (address >= AUDIO_REG_START && address <= GLOBAL.NR51) {
+      return this.nrRegisters[address - AUDIO_REG_START] ?? 0x00;
     }
 
     return 0xff;
@@ -293,7 +277,7 @@ export class APU {
 
     if (!isAudioReg(address)) return;
 
-    if (address === NR52_ADDRESS) {
+    if (address === GLOBAL.NR52) {
       const wantPowered = (value & 0x80) !== 0;
       if (!wantPowered) {
         // power off clears NR10-NR51 but NOT NR52
@@ -326,13 +310,13 @@ export class APU {
     if (!this.powered) return;
 
     // CH2 register handling
-    if (address === NR21_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH2.NR21) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch2.writeNR21(value);
       return;
     }
-    if (address === NR22_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH2.NR22) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch2.writeNR22(value);
 
       // if DAC is turned off force ch2 off
@@ -341,13 +325,13 @@ export class APU {
       }
       return;
     }
-    if (address === NR23_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH2.NR23) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch2.writeNR23(value);
       return;
     }
-    if (address === NR24_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH2.NR24) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       const { triggered } = this.ch2.writeNR24(value);
 
       if (triggered) {
@@ -359,8 +343,8 @@ export class APU {
     }
 
     // CH3 register handling
-    if (address === NR30_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH3.NR30) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch3.writeNR30(value);
 
       if (this.ch3Enabled && !this.ch3.isDacEnabled()) {
@@ -368,23 +352,23 @@ export class APU {
       }
       return;
     }
-    if (address === NR31_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH3.NR31) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch3.writeNR31(value);
       return;
     }
-    if (address === NR32_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH3.NR32) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch3.writeNR32(value);
       return;
     }
-    if (address === NR33_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH3.NR33) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch3.writeNR33(value);
       return;
     }
-    if (address === NR34_ADDRESS) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address === CH3.NR34) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
       const { triggered } = this.ch3.writeNR34(value);
       if (triggered) {
         this.ch3Enabled = this.ch3.isDacEnabled();
@@ -392,13 +376,13 @@ export class APU {
       return;
     }
 
-    if (address >= NR10_ADDRESS && address <= 0xff25) {
-      this.nrRegisters[address - NR10_ADDRESS] = value;
+    if (address >= AUDIO_REG_START && address <= GLOBAL.NR51) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
 
       const isTrigger = (value & 0x80) !== 0;
       if (isTrigger) {
-        if (address === NR14_ADDRESS) this.ch1Enabled = true;
-        else if (address === NR44_ADDRESS) this.ch4Enabled = true;
+        if (address === CH1.NR14) this.ch1Enabled = true;
+        else if (address === CH4.NR44) this.ch4Enabled = true;
       }
       return;
     }
@@ -409,22 +393,22 @@ export class APU {
   readWaveRam(address: number): number {
     address &= 0xffff;
     if (!isWaveRamAddr(address)) return 0xff;
-    return this.waveRam[address - WAVE_RAM_START] ?? 0xff;
+    return this.waveRam[address - WAVE_RAM.START] ?? 0xff;
   }
 
   writeWaveRam(address: number, value: number): void {
     address &= 0xffff;
     value &= 0xff;
     if (!isWaveRamAddr(address)) return;
-    this.waveRam[address - WAVE_RAM_START] = value;
+    this.waveRam[address - WAVE_RAM.START] = value;
   }
 
   /* debug only */
 
   _debugReadRegister(address: number): number {
     address &= 0xffff;
-    if (address < NR10_ADDRESS || address > 0xff25) return 0xff;
-    return this.nrRegisters[address - NR10_ADDRESS] ?? 0xff;
+    if (address < AUDIO_REG_START || address > GLOBAL.NR51) return 0xff;
+    return this.nrRegisters[address - AUDIO_REG_START] ?? 0xff;
   }
 
   _debugGetInfo(): { sampleRate: number } {
