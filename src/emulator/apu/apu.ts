@@ -2,6 +2,7 @@ import { DEFAULT_APU_SETTINGS, type APUSettings } from "./types";
 import { FrameSequencer } from "./frameSequencer";
 import { Mixer } from "./mixer";
 import { Channel2Pulse } from "./channels/channel2Pulse";
+import { Channel3Wave } from "./channels/channel3Wave";
 
 const NR10_ADDRESS = 0xff10;
 const NR52_ADDRESS = 0xff26;
@@ -17,6 +18,10 @@ const NR22_ADDRESS = 0xff17;
 const NR23_ADDRESS = 0xff18;
 const NR24_ADDRESS = 0xff19;
 
+const NR30_ADDRESS = 0xff1a;
+const NR31_ADDRESS = 0xff1b;
+const NR32_ADDRESS = 0xff1c;
+const NR33_ADDRESS = 0xff1d;
 const NR34_ADDRESS = 0xff1e;
 
 const NR44_ADDRESS = 0xff23;
@@ -71,6 +76,7 @@ export class APU {
   private mixer: Mixer;
 
   private ch2: Channel2Pulse;
+  private ch3: Channel3Wave;
 
   constructor(sampleRate: number = 48000) {
     this.sampleRate = sampleRate;
@@ -80,6 +86,7 @@ export class APU {
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
     this.ch2 = new Channel2Pulse();
+    this.ch3 = new Channel3Wave(this.waveRam);
 
     this.sampleFifoFrameCapacity = Math.max(
       1,
@@ -96,6 +103,7 @@ export class APU {
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
     this.ch2 = new Channel2Pulse();
+    this.ch3 = new Channel3Wave(this.waveRam);
 
     this.ch1Enabled = false;
     this.ch2Enabled = false;
@@ -150,10 +158,15 @@ export class APU {
         ? this.ch2.getAmplitude()
         : 0;
 
+    const ch3Amp =
+      this.ch3Enabled && !this.apuSettings.muteCh3
+        ? this.ch3.getAmplitude()
+        : 0;
+
     const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
       ch1: 0,
       ch2: ch2Amp,
-      ch3: 0,
+      ch3: ch3Amp,
       ch4: 0,
     });
 
@@ -193,12 +206,21 @@ export class APU {
         this.ch2.step(chunkCycles);
       }
 
+      if (this.ch3Enabled) {
+        this.ch3.step(chunkCycles);
+      }
+
       const ticks = this.frameSequencer.stepCycles(chunkCycles);
       for (const tick of ticks) {
         if (tick.clockLength) {
           if (this.ch2Enabled) {
             const expired = this.ch2.clockLength();
             if (expired) this.ch2Enabled = false;
+          }
+
+          if (this.ch3Enabled) {
+            const expired = this.ch3.clockLength();
+            if (expired) this.ch3Enabled = false;
           }
         }
 
@@ -284,6 +306,7 @@ export class APU {
         this.ch4Enabled = false;
 
         this.ch2.reset();
+        this.ch3.reset();
         return;
       }
 
@@ -291,6 +314,7 @@ export class APU {
         this.powered = true;
         this.frameSequencer.resetOnApuPowerOn();
         this.ch2.reset();
+        this.ch3.reset();
         return;
       }
 
@@ -334,13 +358,46 @@ export class APU {
       return;
     }
 
+    // CH3 register handling
+    if (address === NR30_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      this.ch3.writeNR30(value);
+
+      if (this.ch3Enabled && !this.ch3.isDacEnabled()) {
+        this.ch3Enabled = false;
+      }
+      return;
+    }
+    if (address === NR31_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      this.ch3.writeNR31(value);
+      return;
+    }
+    if (address === NR32_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      this.ch3.writeNR32(value);
+      return;
+    }
+    if (address === NR33_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      this.ch3.writeNR33(value);
+      return;
+    }
+    if (address === NR34_ADDRESS) {
+      this.nrRegisters[address - NR10_ADDRESS] = value;
+      const { triggered } = this.ch3.writeNR34(value);
+      if (triggered) {
+        this.ch3Enabled = this.ch3.isDacEnabled();
+      }
+      return;
+    }
+
     if (address >= NR10_ADDRESS && address <= 0xff25) {
       this.nrRegisters[address - NR10_ADDRESS] = value;
 
       const isTrigger = (value & 0x80) !== 0;
       if (isTrigger) {
         if (address === NR14_ADDRESS) this.ch1Enabled = true;
-        else if (address === NR34_ADDRESS) this.ch3Enabled = true;
         else if (address === NR44_ADDRESS) this.ch4Enabled = true;
       }
       return;
