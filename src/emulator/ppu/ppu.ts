@@ -263,14 +263,67 @@ export class PPU {
     return this.DMG_RGBA[shade];
   }
 
-  private cgbRgb555ToRgba(color15: number): number {
-    const r5 = color15 & 0x1f;
-    const g5 = (color15 >> 5) & 0x1f;
-    const b5 = (color15 >> 10) & 0x1f;
-    const r8 = (r5 << 3) | (r5 >> 2);
-    const g8 = (g5 << 3) | (g5 >> 2);
-    const b8 = (b5 << 3) | (b5 >> 2);
-    return (0xff << 24) | (b8 << 16) | (g8 << 8) | r8;
+  private static readonly CGB_RGB555_TO_RGBA: Uint32Array = (() => {
+    // https://gbdev.io/pandocs/Palettes.html#rgb-translation-by-cgbs
+    const rgb555ToRgbaTable = new Uint32Array(0x8000);
+
+    const clamp01 = (value: number): number => {
+      if (value < 0) return 0;
+      if (value > 1) return 1;
+      return value;
+    };
+
+    const toCgbIntensity = (channel5: number): number => {
+      // - top range (0x10-0x1F) appears very bright (compressed highlights)
+      // - maximum intensity is light gray, not pure white
+      const normalizedChannel = clamp01((channel5 & 0x1f) / 31);
+
+      // Non-linear curve, gammaBase makes darks darker, highlightLift avoids gap near the top end
+      const gammaBase = 1.2;
+      const highlightLift = 0.1;
+      const curveValue =
+        (1 - highlightLift) * Math.pow(normalizedChannel, gammaBase) +
+        highlightLift * Math.pow(normalizedChannel, 0.35);
+
+      const whiteLevel = 230;
+      return clamp01(curveValue) * (whiteLevel / 255);
+    };
+
+    const colorIntensityTable = new Float32Array(32);
+    for (let i = 0; i < 32; i++) colorIntensityTable[i] = toCgbIntensity(i);
+
+    for (let rgb555 = 0; rgb555 < 0x8000; rgb555++) {
+      const r5 = rgb555 & 0x1f;
+      const g5 = (rgb555 >> 5) & 0x1f;
+      const b5 = (rgb555 >> 10) & 0x1f;
+
+      const r = colorIntensityTable[r5];
+      const g = colorIntensityTable[g5];
+      const b = colorIntensityTable[b5];
+
+      const rBlend = 0.78 * r + 0.14 * g + 0.08 * b;
+      const gBlend = 0.1 * r + 0.8 * g + 0.1 * b;
+      const bBlend = 0.08 * r + 0.16 * g + 0.76 * b;
+
+      const luminance = 0.2126 * rBlend + 0.7152 * gBlend + 0.0722 * bBlend;
+      const desaturation = 0;
+      const rOut = rBlend * (1 - desaturation) + luminance * desaturation;
+      const gOut = gBlend * (1 - desaturation) + luminance * desaturation;
+      const bOut = bBlend * (1 - desaturation) + luminance * desaturation;
+
+      const r8 = (clamp01(rOut) * 255) | 0;
+      const g8 = (clamp01(gOut) * 255) | 0;
+      const b8 = (clamp01(bOut) * 255) | 0;
+
+      rgb555ToRgbaTable[rgb555] = (0xff << 24) | (b8 << 16) | (g8 << 8) | r8;
+    }
+
+    return rgb555ToRgbaTable;
+  })();
+
+  private cgbRgb555ToRgba(rgb555: number): number {
+    // https://gbdev.io/pandocs/Palettes.html#rgb-translation-by-cgbs
+    return PPU.CGB_RGB555_TO_RGBA[rgb555 & 0x7fff] ?? 0xff000000;
   }
 
   private mapCGBBgPalette(paletteNumber: number, color: 0 | 1 | 2 | 3): number {
