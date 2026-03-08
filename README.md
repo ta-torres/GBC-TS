@@ -4,16 +4,20 @@ GBC-TS is a Game Boy and Game Boy Color emulator written in TypeScript and React
 
 ## Features
 
-- Compatible with ROM-Only, MBC1 and MBC3 cartridges (over 85%+ of the Game Boy's library)
+- Compatible with ROM-Only, MBC1, MBC3 and MBC5 cartridges
+- Game Boy Color support
+- Sound (WIP)
 - Mobile-friendly: Draggable d-pad, haptic feedback and custom fullscreen mode
-- Emulation speed controls
-- Save data persisted in the browser
+- Emulation speed controls (Q/W on desktop)
+- Save data persisted in localStorage
 - Debug features: VRAM & Sprites viewer, D-pad pointer position, performance overlay and frame/instruction stepping
 - Unit test coverage using Vitest
 
 ## How to play
 
-Visit https://gbc-ts.vercel.app and load your own game backup in a .gb format
+Visit https://gbc-ts.vercel.app and load your own game backup in a .gb format.
+
+On desktop, use Z/X for B/A buttons, Shift/Enter for Start/Select, arrow keys for D-pad. Q/W (or +/-) for speed controls.
 
 To run the emulator on a dev environment read below
 
@@ -29,7 +33,7 @@ For a project of this size that targets both desktop and mobile, React, shadcn-u
 
 Most Game Boy games rely on a Memory Bank Controller, a chip inside their cartridge that manages which parts of the game's assets are exposed to the Game Boy's limited memory at any given time. These chips allow the use of larger ROMs, and some of them even implement additional on-cartridge RAM.
 
-So far I implemented the behavior of MBC1 and MBC3 chips. I'm not able to test every single game, but in theory most titles using these cartridge types should work (which is about 85%+ of the console's library including most critically acclaimed titles). Some games that require a stricter emulation of the console's timer or rendering might contain graphical glitches.
+So far I implemented the behavior of MBC1, MBC3 and MBC5 chips. I'm not able to test every single game, but in theory most titles using these cartridge types should work (which is about 95%+ of the console's library including most critically acclaimed titles). Some games that require a stricter emulation of the console's timer or rendering might contain graphical glitches.
 
 Game Boy Color is supported, games boot and are playable, still work in progress though.
 
@@ -87,6 +91,10 @@ npm run test
 ## Features to add
 
 - [ ] Sound - WIP
+  - [ ] CH1
+  - [x] CH2
+  - [x] CH3
+  - [ ] CH4
 - [x] Game Boy Color support - WIP
   - [x] CGB mode detection + CPU post-boot registers wiring
   - [x] VRAM/WRAM banking (VBK/SVBK)
@@ -96,7 +104,7 @@ npm run test
   - [x] CGB BG-to-OBJ priority rules
   - [x] Double-speed mode (KEY1) + 0x10 STOP handling
   - [x] HDMA registers + H-Blank VRAM DMA transfers (HDMA1-5)
-  - [ ] MBC5 support
+  - [x] MBC5 support
 - [ ] Controller support
 - [ ] Custom button mapping
 - [ ] MBC1M multi-game compilation carts

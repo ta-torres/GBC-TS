@@ -211,8 +211,8 @@ export class GBCEmulator {
     return this.ppu.getFramebuffer();
   }
 
-  consumeFrameReady(): boolean {
-    return this.ppu.consumeFrameReady();
+  hasFrameReady(): boolean {
+    return this.ppu.hasFrameReady();
   }
 
   /* JOYPAD */

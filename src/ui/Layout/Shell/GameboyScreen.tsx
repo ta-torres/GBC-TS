@@ -48,7 +48,7 @@ export const GBScreen = ({
     let rafId = 0;
 
     const draw = (timestampFromRAF: number) => {
-      if (emulator && emulator.consumeFrameReady()) {
+      if (emulator && emulator.hasFrameReady()) {
         const framebuffer = emulator.getFramebuffer();
         screenDataBuffer.set(framebuffer);
         ctx.putImageData(imageData, 0, 0);

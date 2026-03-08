@@ -1,5 +1,13 @@
 import { IO_REGISTERS } from "../types/memory";
 import { Interrupts, InterruptType } from "../core/interrupts";
+import {
+  mapCGBBgPalette,
+  mapCGBObjPalette,
+  mapDMGPalette,
+  mapOBPPalette,
+} from "./palettes";
+
+import { getSpriteTileViewerData, getTileViewerData } from "./tileView";
 
 const PpuMode = {
   HBlank: 0,
@@ -23,7 +31,7 @@ const STAT_VBLANK_BIT_ENABLE = 0x10;
 const STAT_OAM_BIT_ENABLE = 0x20;
 const STAT_LYC_BIT_ENABLE = 0x40;
 
-const TILE_BYTES = 16;
+export const TILE_BYTES = 16;
 
 interface OAMEntry {
   y: number;
@@ -33,48 +41,48 @@ interface OAMEntry {
   index: number;
 }
 
-const readTileDataIndex = (
+export const getVRAMBaseAddress = (
   io: Uint8Array,
-): { base: number; signedIndex: boolean } => {
+): { tileDataAddress: number; usesSignedTileIds: boolean } => {
   // https://gbdev.io/pandocs/Tile_Data.html#vram-tile-data
   // https://gbdev.io/pandocs/LCDC.html#ff40--lcdc-lcd-control
   const lcdc = io[IO_REGISTERS.LCDC - 0xff00];
   const dataSelect = (lcdc & 0x10) !== 0;
   return dataSelect
-    ? { base: 0x8000, signedIndex: false }
-    : { base: 0x8800, signedIndex: true };
+    ? { tileDataAddress: 0x8000, usesSignedTileIds: false }
+    : { tileDataAddress: 0x8800, usesSignedTileIds: true };
 };
 
-const bgTileMapBase = (io: Uint8Array): number => {
+export const getBgTileMapAddress = (io: Uint8Array): number => {
   const lcdc = io[IO_REGISTERS.LCDC - 0xff00];
   return (lcdc & 0x08) !== 0 ? 0x9c00 : 0x9800;
 };
 
-const windowTileMapBase = (io: Uint8Array): number => {
+export const getWindowTileMapAddress = (io: Uint8Array): number => {
   const lcdc = io[IO_REGISTERS.LCDC - 0xff00];
   return (lcdc & 0x40) !== 0 ? 0x9c00 : 0x9800;
 };
 
-const fetchTileRow = (
+export const getTileRowColorBytes = (
   vram: Uint8Array,
   tileBase: number,
   tileIndex: number,
   row: number,
 ): { low: number; high: number } => {
   const tileRowAddress = tileBase + tileIndex * TILE_BYTES + row * 2;
-  const lowTilePlaneByte = vram[tileRowAddress - 0x8000];
-  const highTilePlaneByte = vram[tileRowAddress - 0x8000 + 1];
-  return { low: lowTilePlaneByte, high: highTilePlaneByte };
+  const lowPlaneByte = vram[tileRowAddress - 0x8000];
+  const highPlaneByte = vram[tileRowAddress - 0x8000 + 1];
+  return { low: lowPlaneByte, high: highPlaneByte };
 };
 
-const getBGPixelIndex = (
-  lowTilePlaneByte: number,
-  highTilePlaneByte: number,
-  bitIndex: number,
+export const getBGPixelIndex = (
+  lowPlaneByte: number,
+  highPlaneByte: number,
+  bitInByte: number,
 ): 0 | 1 | 2 | 3 => {
-  const bitPlane0 = (lowTilePlaneByte >> bitIndex) & 1;
-  const bitPlane1 = (highTilePlaneByte >> bitIndex) & 1;
-  return ((bitPlane1 << 1) | bitPlane0) as 0 | 1 | 2 | 3;
+  const lowBit = (lowPlaneByte >> bitInByte) & 1;
+  const highBit = (highPlaneByte >> bitInByte) & 1;
+  return ((highBit << 1) | lowBit) as 0 | 1 | 2 | 3;
 };
 
 export class PPU {
@@ -94,7 +102,7 @@ export class PPU {
   private windowScanline: number;
   private enteredHBlank: boolean;
 
-  /* GCB SPECIFIC */
+  /* GBC SPECIFIC */
   private cgbMode: boolean;
   private cgbBgPaletteRam: Uint8Array;
   private cgbObjPaletteRam: Uint8Array;
@@ -150,28 +158,6 @@ export class PPU {
     // dont request interrupts on class init?
   }
 
-  setCGBMode(enabled: boolean): void {
-    this.cgbMode = enabled;
-  }
-
-  reset(cgbMode: boolean = this.cgbMode): void {
-    this.setCGBMode(cgbMode);
-    this.framebuffer.fill(0);
-    this.actualFramebufferDrawnToTheScreen.fill(0);
-    this.bgIndexLine.fill(0);
-    this.mode = PpuMode.OAM;
-    this.currentScanlineLY = 0;
-    this.cyclesInLine = 0;
-    this.frameReady = false;
-    this.windowScanline = 0;
-    this.enteredHBlank = false;
-    this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
-
-    this.io[IO_REGISTERS.LY - 0xff00] = 0;
-    this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
-    this.setMode(PpuMode.OAM);
-  }
-
   step(tCycles: number): void {
     if (!this.lcdEnabled()) {
       this.currentScanlineLY = 0;
@@ -201,10 +187,10 @@ export class PPU {
         if (previousMode === PpuMode.Transfer) {
           this.enteredHBlank = true;
         }
-        // only render bg once per scanline at the start of hblank
+        // scanline-based render at the start of hblank
         if (previousMode === PpuMode.Transfer && this.currentScanlineLY < 144) {
-          this.renderBackgroundLine();
-          this.renderWindowLine();
+          this.renderBackgroundScanline();
+          this.renderWindowScanline();
           this.renderSpritesForScanline();
         }
       }
@@ -235,9 +221,8 @@ export class PPU {
       if (this.currentScanlineLY === 144) {
         this.setMode(PpuMode.VBlank);
 
-        /* if (this.debugTrace) {
-          this.renderTestPattern();
-        } */
+        // this.renderTestPattern();
+
         this.actualFramebufferDrawnToTheScreen.set(this.framebuffer);
         this.frameReady = true;
         this.interrupts.requestInterrupt(InterruptType.VBLANK);
@@ -255,108 +240,16 @@ export class PPU {
     }
   }
 
-  private DMG_RGBA = [0xffffffff, 0xffaaaaaa, 0xff555555, 0xff000000];
-
-  private mapDMGPalette(bgp: number, color: 0 | 1 | 2 | 3): number {
-    const shift = color * 2;
-    const shade = (bgp >> shift) & 0x03;
-    return this.DMG_RGBA[shade];
-  }
-
-  private static readonly CGB_RGB555_TO_RGBA: Uint32Array = (() => {
-    // https://gbdev.io/pandocs/Palettes.html#rgb-translation-by-cgbs
-    const rgb555ToRgbaTable = new Uint32Array(0x8000);
-
-    const clamp01 = (value: number): number => {
-      if (value < 0) return 0;
-      if (value > 1) return 1;
-      return value;
-    };
-
-    const toCgbIntensity = (channel5: number): number => {
-      // - top range (0x10-0x1F) appears very bright (compressed highlights)
-      // - maximum intensity is light gray, not pure white
-      const normalizedChannel = clamp01((channel5 & 0x1f) / 31);
-
-      // Non-linear curve, gammaBase makes darks darker, highlightLift avoids gap near the top end
-      const gammaBase = 1.2;
-      const highlightLift = 0.1;
-      const curveValue =
-        (1 - highlightLift) * Math.pow(normalizedChannel, gammaBase) +
-        highlightLift * Math.pow(normalizedChannel, 0.35);
-
-      const whiteLevel = 230;
-      return clamp01(curveValue) * (whiteLevel / 255);
-    };
-
-    const colorIntensityTable = new Float32Array(32);
-    for (let i = 0; i < 32; i++) colorIntensityTable[i] = toCgbIntensity(i);
-
-    for (let rgb555 = 0; rgb555 < 0x8000; rgb555++) {
-      const r5 = rgb555 & 0x1f;
-      const g5 = (rgb555 >> 5) & 0x1f;
-      const b5 = (rgb555 >> 10) & 0x1f;
-
-      const r = colorIntensityTable[r5];
-      const g = colorIntensityTable[g5];
-      const b = colorIntensityTable[b5];
-
-      const rBlend = 0.78 * r + 0.14 * g + 0.08 * b;
-      const gBlend = 0.1 * r + 0.8 * g + 0.1 * b;
-      const bBlend = 0.08 * r + 0.16 * g + 0.76 * b;
-
-      const luminance = 0.2126 * rBlend + 0.7152 * gBlend + 0.0722 * bBlend;
-      const desaturation = 0;
-      const rOut = rBlend * (1 - desaturation) + luminance * desaturation;
-      const gOut = gBlend * (1 - desaturation) + luminance * desaturation;
-      const bOut = bBlend * (1 - desaturation) + luminance * desaturation;
-
-      const r8 = (clamp01(rOut) * 255) | 0;
-      const g8 = (clamp01(gOut) * 255) | 0;
-      const b8 = (clamp01(bOut) * 255) | 0;
-
-      rgb555ToRgbaTable[rgb555] = (0xff << 24) | (b8 << 16) | (g8 << 8) | r8;
-    }
-
-    return rgb555ToRgbaTable;
-  })();
-
-  private cgbRgb555ToRgba(rgb555: number): number {
-    // https://gbdev.io/pandocs/Palettes.html#rgb-translation-by-cgbs
-    return PPU.CGB_RGB555_TO_RGBA[rgb555 & 0x7fff] ?? 0xff000000;
-  }
-
-  private mapCGBBgPalette(paletteNumber: number, color: 0 | 1 | 2 | 3): number {
-    const pal = paletteNumber & 0x07;
-    const idx = (pal * 8 + color * 2) & 0x3f;
-    const low = this.cgbBgPaletteRam[idx] ?? 0x00;
-    const high = this.cgbBgPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
-    const rgb555 = low | (high << 8);
-    return this.cgbRgb555ToRgba(rgb555);
-  }
-
-  private mapCGBObjPalette(
-    paletteNumber: number,
-    color: 0 | 1 | 2 | 3,
-  ): number {
-    const pal = paletteNumber & 0x07;
-    const idx = (pal * 8 + color * 2) & 0x3f;
-    const low = this.cgbObjPaletteRam[idx] ?? 0x00;
-    const high = this.cgbObjPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
-    const rgb555 = low | (high << 8);
-    return this.cgbRgb555ToRgba(rgb555);
-  }
-
-  private renderBackgroundLine(): void {
+  private renderBackgroundScanline(): void {
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
 
-    const cgbMasterPriority = (lcdc & 0x01) !== 0;
+    const cgbMasterPriorityEnabled = (lcdc & 0x01) !== 0;
 
     // DMG: si BG está deshabilitado, rellenar scanline con color 0
     const dmgBgEnabled = (lcdc & 0x01) !== 0;
     if (!this.cgbMode && !dmgBgEnabled) {
       const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
-      const backgroundColor = this.mapDMGPalette(bgPalette, 0);
+      const backgroundColor = mapDMGPalette(bgPalette, 0);
       const scanlineY = this.currentScanlineLY | 0;
       const scanlineOffset = scanlineY * SCREEN_WIDTH;
       for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
@@ -368,82 +261,81 @@ export class PPU {
     }
 
     // mapea coordenadas de pantalla al espacio de BG y lee direcciones de tiles, tile map de BG, paleta BGP
-    const scrollX = this.io[IO_REGISTERS.SCX - 0xff00];
-    const scrollY = this.io[IO_REGISTERS.SCY - 0xff00];
+    const bgScrollX = this.io[IO_REGISTERS.SCX - 0xff00];
+    const bgScrollY = this.io[IO_REGISTERS.SCY - 0xff00];
 
-    const { base: tileDataBaseAddress, signedIndex } = readTileDataIndex(
-      this.io,
-    );
-    const bgTileMapBaseAddress = bgTileMapBase(this.io);
+    const { tileDataAddress, usesSignedTileIds } = getVRAMBaseAddress(this.io);
+    const bgTileMapBaseAddress = getBgTileMapAddress(this.io);
     const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
 
     // calcula qué fila de tiles de BG y qué fila interna del tile toca este LY
-    const bgY = (this.currentScanlineLY + scrollY) & 0xff;
-    const bgTileRowIndex = (bgY >> 3) & 31; // 32x32 tiles
-    const tileRowOffset = bgY & 7;
+    const bgPixelY = (this.currentScanlineLY + bgScrollY) & 0xff;
+    const bgTileY = (bgPixelY >> 3) & 31; // 32x32 tiles
+    const rowInTileY = bgPixelY & 7;
 
     // recorre X en pantalla, agarra tile/píxel de BG y mapea a color
     const scanlineOffset = this.currentScanlineLY * SCREEN_WIDTH;
     for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
       // mapea screenX de pantalla actual al espacio de BG
       // selecciona columna de tile de BG e índice dentro del tile map
-      const bgX = (screenX + scrollX) & 0xff;
+      const bgPixelX = (screenX + bgScrollX) & 0xff;
 
-      const bgTileColumnIndex = (bgX >> 3) & 31;
-      const tileMapIndex = bgTileRowIndex * 32 + bgTileColumnIndex;
-      const tileNumber =
-        this.vram[bgTileMapBaseAddress - 0x8000 + tileMapIndex];
+      const bgTileX = (bgPixelX >> 3) & 31;
+      const tileMapOffset = bgTileY * 32 + bgTileX;
+      const tileId = this.vram[bgTileMapBaseAddress - 0x8000 + tileMapOffset];
 
       // GBC SPECIFIC
-      const cgbAttributeAddress = this.cgbMode
-        ? this.vramBank1[bgTileMapBaseAddress - 0x8000 + tileMapIndex]
+      const cgbAttributes = this.cgbMode
+        ? this.vramBank1[bgTileMapBaseAddress - 0x8000 + tileMapOffset]
         : 0x00;
-      const cgbPaletteNumber = cgbAttributeAddress & 0x07;
-      const cgbTileBank1 = (cgbAttributeAddress & 0x08) !== 0;
-      const cgbXFlip = (cgbAttributeAddress & 0x20) !== 0;
-      const cgbYFlip = (cgbAttributeAddress & 0x40) !== 0;
+      const cgbBgPaletteId = cgbAttributes & 0x07;
+      const cgbUseVramBank1 = (cgbAttributes & 0x08) !== 0;
+      const cgbFlipX = (cgbAttributes & 0x20) !== 0;
+      const cgbFlipY = (cgbAttributes & 0x40) !== 0;
       // https://gbdev.io/pandocs/single.html#bg-to-obj-priority-in-cgb-mode
-      const cgbBgPriority = (cgbAttributeAddress & 0x80) !== 0;
+      const cgbBgHasPriority = (cgbAttributes & 0x80) !== 0;
 
       // convierte número de tile en tile data index (address con/sin signo)
-      let tileIndex: number;
-      if (signedIndex) {
-        const tileNumberSigned = (tileNumber << 24) >> 24;
-        tileIndex = tileNumberSigned + 128;
+      let tileDataIndex: number;
+      if (usesSignedTileIds) {
+        const signedTileId = (tileId << 24) >> 24;
+        tileDataIndex = signedTileId + 128;
       } else {
-        tileIndex = tileNumber;
+        tileDataIndex = tileId;
       }
 
       // obtiene los dos bytes de bitplanes para esta tile row
-      const cgbTileRowOffset =
-        this.cgbMode && cgbYFlip ? 7 - tileRowOffset : tileRowOffset;
+      const tileRowInPattern =
+        this.cgbMode && cgbFlipY ? 7 - rowInTileY : rowInTileY;
 
       // si está en cgbMode y tile bank 1 está habilitado, fetchea de vramBank1, sino de vram
-      const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
-        this.cgbMode && cgbTileBank1 ? this.vramBank1 : this.vram,
-        tileDataBaseAddress,
-        tileIndex,
-        cgbTileRowOffset,
-      );
+      const { low: lowTilePlaneByte, high: highTilePlaneByte } =
+        getTileRowColorBytes(
+          this.cgbMode && cgbUseVramBank1 ? this.vramBank1 : this.vram,
+          tileDataAddress,
+          tileDataIndex,
+          tileRowInPattern,
+        );
       // elige qué bit dentro de la fila corresponde a este píxel, fusiona bitplane a 2-bit y mapea a color final
-      const pixelBitIndex = this.cgbMode && cgbXFlip ? bgX & 7 : 7 - (bgX & 7);
+      const pixelBitIndex =
+        this.cgbMode && cgbFlipX ? bgPixelX & 7 : 7 - (bgPixelX & 7);
       const paletteIndex = getBGPixelIndex(
         lowTilePlaneByte,
         highTilePlaneByte,
         pixelBitIndex,
       );
       const pixelColor = this.cgbMode
-        ? this.mapCGBBgPalette(cgbPaletteNumber, paletteIndex)
-        : this.mapDMGPalette(bgPalette, paletteIndex);
+        ? mapCGBBgPalette(this.cgbBgPaletteRam, cgbBgPaletteId, paletteIndex)
+        : mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
       this.bgPriorityLine[screenX] =
-        this.cgbMode && cgbMasterPriority && cgbBgPriority ? 1 : 0;
+        this.cgbMode && cgbMasterPriorityEnabled && cgbBgHasPriority ? 1 : 0;
     }
   }
 
-  private renderWindowLine(): void {
+  private renderWindowScanline(): void {
     // same as renderBackground but drawn on top (uses same readTileDataIndex)
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
 
@@ -452,28 +344,26 @@ export class PPU {
     const windowEnabled = (lcdc & 0x20) !== 0;
     if (!windowEnabled) return;
 
-    const wy = this.io[IO_REGISTERS.WY - 0xff00];
-    const wx = this.io[IO_REGISTERS.WX - 0xff00];
+    const windowY = this.io[IO_REGISTERS.WY - 0xff00];
+    const windowX = this.io[IO_REGISTERS.WX - 0xff00];
     // LCDC bit 5
-    const windowXStart = (wx - 7) | 0;
+    const windowXStart = (windowX - 7) | 0;
 
     // if current scanline LY is ABOVE the windows starting position WY (top to bottom) don't draw the window yet
     // window starts being visible on scanline ly === wy
-    if (this.currentScanlineLY < wy) return;
+    if (this.currentScanlineLY < windowY) return;
 
     // same as BG
-    const { base: tileDataBaseAddress, signedIndex } = readTileDataIndex(
-      this.io,
-    );
-    const windowTileMapBaseAddress = windowTileMapBase(this.io);
+    const { tileDataAddress, usesSignedTileIds } = getVRAMBaseAddress(this.io);
+    const windowTileMapBaseAddress = getWindowTileMapAddress(this.io);
     const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
 
-    const cgbMasterPriority = (lcdc & 0x01) !== 0;
+    const cgbMasterPriorityEnabled = (lcdc & 0x01) !== 0;
 
     // same as BG but use windowScanline instead of windowY (only count lines where the window is actually drawn)
-    const windowRowInPixels = this.windowScanline & 0xff;
-    const windowTileRowIndex = (windowRowInPixels >> 3) & 31;
-    const windowTileRowOffset = windowRowInPixels & 7;
+    const windowPixelY = this.windowScanline & 0xff;
+    const windowTileY = (windowPixelY >> 3) & 31;
+    const rowInTileY = windowPixelY & 7;
 
     // Same as BG but don't draw to negative framebuffer (skip off-screen pixels)
     const scanlineOffset = this.currentScanlineLY * SCREEN_WIDTH;
@@ -482,62 +372,55 @@ export class PPU {
       screenX < SCREEN_WIDTH;
       screenX += 1
     ) {
-      const windowX = (screenX - windowXStart) & 0xff;
+      const windowPixelX = (screenX - windowXStart) & 0xff;
 
-      const windowTileColumnIndex = (windowX >> 3) & 31;
-      const tileMapIndex = windowTileRowIndex * 32 + windowTileColumnIndex;
-      const tileNumber =
-        this.vram[windowTileMapBaseAddress - 0x8000 + tileMapIndex];
+      const windowTileX = (windowPixelX >> 3) & 31;
+      const tileMapOffset = windowTileY * 32 + windowTileX;
+      const tileId =
+        this.vram[windowTileMapBaseAddress - 0x8000 + tileMapOffset];
 
       // GBC SPECIFIC
-      const cgbAttributeAddress = this.cgbMode
-        ? this.vramBank1[windowTileMapBaseAddress - 0x8000 + tileMapIndex]
+      const cgbAttributes = this.cgbMode
+        ? this.vramBank1[windowTileMapBaseAddress - 0x8000 + tileMapOffset]
         : 0x00;
-      const cgbPaletteNumber = cgbAttributeAddress & 0x07;
-      const cgbTileBank1 = (cgbAttributeAddress & 0x08) !== 0;
-      const cgbXFlip = (cgbAttributeAddress & 0x20) !== 0;
-      const cgbYFlip = (cgbAttributeAddress & 0x40) !== 0;
-      const cgbBgPriority = (cgbAttributeAddress & 0x80) !== 0;
+      const cgbBgPaletteId = cgbAttributes & 0x07;
+      const cgbUseVramBank1 = (cgbAttributes & 0x08) !== 0;
+      const cgbFlipX = (cgbAttributes & 0x20) !== 0;
+      const cgbFlipY = (cgbAttributes & 0x40) !== 0;
+      const cgbBgHasPriority = (cgbAttributes & 0x80) !== 0;
 
-      let tileIndex: number;
-      if (signedIndex) {
-        const tileNumberSigned = (tileNumber << 24) >> 24;
-        tileIndex = tileNumberSigned + 128;
+      let tileDataIndex: number;
+      if (usesSignedTileIds) {
+        const signedTileId = (tileId << 24) >> 24;
+        tileDataIndex = signedTileId + 128;
       } else {
-        tileIndex = tileNumber;
+        tileDataIndex = tileId;
       }
 
-      const { low: lowTilePlaneByte, high: highTilePlaneByte } = fetchTileRow(
-        this.cgbMode && cgbTileBank1 ? this.vramBank1 : this.vram,
-        tileDataBaseAddress,
-        tileIndex,
-        this.cgbMode && cgbYFlip
-          ? 7 - windowTileRowOffset
-          : windowTileRowOffset,
-      );
+      const { low: lowTilePlaneByte, high: highTilePlaneByte } =
+        getTileRowColorBytes(
+          this.cgbMode && cgbUseVramBank1 ? this.vramBank1 : this.vram,
+          tileDataAddress,
+          tileDataIndex,
+          this.cgbMode && cgbFlipY ? 7 - rowInTileY : rowInTileY,
+        );
 
-      const pixelBitIndex =
-        this.cgbMode && cgbXFlip ? windowX & 7 : 7 - (windowX & 7);
+      const bitInTileRow =
+        this.cgbMode && cgbFlipX ? windowPixelX & 7 : 7 - (windowPixelX & 7);
       const paletteIndex = getBGPixelIndex(
         lowTilePlaneByte,
         highTilePlaneByte,
-        pixelBitIndex,
+        bitInTileRow,
       );
       const pixelColor = this.cgbMode
-        ? this.mapCGBBgPalette(cgbPaletteNumber, paletteIndex)
-        : this.mapDMGPalette(bgPalette, paletteIndex);
+        ? mapCGBBgPalette(this.cgbBgPaletteRam, cgbBgPaletteId, paletteIndex)
+        : mapDMGPalette(bgPalette, paletteIndex);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
       this.bgPriorityLine[screenX] =
-        this.cgbMode && cgbMasterPriority && cgbBgPriority ? 1 : 0;
+        this.cgbMode && cgbMasterPriorityEnabled && cgbBgHasPriority ? 1 : 0;
     }
-  }
-
-  private mapOBPPalette(obp: number, color: 0 | 1 | 2 | 3): number {
-    const shift = color * 2;
-    const shade = (obp >> shift) & 0x03;
-    return this.DMG_RGBA[shade];
   }
 
   private evalSpritesForScanline(): OAMEntry[] {
@@ -626,12 +509,13 @@ export class PPU {
 
       const rowInTile = lineInSprite & 7; // wrap to 0-7
 
-      const { low, high } = fetchTileRow(
-        this.cgbMode && cgbVramBank1 ? this.vramBank1 : this.vram,
-        tileBaseAddress,
-        tileIndex,
-        rowInTile,
-      );
+      const { low: lowTilePlaneByte, high: highTilePlaneByte } =
+        getTileRowColorBytes(
+          this.cgbMode && cgbVramBank1 ? this.vramBank1 : this.vram,
+          tileBaseAddress,
+          tileIndex,
+          rowInTile,
+        );
 
       // draw 8 pixel columns for this sprite row
       for (let x = 0; x < 8; x += 1) {
@@ -643,15 +527,23 @@ export class PPU {
 
         // palette bit depends on X flip, palette index = 0-3
         const bitIndex = xFlip ? x : 7 - x;
-        const paletteIndex = getBGPixelIndex(low, high, bitIndex);
+        const paletteIndex = getBGPixelIndex(
+          lowTilePlaneByte,
+          highTilePlaneByte,
+          bitIndex,
+        );
         if (paletteIndex === 0) {
           continue; // color 0 is transparent for sprites
         }
 
         // same as bg
         const color = this.cgbMode
-          ? this.mapCGBObjPalette(cgbObjPaletteNumber, paletteIndex)
-          : this.mapOBPPalette(obp, paletteIndex);
+          ? mapCGBObjPalette(
+              this.cgbObjPaletteRam,
+              cgbObjPaletteNumber,
+              paletteIndex,
+            )
+          : mapOBPPalette(obp, paletteIndex);
         const bufIndex = scanlineOffset + screenX;
 
         // don't draw over non‑transparent background colors
@@ -686,7 +578,7 @@ export class PPU {
     return this.actualFramebufferDrawnToTheScreen;
   }
 
-  consumeFrameReady(): boolean {
+  hasFrameReady(): boolean {
     const ready = this.frameReady;
     this.frameReady = false;
     return ready;
@@ -698,35 +590,34 @@ export class PPU {
     return entered;
   }
 
+  setCGBMode(enabled: boolean): void {
+    this.cgbMode = enabled;
+  }
+
+  lcdEnabled(): boolean {
+    return (this.io[IO_REGISTERS.LCDC - 0xff00] & 0x80) !== 0;
+  }
+
+  reset(cgbMode: boolean = this.cgbMode): void {
+    this.setCGBMode(cgbMode);
+    this.framebuffer.fill(0);
+    this.actualFramebufferDrawnToTheScreen.fill(0);
+    this.bgIndexLine.fill(0);
+    this.mode = PpuMode.OAM;
+    this.currentScanlineLY = 0;
+    this.cyclesInLine = 0;
+    this.frameReady = false;
+    this.windowScanline = 0;
+    this.enteredHBlank = false;
+    this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
+
+    this.io[IO_REGISTERS.LY - 0xff00] = 0;
+    this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
+    this.setMode(PpuMode.OAM);
+  }
+
   getTileViewerData(): { width: number; height: number; data: Uint8Array } {
-    const tilesX = 16;
-    const tilesY = 12;
-    const width = tilesX * 8;
-    const height = tilesY * 8;
-    const data = new Uint8Array(width * height);
-
-    const { base: tileBase } = readTileDataIndex(this.io);
-    const maxTileCount = ((0x9800 - tileBase) / TILE_BYTES) | 0;
-    const totalTiles = Math.min(maxTileCount, tilesX * tilesY);
-
-    for (let tileIndex = 0; tileIndex < totalTiles; tileIndex += 1) {
-      const tileX = tileIndex % tilesX;
-      const tileY = (tileIndex / tilesX) | 0;
-
-      for (let row = 0; row < 8; row += 1) {
-        const { low, high } = fetchTileRow(this.vram, tileBase, tileIndex, row);
-
-        for (let col = 0; col < 8; col += 1) {
-          const bitIndex = 7 - col;
-          const colorIndex = getBGPixelIndex(low, high, bitIndex);
-          const x = tileX * 8 + col;
-          const y = tileY * 8 + row;
-          data[y * width + x] = colorIndex;
-        }
-      }
-    }
-
-    return { width, height, data };
+    return getTileViewerData(this.io, this.vram);
   }
 
   getSpriteTileViewerData(): {
@@ -734,57 +625,7 @@ export class PPU {
     height: number;
     data: Uint8Array;
   } {
-    const tilesX = 8;
-    const tilesY = 5;
-    const width = tilesX * 8;
-    const height = tilesY * 8;
-    const data = new Uint8Array(width * height);
-
-    const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
-    const isTallSprite = (lcdc & 0x04) !== 0;
-
-    const uniqueTiles: number[] = [];
-
-    for (let i = 0; i < 40; i += 1) {
-      const base = i * 4;
-      let tile = this.oam[base + 2];
-      if (isTallSprite) {
-        tile &= 0xfe;
-      }
-
-      if (!uniqueTiles.includes(tile)) {
-        uniqueTiles.push(tile);
-        if (uniqueTiles.length >= tilesX * tilesY) break;
-      }
-    }
-
-    const tileBaseAddress = 0x8000;
-    const totalTiles = uniqueTiles.length;
-
-    for (let index = 0; index < totalTiles; index += 1) {
-      const tileIndex = uniqueTiles[index];
-      const tileX = index % tilesX;
-      const tileY = (index / tilesX) | 0;
-
-      for (let row = 0; row < 8; row += 1) {
-        const { low, high } = fetchTileRow(
-          this.vram,
-          tileBaseAddress,
-          tileIndex,
-          row,
-        );
-
-        for (let col = 0; col < 8; col += 1) {
-          const bitIndex = 7 - col;
-          const colorIndex = getBGPixelIndex(low, high, bitIndex);
-          const x = tileX * 8 + col;
-          const y = tileY * 8 + row;
-          data[y * width + x] = colorIndex;
-        }
-      }
-    }
-
-    return { width, height, data };
+    return getSpriteTileViewerData(this.io, this.vram, this.oam);
   }
 
   private setMode(mode: PpuMode): void {
@@ -798,10 +639,6 @@ export class PPU {
       return;
     }
     this.io[idx] = (stat & (~STAT_MODE_BITS & 0xff)) | mode;
-  }
-
-  private lcdEnabled(): boolean {
-    return (this.io[IO_REGISTERS.LCDC - 0xff00] & 0x80) !== 0;
   }
 
   private evaluateLycAndCheckSTAT(): void {
@@ -893,7 +730,7 @@ export class PPU {
       for (let x = 0; x < SCREEN_WIDTH; x++) {
         const band = (Math.floor(x / 20) + tweak) % 4;
         const bgp = this.io[IO_REGISTERS.BGP - 0xff00] || 0xe4;
-        const color = this.mapDMGPalette(bgp, band as 0 | 1 | 2 | 3);
+        const color = mapDMGPalette(bgp, band as 0 | 1 | 2 | 3);
         this.framebuffer[y * SCREEN_WIDTH + x] = color;
       }
     }
