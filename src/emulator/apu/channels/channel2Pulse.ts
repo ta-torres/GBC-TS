@@ -22,6 +22,36 @@ export class Channel2Pulse {
     this.length.writeLength(this.nr21);
   }
 
+  writeNR22(value: number): void {
+    this.nr22 = value & 0xff;
+    this.envelope.writeNRx2(this.nr22);
+  }
+
+  writeNR23(value: number): void {
+    this.nr23 = value & 0xff;
+    this.recomputeTimerPeriod();
+  }
+
+  writeNR24(value: number): { triggered: boolean } {
+    this.nr24 = value & 0xff;
+
+    this.recomputeTimerPeriod();
+
+    const lengthEnable = (this.nr24 & 0x40) !== 0;
+    this.length.writeLengthEnable(lengthEnable);
+
+    const triggered = (this.nr24 & 0x80) !== 0;
+    if (triggered) {
+      // reset duty step & envelope timer?
+      this.dutyStep = 0;
+      this.timerCounter = this.timerPeriod;
+      this.length.onTrigger();
+      this.envelope.onTrigger();
+    }
+
+    return { triggered };
+  }
+
   private getDutyMode(): 0 | 1 | 2 | 3 {
     const dutyMode = (this.nr21 >>> 6) & 0x03;
     return dutyMode as 0 | 1 | 2 | 3;
@@ -56,16 +86,6 @@ export class Channel2Pulse {
     }
   }
 
-  writeNR22(value: number): void {
-    this.nr22 = value & 0xff;
-    this.envelope.writeNRx2(this.nr22);
-  }
-
-  writeNR23(value: number): void {
-    this.nr23 = value & 0xff;
-    this.recomputeTimerPeriod();
-  }
-
   //https://gbdev.io/pandocs/Audio_Registers.html#sound-channel-2--pulse
   private getFrequency11Bit(): number {
     const lo = this.nr23 & 0xff;
@@ -79,26 +99,6 @@ export class Channel2Pulse {
     const freq11 = this.getFrequency11Bit();
     this.timerPeriod = (2048 - freq11) * 4;
     if (this.timerPeriod <= 0) this.timerPeriod = 4;
-  }
-
-  writeNR24(value: number): { triggered: boolean } {
-    this.nr24 = value & 0xff;
-
-    this.recomputeTimerPeriod();
-
-    const lengthEnable = (this.nr24 & 0x40) !== 0;
-    this.length.writeLengthEnable(lengthEnable);
-
-    const triggered = (this.nr24 & 0x80) !== 0;
-    if (triggered) {
-      // reset duty step & envelope timer?
-      this.dutyStep = 0;
-      this.timerCounter = this.timerPeriod;
-      this.length.onTrigger();
-      this.envelope.onTrigger();
-    }
-
-    return { triggered };
   }
 
   clockLength(): boolean {
