@@ -1,6 +1,7 @@
 import { DEFAULT_APU_SETTINGS, type APUSettings } from "./types";
 import { FrameSequencer } from "./frameSequencer";
 import { Mixer } from "./mixer";
+import { Channel1Pulse } from "./channels/channel1Pulse";
 import { Channel2Pulse } from "./channels/channel2Pulse";
 import { Channel3Wave } from "./channels/channel3Wave";
 import {
@@ -59,6 +60,7 @@ export class APU {
   private frameSequencer: FrameSequencer;
   private mixer: Mixer;
 
+  private ch1: Channel1Pulse;
   private ch2: Channel2Pulse;
   private ch3: Channel3Wave;
 
@@ -69,6 +71,7 @@ export class APU {
     this.waveRam = new Uint8Array(0x10);
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
+    this.ch1 = new Channel1Pulse();
     this.ch2 = new Channel2Pulse();
     this.ch3 = new Channel3Wave(this.waveRam);
 
@@ -86,6 +89,7 @@ export class APU {
     this.apuSettings = DEFAULT_APU_SETTINGS;
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
+    this.ch1 = new Channel1Pulse();
     this.ch2 = new Channel2Pulse();
     this.ch3 = new Channel3Wave(this.waveRam);
 
@@ -137,6 +141,11 @@ export class APU {
     const nr50 = this.nrRegisters[GLOBAL.NR50 - AUDIO_REG_START] ?? 0x00;
     const nr51 = this.nrRegisters[GLOBAL.NR51 - AUDIO_REG_START] ?? 0x00;
 
+    const ch1Amp =
+      this.ch1Enabled && !this.apuSettings.muteCh1
+        ? this.ch1.getAmplitude()
+        : 0;
+
     const ch2Amp =
       this.ch2Enabled && !this.apuSettings.muteCh2
         ? this.ch2.getAmplitude()
@@ -148,7 +157,7 @@ export class APU {
         : 0;
 
     const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
-      ch1: 0,
+      ch1: ch1Amp,
       ch2: ch2Amp,
       ch3: ch3Amp,
       ch4: 0,
