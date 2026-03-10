@@ -100,6 +100,7 @@ export class PPU {
   private cyclesInLine: number;
   private frameReady: boolean;
   private windowScanline: number;
+  private windowDrawnThisScanline: boolean;
   private enteredHBlank: boolean;
 
   /* GBC SPECIFIC */
@@ -148,6 +149,7 @@ export class PPU {
     this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
+    this.windowDrawnThisScanline = false;
     this.enteredHBlank = false;
 
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
@@ -164,6 +166,8 @@ export class PPU {
       this.cyclesInLine = 0;
       this.frameReady = false;
       this.io[IO_REGISTERS.LY - 0xff00] = 0;
+      this.windowScanline = 0;
+      this.windowDrawnThisScanline = false;
       this.setMode(PpuMode.HBlank);
       return;
     }
@@ -210,11 +214,7 @@ export class PPU {
       this.evaluateLycAndCheckSTAT();
 
       // update windowScanline once for every visible line in vertical
-      const lcdcWindow = this.io[IO_REGISTERS.LCDC - 0xff00];
-      const windowEnabled = (lcdcWindow & 0x20) !== 0;
-      const wy = this.io[IO_REGISTERS.WY - 0xff00];
-
-      if (windowEnabled && previousLy >= wy && previousLy < 144) {
+      if (this.windowDrawnThisScanline && previousLy < 144) {
         this.windowScanline = (this.windowScanline + 1) & 0xff;
       }
 
@@ -234,6 +234,7 @@ export class PPU {
 
         // reset internal counter when reaching a new frame
         this.windowScanline = 0;
+        this.windowDrawnThisScanline = false;
 
         this.setMode(PpuMode.OAM);
       }
@@ -337,6 +338,7 @@ export class PPU {
 
   private renderWindowScanline(): void {
     // same as renderBackground but drawn on top (uses same readTileDataIndex)
+    this.windowDrawnThisScanline = false;
     const lcdc = this.io[IO_REGISTERS.LCDC - 0xff00];
 
     if (!this.cgbMode && (lcdc & 0x01) === 0) return;
@@ -349,9 +351,14 @@ export class PPU {
     // LCDC bit 5
     const windowXStart = (windowX - 7) | 0;
 
-    // if current scanline LY is ABOVE the windows starting position WY (top to bottom) don't draw the window yet
-    // window starts being visible on scanline ly === wy
+    /* 
+      if current scanline LY is ABOVE the windows starting position WY (top to bottom) don't draw the window yet
+      window starts being visible on scanline ly === wy
+      same check for x position 
+    */
     if (this.currentScanlineLY < windowY) return;
+    if (windowXStart >= SCREEN_WIDTH) return;
+    this.windowDrawnThisScanline = true;
 
     // same as BG
     const { tileDataAddress, usesSignedTileIds } = getVRAMBaseAddress(this.io);
@@ -608,6 +615,7 @@ export class PPU {
     this.cyclesInLine = 0;
     this.frameReady = false;
     this.windowScanline = 0;
+    this.windowDrawnThisScanline = false;
     this.enteredHBlank = false;
     this.statInterruptSet = { m0: false, m1: false, m2: false, lyc: false };
 
