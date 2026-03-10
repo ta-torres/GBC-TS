@@ -199,6 +199,10 @@ export class APU {
         this.ch2.step(chunkCycles);
       }
 
+      if (this.ch1Enabled) {
+        this.ch1.step(chunkCycles);
+      }
+
       if (this.ch3Enabled) {
         this.ch3.step(chunkCycles);
       }
@@ -206,6 +210,11 @@ export class APU {
       const ticks = this.frameSequencer.stepCycles(chunkCycles);
       for (const tick of ticks) {
         if (tick.clockLength) {
+          if (this.ch1Enabled) {
+            const expired = this.ch1.clockLength();
+            if (expired) this.ch1Enabled = false;
+          }
+
           if (this.ch2Enabled) {
             const expired = this.ch2.clockLength();
             if (expired) this.ch2Enabled = false;
@@ -218,6 +227,10 @@ export class APU {
         }
 
         if (tick.clockEnvelope) {
+          if (this.ch1Enabled) {
+            this.ch1.clockEnvelope();
+          }
+
           if (this.ch2Enabled) {
             this.ch2.clockEnvelope();
           }
@@ -298,6 +311,7 @@ export class APU {
         this.ch3Enabled = false;
         this.ch4Enabled = false;
 
+        this.ch1.reset();
         this.ch2.reset();
         this.ch3.reset();
         return;
@@ -306,6 +320,7 @@ export class APU {
       if (!this.powered) {
         this.powered = true;
         this.frameSequencer.resetOnApuPowerOn();
+        this.ch1.reset();
         this.ch2.reset();
         this.ch3.reset();
         return;
@@ -317,6 +332,27 @@ export class APU {
 
     // ignore APU writes except for wave RAM when powered off
     if (!this.powered) return;
+
+    // CH1 register handling
+    if (address === CH1.NR11) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR11(value);
+      return;
+    }
+    if (address === CH1.NR12) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR12(value);
+
+      if (this.ch1Enabled && !this.ch1.isDacEnabled()) {
+        this.ch1Enabled = false;
+      }
+      return;
+    }
+    if (address === CH1.NR13) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR13(value);
+      return;
+    }
 
     // CH2 register handling
     if (address === CH2.NR21) {
