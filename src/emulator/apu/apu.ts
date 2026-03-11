@@ -235,6 +235,16 @@ export class APU {
             this.ch2.clockEnvelope();
           }
         }
+
+        if (tick.clockSweep) {
+          if (this.ch1Enabled) {
+            const sweepOutput = this.ch1.clockSweep();
+
+            if (sweepOutput.disableChannel) {
+              this.ch1Enabled = false;
+            }
+          }
+        }
       }
 
       this.samplePhaseBaseCycles += chunkCycles * this.sampleRate;
@@ -334,6 +344,11 @@ export class APU {
     if (!this.powered) return;
 
     // CH1 register handling
+    if (address === CH1.NR10) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR10(value);
+      return;
+    }
     if (address === CH1.NR11) {
       this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch1.writeNR11(value);
@@ -351,6 +366,15 @@ export class APU {
     if (address === CH1.NR13) {
       this.nrRegisters[address - AUDIO_REG_START] = value;
       this.ch1.writeNR13(value);
+      return;
+    }
+    if (address === CH1.NR14) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      const { didChannelTrigger } = this.ch1.writeNR14(value);
+
+      if (didChannelTrigger) {
+        this.ch1Enabled = this.ch1.isDacEnabled();
+      }
       return;
     }
 
