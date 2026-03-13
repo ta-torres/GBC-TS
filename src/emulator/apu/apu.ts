@@ -1,8 +1,10 @@
 import { DEFAULT_APU_SETTINGS, type APUSettings } from "./types";
 import { FrameSequencer } from "./frameSequencer";
 import { Mixer } from "./mixer";
+import { Channel1Pulse } from "./channels/channel1Pulse";
 import { Channel2Pulse } from "./channels/channel2Pulse";
 import { Channel3Wave } from "./channels/channel3Wave";
+import { Channel4Noise } from "./channels/channel4Noise";
 import {
   CH1,
   CH2,
@@ -59,8 +61,10 @@ export class APU {
   private frameSequencer: FrameSequencer;
   private mixer: Mixer;
 
+  private ch1: Channel1Pulse;
   private ch2: Channel2Pulse;
   private ch3: Channel3Wave;
+  private ch4: Channel4Noise;
 
   constructor(sampleRate: number = 48000) {
     this.sampleRate = sampleRate;
@@ -69,8 +73,10 @@ export class APU {
     this.waveRam = new Uint8Array(0x10);
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
+    this.ch1 = new Channel1Pulse();
     this.ch2 = new Channel2Pulse();
     this.ch3 = new Channel3Wave(this.waveRam);
+    this.ch4 = new Channel4Noise();
 
     this.sampleFifoFrameCapacity = Math.max(
       1,
@@ -86,8 +92,10 @@ export class APU {
     this.apuSettings = DEFAULT_APU_SETTINGS;
     this.frameSequencer = new FrameSequencer();
     this.mixer = new Mixer();
+    this.ch1 = new Channel1Pulse();
     this.ch2 = new Channel2Pulse();
     this.ch3 = new Channel3Wave(this.waveRam);
+    this.ch4 = new Channel4Noise();
 
     this.ch1Enabled = false;
     this.ch2Enabled = false;
@@ -137,6 +145,11 @@ export class APU {
     const nr50 = this.nrRegisters[GLOBAL.NR50 - AUDIO_REG_START] ?? 0x00;
     const nr51 = this.nrRegisters[GLOBAL.NR51 - AUDIO_REG_START] ?? 0x00;
 
+    const ch1Amp =
+      this.ch1Enabled && !this.apuSettings.muteCh1
+        ? this.ch1.getAmplitude()
+        : 0;
+
     const ch2Amp =
       this.ch2Enabled && !this.apuSettings.muteCh2
         ? this.ch2.getAmplitude()
@@ -147,11 +160,16 @@ export class APU {
         ? this.ch3.getAmplitude()
         : 0;
 
+    const ch4Amp =
+      this.ch4Enabled && !this.apuSettings.muteCh4
+        ? this.ch4.getAmplitude()
+        : 0;
+
     const mixed = this.mixer.mixSoundChannels(nr50, nr51, {
-      ch1: 0,
+      ch1: ch1Amp,
       ch2: ch2Amp,
       ch3: ch3Amp,
-      ch4: 0,
+      ch4: ch4Amp,
     });
 
     this.pushSample(mixed.left, mixed.right);
@@ -190,13 +208,26 @@ export class APU {
         this.ch2.step(chunkCycles);
       }
 
+      if (this.ch1Enabled) {
+        this.ch1.step(chunkCycles);
+      }
+
       if (this.ch3Enabled) {
         this.ch3.step(chunkCycles);
+      }
+
+      if (this.ch4Enabled) {
+        this.ch4.step(chunkCycles);
       }
 
       const ticks = this.frameSequencer.stepCycles(chunkCycles);
       for (const tick of ticks) {
         if (tick.clockLength) {
+          if (this.ch1Enabled) {
+            const expired = this.ch1.clockLength();
+            if (expired) this.ch1Enabled = false;
+          }
+
           if (this.ch2Enabled) {
             const expired = this.ch2.clockLength();
             if (expired) this.ch2Enabled = false;
@@ -206,11 +237,40 @@ export class APU {
             const expired = this.ch3.clockLength();
             if (expired) this.ch3Enabled = false;
           }
+
+          if (this.ch4Enabled) {
+            const expired = this.ch4.clockLength();
+            if (expired) this.ch4Enabled = false;
+          }
         }
 
         if (tick.clockEnvelope) {
+          if (this.ch1Enabled) {
+            this.ch1.clockEnvelope();
+          }
+
           if (this.ch2Enabled) {
             this.ch2.clockEnvelope();
+          }
+
+          if (this.ch4Enabled) {
+            this.ch4.clockEnvelope();
+          }
+        }
+
+        if (tick.clockSweep) {
+          if (this.ch1Enabled) {
+            const sweepOutput = this.ch1.clockSweep();
+
+            if (sweepOutput.disableChannel) {
+              this.ch1Enabled = false;
+            }
+
+            // update shadow registers if frequency was modified
+            if (sweepOutput.updatedFreq11 !== undefined) {
+              this.nrRegisters[CH1.NR13 - AUDIO_REG_START] = this.ch1.getNR13();
+              this.nrRegisters[CH1.NR14 - AUDIO_REG_START] = this.ch1.getNR14();
+            }
           }
         }
       }
@@ -289,16 +349,20 @@ export class APU {
         this.ch3Enabled = false;
         this.ch4Enabled = false;
 
+        this.ch1.reset();
         this.ch2.reset();
         this.ch3.reset();
+        this.ch4.reset();
         return;
       }
 
       if (!this.powered) {
         this.powered = true;
         this.frameSequencer.resetOnApuPowerOn();
+        this.ch1.reset();
         this.ch2.reset();
         this.ch3.reset();
+        this.ch4.reset();
         return;
       }
 
@@ -308,6 +372,45 @@ export class APU {
 
     // ignore APU writes except for wave RAM when powered off
     if (!this.powered) return;
+
+    // CH1 register handling
+    if (address === CH1.NR10) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR10(value);
+      return;
+    }
+    if (address === CH1.NR11) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR11(value);
+      return;
+    }
+    if (address === CH1.NR12) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR12(value);
+
+      if (this.ch1Enabled && !this.ch1.isDacEnabled()) {
+        this.ch1Enabled = false;
+      }
+      return;
+    }
+    if (address === CH1.NR13) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch1.writeNR13(value);
+      return;
+    }
+    if (address === CH1.NR14) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      const { didChannelTrigger } = this.ch1.writeNR14(value);
+
+      if (didChannelTrigger) {
+        this.ch1Enabled = this.ch1.isDacEnabled();
+      }
+
+      this.nrRegisters[CH1.NR13 - AUDIO_REG_START] = this.ch1.getNR13();
+      this.nrRegisters[CH1.NR14 - AUDIO_REG_START] = this.ch1.getNR14();
+
+      return;
+    }
 
     // CH2 register handling
     if (address === CH2.NR21) {
@@ -372,6 +475,35 @@ export class APU {
       const { triggered } = this.ch3.writeNR34(value);
       if (triggered) {
         this.ch3Enabled = this.ch3.isDacEnabled();
+      }
+      return;
+    }
+
+    // CH4 register handling
+    if (address === CH4.NR41) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch4.writeNR41(value);
+      return;
+    }
+    if (address === CH4.NR42) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch4.writeNR42(value);
+
+      if (this.ch4Enabled && !this.ch4.isDacEnabled()) {
+        this.ch4Enabled = false;
+      }
+      return;
+    }
+    if (address === CH4.NR43) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      this.ch4.writeNR43(value);
+      return;
+    }
+    if (address === CH4.NR44) {
+      this.nrRegisters[address - AUDIO_REG_START] = value;
+      const { triggered } = this.ch4.writeNR44(value);
+      if (triggered) {
+        this.ch4Enabled = this.ch4.isDacEnabled();
       }
       return;
     }

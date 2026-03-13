@@ -1,72 +1,81 @@
-import { LengthCounter } from "./components/lengthCounter";
 import { VolumeEnvelope } from "./components/volumeEnvelope";
+import { LengthCounter } from "./components/lengthCounter";
+import { SweepUnit } from "./components/sweepUnit";
 
-export class Channel2Pulse {
-  // https://gbdev.io/pandocs/Audio_Registers.html#sound-channel-2--pulse
+export class Channel1Pulse {
+  // https://gbdev.io/pandocs/Audio_Registers.html#sound-channel-1--pulse-with-period-sweep
+  // https://gbdev.io/pandocs/Audio.html#architecture
   private length = new LengthCounter(64);
   private envelope = new VolumeEnvelope();
+  private sweep = new SweepUnit();
 
-  private dutyStep = 0;
+  private currentDutyStep = 0;
 
   // initialize to 4 cycles per timer step
   private timerPeriod = 4;
   private timerCounter = 4;
 
-  private nr21 = 0;
-  private nr22 = 0;
-  private nr23 = 0;
-  private nr24 = 0;
+  private nr10 = 0;
+  private nr11 = 0;
+  private nr12 = 0;
+  private nr13 = 0;
+  private nr14 = 0;
 
-  writeNR21(value: number): void {
-    this.nr21 = value & 0xff;
-    this.length.writeLength(this.nr21);
+  writeNR10(value: number): void {
+    this.nr10 = value & 0xff;
+    this.sweep.writeNR10(this.nr10);
   }
 
-  writeNR22(value: number): void {
-    this.nr22 = value & 0xff;
-    this.envelope.writeNRx2(this.nr22);
+  writeNR11(value: number): void {
+    this.nr11 = value & 0xff;
+    this.length.writeLength(this.nr11);
   }
 
-  writeNR23(value: number): void {
-    this.nr23 = value & 0xff;
+  writeNR12(value: number): void {
+    this.nr12 = value & 0xff;
+    this.envelope.writeNRx2(this.nr12);
+  }
+
+  writeNR13(value: number): void {
+    this.nr13 = value & 0xff;
     this.recomputeTimerPeriod();
   }
 
-  writeNR24(value: number): { triggered: boolean } {
-    this.nr24 = value & 0xff;
+  writeNR14(value: number): { didChannelTrigger: boolean } {
+    this.nr14 = value & 0xff;
 
     this.recomputeTimerPeriod();
 
-    const lengthEnable = (this.nr24 & 0x40) !== 0;
+    const lengthEnable = (this.nr14 & 0x40) !== 0;
     this.length.writeLengthEnable(lengthEnable);
 
-    const triggered = (this.nr24 & 0x80) !== 0;
+    const triggered = (this.nr14 & 0x80) !== 0;
     if (triggered) {
-      // reset duty step & envelope timer?
-      this.dutyStep = 0;
+      this.currentDutyStep = 0;
       this.timerCounter = this.timerPeriod;
       this.length.onTrigger();
       this.envelope.onTrigger();
+
+      return { didChannelTrigger: true };
     }
 
-    return { triggered };
+    return { didChannelTrigger: false };
+  }
+
+  getNR13(): number {
+    return this.nr13 & 0xff;
+  }
+
+  getNR14(): number {
+    return this.nr14 & 0xff;
   }
 
   private getDutyMode(): 0 | 1 | 2 | 3 {
-    const dutyMode = (this.nr21 >>> 6) & 0x03;
+    const dutyMode = (this.nr11 >>> 6) & 0x03;
     return dutyMode as 0 | 1 | 2 | 3;
   }
 
   private getDutyBit(step: number): 0 | 1 {
-    /* 
-    https://gbdev.io/pandocs/Audio_Registers.html#ff11--nr11-channel-1-length-timer--duty-cycle
-    duty determines the output waveform on/off ratio across 8 steps
-    25 and 75 are polar opposites
-    0: 12.5% 00000001
-    1: 25%   10000001
-    2: 50%   10000111
-    3: 75%   01111110
-    */
     const dutyMode = this.getDutyMode();
     const bitIndex = step & 7;
 
@@ -86,15 +95,22 @@ export class Channel2Pulse {
     }
   }
 
-  //https://gbdev.io/pandocs/Audio_Registers.html#sound-channel-2--pulse
   private getFrequency11Bit(): number {
-    const lo = this.nr23 & 0xff;
-    const hi = this.nr24 & 0x07;
+    const lo = this.nr13 & 0xff;
+    const hi = this.nr14 & 0x07;
     return ((hi << 8) | lo) & 0x7ff;
   }
 
+  private setFrequency11Bit(freq11: number): void {
+    const nr13 = freq11 & 0xff;
+    const nr14 = (this.nr14 & 0xf8) | ((freq11 >> 8) & 0x07);
+    this.nr13 = nr13;
+    this.nr14 = nr14;
+    this.recomputeTimerPeriod();
+  }
+
   // timerPeriod = (timer-base - freq11) * t-cycles-per-step
-  // compute the 11-bit frequency from NR23 + NR24 & 0x07, derive timerPeriod = (2048 - freq) * 4 (base cycles), and advance dutyStep only when that timer elapses in step()
+  // compute the 11-bit frequency from NR13 + NR14 & 0x07, derive timerPeriod = (2048 - freq) * 4 (base cycles), and advance dutyStep only when that timer elapses in step()
   private recomputeTimerPeriod(): void {
     const freq11 = this.getFrequency11Bit();
     this.timerPeriod = (2048 - freq11) * 4;
@@ -109,12 +125,25 @@ export class Channel2Pulse {
     this.envelope.advanceVolumeEnvelope();
   }
 
+  clockSweep(): { disableChannel: boolean; updatedFreq11?: number } {
+    const sweepOutput = this.sweep.clock();
+    if (sweepOutput.newFreq11 !== undefined) {
+      this.setFrequency11Bit(sweepOutput.newFreq11);
+      return {
+        disableChannel: sweepOutput.disableChannel,
+        updatedFreq11: sweepOutput.newFreq11,
+      };
+    }
+
+    return { disableChannel: sweepOutput.disableChannel };
+  }
+
   step(baseCycles: number): void {
     this.timerCounter -= baseCycles;
     while (this.timerCounter <= 0) {
       // advance duty step only when timer elapses
       this.timerCounter += this.timerPeriod;
-      this.dutyStep = (this.dutyStep + 1) & 7;
+      this.currentDutyStep = (this.currentDutyStep + 1) & 7;
     }
   }
 
@@ -133,7 +162,7 @@ export class Channel2Pulse {
 
     // duty bit 1 - output the current envelope volume
     // getAmplitude only samples the duty bit, don't advance duty in here since it's called from step()
-    const dutyBit = this.getDutyBit(this.dutyStep);
+    const dutyBit = this.getDutyBit(this.currentDutyStep);
 
     /* 
     https://gbdev.io/pandocs/Audio_details.html
@@ -148,14 +177,15 @@ export class Channel2Pulse {
     this.length = new LengthCounter(64);
     this.envelope = new VolumeEnvelope();
 
-    this.dutyStep = 0;
+    this.currentDutyStep = 0;
 
     this.timerPeriod = 4;
     this.timerCounter = 4;
 
-    this.nr21 = 0;
-    this.nr22 = 0;
-    this.nr23 = 0;
-    this.nr24 = 0;
+    this.nr10 = 0;
+    this.nr11 = 0;
+    this.nr12 = 0;
+    this.nr13 = 0;
+    this.nr14 = 0;
   }
 }
