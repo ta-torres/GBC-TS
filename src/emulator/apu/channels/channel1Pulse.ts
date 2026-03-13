@@ -62,6 +62,14 @@ export class Channel1Pulse {
     return { didChannelTrigger: false };
   }
 
+  getNR13(): number {
+    return this.nr13 & 0xff;
+  }
+
+  getNR14(): number {
+    return this.nr14 & 0xff;
+  }
+
   private getDutyMode(): 0 | 1 | 2 | 3 {
     const dutyMode = (this.nr11 >>> 6) & 0x03;
     return dutyMode as 0 | 1 | 2 | 3;

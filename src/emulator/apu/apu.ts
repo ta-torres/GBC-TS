@@ -243,6 +243,12 @@ export class APU {
             if (sweepOutput.disableChannel) {
               this.ch1Enabled = false;
             }
+
+            // update shadow registers if frequency was modified
+            if (sweepOutput.updatedFreq11 !== undefined) {
+              this.nrRegisters[CH1.NR13 - AUDIO_REG_START] = this.ch1.getNR13();
+              this.nrRegisters[CH1.NR14 - AUDIO_REG_START] = this.ch1.getNR14();
+            }
           }
         }
       }
@@ -375,6 +381,10 @@ export class APU {
       if (didChannelTrigger) {
         this.ch1Enabled = this.ch1.isDacEnabled();
       }
+
+      this.nrRegisters[CH1.NR13 - AUDIO_REG_START] = this.ch1.getNR13();
+      this.nrRegisters[CH1.NR14 - AUDIO_REG_START] = this.ch1.getNR14();
+
       return;
     }
 
