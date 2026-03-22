@@ -78,7 +78,8 @@ export class Channel4Noise {
     const clockShift = (this.nr43 >> 4) & 0x0f;
     const divisorCode = this.nr43 & 0x07;
 
-    const divisor = divisorCode === 0 ? 8 : divisorCode * 16;
+    const divisorTable = [8, 16, 32, 48, 64, 80, 96, 112];
+    const divisor = divisorTable[divisorCode] ?? 8;
 
     this.timerPeriod = divisor << clockShift;
     if (this.timerPeriod <= 0) this.timerPeriod = 8;
