@@ -400,10 +400,11 @@ export class APU {
     }
     if (address === CH1.NR14) {
       this.nrRegisters[address - AUDIO_REG_START] = value;
-      const { didChannelTrigger } = this.ch1.writeNR14(value);
+      const { didChannelTrigger, disabledFromSweep } =
+        this.ch1.writeNR14(value);
 
       if (didChannelTrigger) {
-        this.ch1Enabled = this.ch1.isDacEnabled();
+        this.ch1Enabled = this.ch1.isDacEnabled() && !disabledFromSweep;
       }
 
       this.nrRegisters[CH1.NR13 - AUDIO_REG_START] = this.ch1.getNR13();

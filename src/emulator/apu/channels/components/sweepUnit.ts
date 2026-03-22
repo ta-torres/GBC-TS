@@ -114,6 +114,13 @@ export class SweepUnit {
     const next11 = clampTo11BitFrequency(nextSweepFreq);
     this.shadowFrequency = next11;
 
+    // calculate again and check, but don't write back to shadow frequency
+    const doesOverflow = this.calcNewFrequency() > 2047;
+    if (doesOverflow) {
+      this.enabled = false;
+      return { disableChannel: true, newFreq11: next11 };
+    }
+
     return { disableChannel: false, newFreq11: next11 };
   }
 }

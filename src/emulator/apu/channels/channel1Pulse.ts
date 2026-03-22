@@ -41,7 +41,10 @@ export class Channel1Pulse {
     this.recomputeTimerPeriod();
   }
 
-  writeNR14(value: number): { didChannelTrigger: boolean } {
+  writeNR14(value: number): {
+    didChannelTrigger: boolean;
+    disabledFromSweep: boolean;
+  } {
     this.nr14 = value & 0xff;
 
     this.recomputeTimerPeriod();
@@ -56,10 +59,24 @@ export class Channel1Pulse {
       this.length.onTrigger();
       this.envelope.onTrigger();
 
-      return { didChannelTrigger: true };
+      const freq11 = this.getFrequency11Bit();
+      const { disableChannel } = this.sweep.onTrigger(freq11);
+
+      /*
+      Advance sweep on trigger but check if an overflow disabled the channel afterwards
+      
+      CH1 can be enabled if its DAC is enabled AND the sweep unit doesn't disable it due to overflow, but there could be a situation in which the sweep unit disables the channel after the trigger.
+
+      apu.ts sets the CH1 enable condition based on the state values returned from ch1.writeNR14()
+
+      https://gbdev.io/pandocs/Audio_Registers.html#ff14--nr14-channel-1-period-high--control
+      https://gbdev.io/pandocs/Audio_details.html#pulse-channel-with-sweep-ch1
+      */
+
+      return { didChannelTrigger: true, disabledFromSweep: disableChannel };
     }
 
-    return { didChannelTrigger: false };
+    return { didChannelTrigger: false, disabledFromSweep: false };
   }
 
   getNR13(): number {
