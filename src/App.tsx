@@ -36,9 +36,11 @@ function App() {
     isRunning,
     speedMultiplier,
     audioEnabled,
+    audioChannels,
     handleIncreaseSpeed,
     handleDecreaseSpeed,
     toggleAudioEnabled,
+    toggleAudioChannel,
     handleButtonDown,
     handleButtonUp,
     handleLoadROM,
@@ -171,6 +173,7 @@ function App() {
                         fileName: lastFileName,
                         speedMultiplier,
                         audioEnabled,
+                        audioChannels,
                       }}
                       actions={{
                         onClose: closeCommandMenu,
@@ -182,6 +185,7 @@ function App() {
                         onToggleDebugTools: toggleDebugTools,
                         onToggleDpadDebug: toggleDpadDebug,
                         onToggleAudioEnabled: toggleAudioEnabled,
+                        onToggleAudioChannel: toggleAudioChannel,
                         onIncreaseSpeed: handleIncreaseSpeed,
                         onDecreaseSpeed: handleDecreaseSpeed,
                         onOpenAbout: handleOpenAbout,

@@ -261,7 +261,7 @@ export class GBCEmulator {
     return this.apu.consumeSamples(frameCount);
   }
 
-  setAudioDebugConfig(cfg: Partial<APUSettings>): void {
+  setAudioConfig(cfg: Partial<APUSettings>): void {
     this.apu.setAPUSettings(cfg);
   }
 }

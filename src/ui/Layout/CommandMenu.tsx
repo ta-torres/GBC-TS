@@ -16,6 +16,12 @@ interface CommandMenuStateProps {
   fileName: string | null;
   speedMultiplier: number;
   audioEnabled: boolean;
+  audioChannels: {
+    ch1: boolean;
+    ch2: boolean;
+    ch3: boolean;
+    ch4: boolean;
+  };
 }
 
 interface CommandMenuActionProps {
@@ -28,6 +34,7 @@ interface CommandMenuActionProps {
   onToggleDebugTools: () => void;
   onToggleDpadDebug: () => void;
   onToggleAudioEnabled: () => void;
+  onToggleAudioChannel: (channel: "ch1" | "ch2" | "ch3" | "ch4") => void;
   onIncreaseSpeed: () => void;
   onDecreaseSpeed: () => void;
   onOpenAbout: () => void;
@@ -46,6 +53,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
     fileName,
     speedMultiplier,
     audioEnabled,
+    audioChannels,
   } = state;
 
   const handleAction = (action: () => void) => {
@@ -130,6 +138,56 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
               >
                 Sound: {audioEnabled ? "On" : "Off"}
               </CommandItem>
+
+              {audioEnabled && (
+                <div className="mt-1 grid grid-cols-4 gap-2 px-2 pb-2">
+                  <button
+                    type="button"
+                    className={`h-7 rounded text-xs text-white ${
+                      audioChannels.ch1
+                        ? "bg-slate-700 hover:bg-slate-600"
+                        : "bg-slate-500 hover:bg-slate-600"
+                    }`}
+                    onClick={() => actions.onToggleAudioChannel("ch1")}
+                  >
+                    CH1
+                  </button>
+                  <button
+                    type="button"
+                    className={`h-7 rounded text-xs text-white ${
+                      audioChannels.ch2
+                        ? "bg-slate-700 hover:bg-slate-600"
+                        : "bg-slate-500 hover:bg-slate-600"
+                    }`}
+                    onClick={() => actions.onToggleAudioChannel("ch2")}
+                  >
+                    CH2
+                  </button>
+                  <button
+                    type="button"
+                    className={`h-7 rounded text-xs text-white ${
+                      audioChannels.ch3
+                        ? "bg-slate-700 hover:bg-slate-600"
+                        : "bg-slate-500 hover:bg-slate-600"
+                    }`}
+                    onClick={() => actions.onToggleAudioChannel("ch3")}
+                  >
+                    CH3
+                  </button>
+                  <button
+                    type="button"
+                    className={`h-7 rounded text-xs text-white ${
+                      audioChannels.ch4
+                        ? "bg-slate-700 hover:bg-slate-600"
+                        : "bg-slate-500 hover:bg-slate-600"
+                    }`}
+                    onClick={() => actions.onToggleAudioChannel("ch4")}
+                  >
+                    CH4
+                  </button>
+                </div>
+              )}
+
               <CommandItem
                 value="toggle-overlay"
                 onSelect={() => handleAction(actions.onToggleOverlay)}

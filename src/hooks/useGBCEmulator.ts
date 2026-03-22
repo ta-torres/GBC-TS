@@ -10,7 +10,15 @@ export const useGBCEmulator = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioConfig, setAudioConfig] = useState({
+    enabled: true,
+    channels: {
+      ch1: true,
+      ch2: true,
+      ch3: true,
+      ch4: true,
+    },
+  });
 
   if (!emulatorRef.current) {
     emulatorRef.current = new GBCEmulator();
@@ -25,9 +33,15 @@ export const useGBCEmulator = () => {
     const audio = audioOutputRef.current;
     if (!emu || !audio) return;
 
-    emu.setAudioEnabled(audioEnabled);
-    audio.setEnabled(audioEnabled);
-  }, [audioEnabled]);
+    emu.setAudioConfig({
+      enabled: audioConfig.enabled,
+      muteCh1: !audioConfig.channels.ch1,
+      muteCh2: !audioConfig.channels.ch2,
+      muteCh3: !audioConfig.channels.ch3,
+      muteCh4: !audioConfig.channels.ch4,
+    });
+    audio.setEnabled(audioConfig.enabled);
+  }, [audioConfig]);
 
   useEffect(() => {
     let rafId = 0;
@@ -78,7 +92,7 @@ export const useGBCEmulator = () => {
 
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
-  }, [audioEnabled]);
+  }, [audioConfig.enabled]);
 
   // don't recreate on render
   const ensureAudioStarted = useCallback(async () => {
@@ -90,8 +104,14 @@ export const useGBCEmulator = () => {
     audio.attach({
       consumeSamples: (frames: number) => emu.consumeAudioSamples(frames),
     });
-    emu.setAudioEnabled(audioEnabled);
-    audio.setEnabled(audioEnabled);
+    emu.setAudioConfig({
+      enabled: audioConfig.enabled,
+      muteCh1: !audioConfig.channels.ch1,
+      muteCh2: !audioConfig.channels.ch2,
+      muteCh3: !audioConfig.channels.ch3,
+      muteCh4: !audioConfig.channels.ch4,
+    });
+    audio.setEnabled(audioConfig.enabled);
 
     try {
       await audio.start();
@@ -104,7 +124,7 @@ export const useGBCEmulator = () => {
         duration: 10000,
       });
     }
-  }, [audioEnabled]);
+  }, [audioConfig]);
 
   // stop audio output when component unmounts but I don't think it's needed
   useEffect(() => {
@@ -315,8 +335,21 @@ export const useGBCEmulator = () => {
   }, [setEmulatorSpeedMultiplier, speedMultiplier]);
 
   const toggleAudioEnabled = useCallback(() => {
-    setAudioEnabled((prev) => !prev);
+    setAudioConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
   }, []);
+
+  const toggleAudioChannel = useCallback(
+    (channel: "ch1" | "ch2" | "ch3" | "ch4") => {
+      setAudioConfig((prev) => ({
+        ...prev,
+        channels: {
+          ...prev.channels,
+          [channel]: !prev.channels[channel],
+        },
+      }));
+    },
+    [],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -343,10 +376,12 @@ export const useGBCEmulator = () => {
     isLoaded,
     isRunning,
     speedMultiplier,
-    audioEnabled,
+    audioEnabled: audioConfig.enabled,
+    audioChannels: audioConfig.channels,
     handleIncreaseSpeed,
     handleDecreaseSpeed,
     toggleAudioEnabled,
+    toggleAudioChannel,
     handleSRAMSave,
     handleButtonDown,
     handleButtonUp,
