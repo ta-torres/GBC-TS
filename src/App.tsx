@@ -164,6 +164,9 @@ function App() {
                   onButtonUp={handleButtonUp}
                   toggleCommandMenu={toggleCommandMenu}
                   showCommandMenu={showCommandMenu}
+                  speedMultiplier={speedMultiplier}
+                  onIncreaseSpeed={handleIncreaseSpeed}
+                  onDecreaseSpeed={handleDecreaseSpeed}
                   commandMenu={
                     <CommandMenu
                       state={{

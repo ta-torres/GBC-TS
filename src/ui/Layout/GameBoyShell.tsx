@@ -5,6 +5,7 @@ import { GameboyDpad } from "./Shell/GameboyDpad";
 import { GameboyActionButtons } from "./Shell/GameboyActionButtons";
 import { GameboySelectButtons } from "./Shell/GameboySelectButtons";
 import "./GameBoyShell.css";
+import { Button } from "@/components/ui/pixelact-ui/button";
 
 import shellImageUrl from "./Shell/GameBoy.png?url";
 import shellFullscreenImageUrl from "./Shell/GameBoy-Fullscreen.png?url";
@@ -65,6 +66,9 @@ interface GameBoyShellProps {
   showCommandMenu?: boolean;
   commandMenu?: ReactNode;
   showDpadDebug?: boolean;
+  speedMultiplier?: number;
+  onIncreaseSpeed?: () => void;
+  onDecreaseSpeed?: () => void;
 }
 
 export const GameBoyShell = ({
@@ -76,6 +80,9 @@ export const GameBoyShell = ({
   showCommandMenu,
   commandMenu,
   showDpadDebug,
+  speedMultiplier = 1,
+  onIncreaseSpeed,
+  onDecreaseSpeed,
 }: GameBoyShellProps) => {
   const handleFullscreen = () => {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -122,15 +129,15 @@ export const GameBoyShell = ({
           draggable={false}
         />
 
-        <button
-          type="button"
+        <Button
+          variant="default"
           className="gameboy-fullscreen-button"
           onClick={handleFullscreen}
           aria-label="Toggle fullscreen"
           style={rectStyle(DEFAULT_LAYOUT.fullscreen)}
         >
-          <Maximize2Icon className="h-2 w-2 text-gray-300" />
-        </button>
+          <Maximize2Icon className="h-full! w-full! text-gray-300" />
+        </Button>
 
         <div
           className={`gameboy-battery-led gameboy-battery-led--overlay ${isBatteryOn ? "" : "gameboy-battery-led--off"}`}
@@ -138,23 +145,43 @@ export const GameBoyShell = ({
         />
 
         <div
-          className="gb-slot gb-slot-settings"
+          className="gb-slot gb-slot-settings inline-flex"
           style={rectStyle(DEFAULT_LAYOUT.settings)}
         >
           <div className="relative inline-flex">
-            <button
-              type="button"
+            <Button
+              variant="default"
               className="gameboy-settings-button"
               onClick={toggleCommandMenu}
               aria-label="Open settings menu"
             >
-              <SettingsIcon className="h-3 w-3 text-gray-300" />
-            </button>
+              <SettingsIcon className="h-full! w-full! text-gray-300" />
+            </Button>
             {showCommandMenu && commandMenu && (
               <div className="absolute -top-15 z-500 ml-0 w-72 scale-70 max-sm:-top-10 max-sm:left-5">
                 {commandMenu}
               </div>
             )}
+            <div className="speed-button-wrapper flex w-20 justify-end">
+              {speedMultiplier > 1 && (
+                <Button
+                  variant="default"
+                  className="speed-button"
+                  onClick={onDecreaseSpeed}
+                  aria-label="Decrease speed"
+                >
+                  -
+                </Button>
+              )}
+              <Button
+                variant="default"
+                className="speed-button"
+                onClick={onIncreaseSpeed}
+                aria-label="Increase speed"
+              >
+                +
+              </Button>
+            </div>
           </div>
         </div>
 

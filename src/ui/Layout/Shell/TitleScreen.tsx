@@ -19,14 +19,14 @@ export const TitleScreen = ({ onLoadGame, onOpenMenu }: TitleScreenProps) => {
       <div className="flex flex-col items-center gap-2">
         <Button
           variant="default"
-          className="h-8 w-full bg-[#306230] text-[8px] text-gray-100 after:border-r-[#0f380f]! after:border-b-[#0f380f]! hover:bg-[#0f380f]!"
+          className="h-8 w-full bg-[#306230] text-[8px] text-gray-100 after:border-r-[#0f380f]! after:border-b-[#0f380f]! hover:bg-[#0f380f]! focus:bg-[#0f380f]!"
           onClick={onLoadGame}
         >
           Load a Game
         </Button>
         <Button
           variant="default"
-          className="h-8 w-full bg-[#306230] text-[8px] text-gray-100 after:border-r-[#0f380f]! after:border-b-[#0f380f]! hover:bg-[#0f380f]!"
+          className="h-8 w-full bg-[#306230] text-[8px] text-gray-100 after:border-r-[#0f380f]! after:border-b-[#0f380f]! hover:bg-[#0f380f]! focus:bg-[#0f380f]!"
           onClick={onOpenMenu}
         >
           Settings

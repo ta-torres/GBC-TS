@@ -56,6 +56,12 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
     audioChannels,
   } = state;
 
+  // render command menu inside the screen/shell if in fullscreen, otherwise render in body
+  const portalContainer =
+    typeof document !== "undefined"
+      ? (document.fullscreenElement as HTMLElement | null)
+      : null;
+
   const handleAction = (action: () => void) => {
     action();
     if (actions.onClose) {
@@ -71,7 +77,10 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[25vw] border-none bg-transparent p-0 shadow-none max-sm:w-[90vw] max-sm:translate-x-[-52%]">
+      <DialogContent
+        portalContainer={portalContainer}
+        className="w-[25vw] border-none bg-transparent p-0 shadow-none max-sm:w-[90vw] max-sm:translate-x-[-52%]"
+      >
         <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
           <CommandList>
             {fileName && (
