@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GBCEmulator } from "../../../emulator/gbcEmulator";
 import { Overlay } from "./Overlay";
+import { TitleScreen } from "./TitleScreen";
 import "./GameboyScreen.css";
 
 const GB_TARGET_FPS = 4194304 / 70224;
@@ -8,9 +9,15 @@ const GB_TARGET_FPS = 4194304 / 70224;
 export const GBScreen = ({
   emulator,
   showOverlay,
+  showWelcome,
+  onLoadGame,
+  onOpenMenu,
 }: {
   emulator: GBCEmulator;
   showOverlay: boolean;
+  showWelcome: boolean;
+  onLoadGame: () => void;
+  onOpenMenu: () => void;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastFrameTimestampRef = useRef<number | null>(null);
@@ -96,6 +103,9 @@ export const GBScreen = ({
         className="gb-screen-canvas"
         style={{ imageRendering: "pixelated" }}
       />
+      {showWelcome && (
+        <TitleScreen onLoadGame={onLoadGame} onOpenMenu={onOpenMenu} />
+      )}
       {showOverlay && <Overlay overlay={overlayStats} />}
     </div>
   );

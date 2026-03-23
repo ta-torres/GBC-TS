@@ -197,6 +197,9 @@ function App() {
                   <GBScreen
                     emulator={emulatorRef.current}
                     showOverlay={showOverlay}
+                    showWelcome={!isLoaded}
+                    onLoadGame={handleRequestLoadRom}
+                    onOpenMenu={toggleCommandMenu}
                   />
                 </GameBoyShell>
               </>
