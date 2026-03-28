@@ -242,13 +242,31 @@
 .gameboy-dpad .dpad-down label,
 .gameboy-dpad .dpad-left label,
 .gameboy-dpad .dpad-right label {
-  font-weight: 600;
-  color: #818181;
+  display: block;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  opacity: 0.45;
 }
 
-.dpad-down label {
-  font-size: 30px;
-  transform: translateY(10px);
+.gameboy-dpad .dpad-up label {
+  border-bottom: 7px solid #999;
+  border-top: 0;
+}
+
+.gameboy-dpad .dpad-down label {
+  border-top: 7px solid #999;
+  border-bottom: 0;
+}
+
+.gameboy-dpad .dpad-left label {
+  border-right: 7px solid #999;
+  border-left: 0;
+}
+
+.gameboy-dpad .dpad-right label {
+  border-left: 7px solid #999;
+  border-right: 0;
 }
 
 .gameboy-dpad .dpad.down {

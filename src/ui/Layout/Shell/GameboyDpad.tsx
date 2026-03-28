@@ -287,16 +287,16 @@ export const GameboyDpad = ({
           <div className="dpad-horizontal-bottom" />
 
           <button className={upClass} type="button">
-            <label>{`^`}</label>
+            <label />
           </button>
           <button className={downClass} type="button">
-            <label>{`ˇ`}</label>
+            <label />
           </button>
           <button className={leftClass} type="button">
-            <label>{`<`}</label>
+            <label />
           </button>
           <button className={rightClass} type="button">
-            <label>{`>`}</label>
+            <label />
           </button>
 
           <div className="center-circle" />

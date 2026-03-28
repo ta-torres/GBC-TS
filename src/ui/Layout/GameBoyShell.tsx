@@ -13,50 +13,6 @@ import shellFullscreenImageUrl from "./Shell/GameBoy-Fullscreen.png?url";
 const SHELL_IMAGE_URL = shellImageUrl;
 const SHELL_FULLSCREEN_IMAGE_URL = shellFullscreenImageUrl;
 
-type LayoutRect = {
-  left: number;
-  top: number;
-  width?: number | "auto";
-  height?: number | "auto";
-  translateX?: number;
-  translateY?: number;
-  rotateDeg?: number;
-};
-
-const rectStyle = (rect: LayoutRect) => {
-  const style: Record<string, string> = {
-    left: `${rect.left}%`,
-    top: `${rect.top}%`,
-  };
-
-  if (typeof rect.width === "number") {
-    style.width = `${rect.width}%`;
-  }
-
-  if (typeof rect.height === "number") {
-    style.height = `${rect.height}%`;
-  }
-
-  const translateX = rect.translateX ?? 0;
-  const translateY = rect.translateY ?? 0;
-  const rotateDeg = rect.rotateDeg ?? 0;
-  if (translateX !== 0 || translateY !== 0 || rotateDeg !== 0) {
-    style.transform = `translate(${translateX}px, ${translateY}px) rotate(${rotateDeg}deg)`;
-  }
-
-  return style;
-};
-
-const DEFAULT_LAYOUT = {
-  screen: { left: 24, top: 12.9, width: 55, height: "auto" },
-  fullscreen: { left: 86, top: 9.5 },
-  dpad: { left: 12, top: 58 },
-  ab: { left: 64, top: 55, rotateDeg: 45 },
-  selectStart: { left: 20, top: 82, rotateDeg: -25 },
-  batteryLed: { left: 12.3, top: 22 },
-  settings: { left: 11.5, top: 15 },
-} satisfies Record<string, LayoutRect>;
-
 interface GameBoyShellProps {
   children: ReactNode;
   isBatteryOn: boolean;
@@ -131,23 +87,18 @@ export const GameBoyShell = ({
 
         <Button
           variant="default"
-          className="gameboy-fullscreen-button"
+          className="gameboy-fullscreen-button gb-slot--fullscreen"
           onClick={handleFullscreen}
           aria-label="Toggle fullscreen"
-          style={rectStyle(DEFAULT_LAYOUT.fullscreen)}
         >
           <Maximize2Icon className="h-full! w-full! text-gray-300" />
         </Button>
 
         <div
-          className={`gameboy-battery-led gameboy-battery-led--overlay ${isBatteryOn ? "" : "gameboy-battery-led--off"}`}
-          style={rectStyle(DEFAULT_LAYOUT.batteryLed)}
+          className={`gameboy-battery-led gameboy-battery-led--overlay gb-slot--battery-led ${isBatteryOn ? "" : "gameboy-battery-led--off"}`}
         />
 
-        <div
-          className="gb-slot gb-slot-settings inline-flex"
-          style={rectStyle(DEFAULT_LAYOUT.settings)}
-        >
+        <div className="gb-slot gb-slot-settings gb-slot--settings inline-flex">
           <div className="relative inline-flex">
             <Button
               variant="default"
@@ -185,17 +136,11 @@ export const GameBoyShell = ({
           </div>
         </div>
 
-        <div
-          className="gb-slot gb-slot-screen"
-          style={rectStyle(DEFAULT_LAYOUT.screen)}
-        >
+        <div className="gb-slot gb-slot-screen gb-slot--screen">
           <div className="gameboy-screen-window">{children}</div>
         </div>
 
-        <div
-          className="gb-slot gb-slot-dpad"
-          style={rectStyle(DEFAULT_LAYOUT.dpad)}
-        >
+        <div className="gb-slot gb-slot-dpad gb-slot--dpad">
           <GameboyDpad
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}
@@ -203,20 +148,14 @@ export const GameBoyShell = ({
           />
         </div>
 
-        <div
-          className="gb-slot gb-slot-ab"
-          style={rectStyle(DEFAULT_LAYOUT.ab)}
-        >
+        <div className="gb-slot gb-slot-ab gb-slot--ab">
           <GameboyActionButtons
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}
           />
         </div>
 
-        <div
-          className="gb-slot gb-slot-select-start"
-          style={rectStyle(DEFAULT_LAYOUT.selectStart)}
-        >
+        <div className="gb-slot gb-slot-select-start gb-slot--select-start">
           <GameboySelectButtons
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}

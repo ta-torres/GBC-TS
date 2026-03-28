@@ -55,6 +55,51 @@
   opacity: 1;
 }
 
+/* Slot layout positions */
+
+.gb-slot--fullscreen {
+  position: absolute;
+  left: 86%;
+  top: 9.5%;
+}
+
+.gb-slot--battery-led {
+  position: absolute;
+  left: 12.3%;
+  top: 22%;
+}
+
+.gb-slot--settings {
+  left: 11.5%;
+  top: 15%;
+}
+
+.gb-slot--screen {
+  left: 24%;
+  top: 12.9%;
+  width: 55%;
+  height: auto;
+}
+
+.gb-slot--dpad {
+  left: 12%;
+  top: 58%;
+}
+
+.gb-slot--ab {
+  left: 64%;
+  top: 55%;
+  transform: rotate(45deg);
+}
+
+.gb-slot--select-start {
+  left: 20%;
+  top: 82%;
+  transform: rotate(-25deg);
+}
+
+/* Buttons */
+
 .gameboy-fullscreen-button {
   position: absolute;
   width: 12px;
@@ -105,7 +150,7 @@
   font-size: 0.75rem;
   line-height: 1rem;
   color: rgb(255, 255, 255);
-  content: undefined;
+
   border-right-color: rgb(15, 56, 15);
 }
 
@@ -116,6 +161,8 @@
 .speed-button:focus {
   background: rgb(71, 85, 105);
 }
+
+/* Screen window */
 
 .gameboy-screen-window {
   width: 100%;
@@ -160,6 +207,8 @@
   display: flex;
 }
 
+/* Battery LED */
+
 .gameboy-battery {
   position: relative;
 
@@ -187,12 +236,13 @@
   box-shadow: none;
 }
 
+/* Slots */
+
 .gb-slot {
   position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* z-index: 7; */
 }
 
 .gb-slot-screen {
@@ -216,7 +266,9 @@
   transform: none;
 }
 
-@media (min-width: 1024px) {
+/* Desktop */
+
+@media (min-width: 1025px) {
   :root {
     --gb-scale: 1.5;
   }
@@ -234,7 +286,9 @@
   }
 }
 
-@media (max-width: 768px) {
+/* Mobile */
+
+@media (max-width: 767px) {
   .gameboy-shell {
     width: 100vw;
     height: 670px;
@@ -251,5 +305,93 @@
   #root {
     height: 100dvh;
     overflow-x: hidden;
+  }
+}
+
+/* Fullscreen: phone breakpoints */
+
+/* Compact */
+@media screen and (max-width: 329px) and (orientation: portrait) {
+  .gameboy-shell:fullscreen .gameboy-settings-button {
+    transform: translate(-25px, 225px);
+  }
+
+  .gameboy-shell:fullscreen .speed-button-wrapper {
+    transform: translate(-50px, -40px);
+  }
+
+  .gameboy-shell:fullscreen .gameboy-ab-buttons {
+    transform: translate(-20px, 0);
+  }
+}
+
+/* Small */
+@media screen and (min-width: 330px) and (max-width: 369px) and (orientation: portrait) {
+  .gameboy-shell:fullscreen .gameboy-settings-button {
+    transform: translate(-25px, 250px);
+  }
+
+  .gameboy-shell:fullscreen .speed-button-wrapper {
+    transform: translate(-45px, -10px);
+  }
+}
+
+/* Mid */
+@media screen and (min-width: 370px) and (max-width: 394px) and (orientation: portrait) {
+  .gameboy-shell:fullscreen .gameboy-settings-button {
+    transform: translate(-25px, 270px);
+  }
+
+  .gameboy-shell:fullscreen .speed-button-wrapper {
+    transform: translate(-5px, 10px);
+  }
+}
+
+/* Standard */
+@media screen and (min-width: 395px) and (max-width: 413px) and (orientation: portrait) {
+  .gameboy-shell:fullscreen .gameboy-settings-button {
+    transform: translate(-25px, 285px);
+  }
+
+  .gameboy-shell:fullscreen .speed-button-wrapper {
+    transform: translate(15px, 20px);
+  }
+}
+
+/* Large */
+@media screen and (min-width: 414px) and (max-width: 430px) and (orientation: portrait) {
+  .gameboy-shell:fullscreen .gameboy-settings-button {
+    transform: translate(-25px, 295px);
+  }
+
+  .gameboy-shell:fullscreen .speed-button-wrapper {
+    transform: translate(40px, 30px);
+  }
+}
+
+/* Large+ */
+@media screen and (min-width: 431px) and (max-width: 719px) and (orientation: portrait) {
+  .gameboy-shell:fullscreen .gameboy-settings-button {
+    transform: translate(-25px, 310px);
+  }
+
+  .gameboy-shell:fullscreen .speed-button-wrapper {
+    transform: translate(55px, 40px);
+  }
+}
+
+/* Fullscreen: tablet portrait */
+
+@media screen and (min-width: 720px) and (max-width: 1024px) and (orientation: portrait) {
+  :root {
+    --gb-scale: 2.2;
+  }
+
+  .gameboy-stage {
+    transform: translateX(20%);
+  }
+
+  .gameboy-ab-buttons {
+    transform: translate(-10px, 0px) !important;
   }
 }

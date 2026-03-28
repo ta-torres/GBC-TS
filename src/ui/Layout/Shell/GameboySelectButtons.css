@@ -9,21 +9,19 @@
   height: 16px;
   border-radius: 50px;
   background: linear-gradient(180deg, #55585b 0%, #303336 100%);
-  box-shadow: 0 5px 7px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 3px 2.5px rgba(0, 0, 0, 0.4);
   position: relative;
   --pill-base-translate-y: 0px;
   display: flex;
   align-items: center;
   justify-content: center;
   transform: translateY(var(--pill-base-translate-y));
-  transition:
-    transform 80ms ease,
-    box-shadow 80ms ease;
+  transition: transform 80ms ease;
 }
 
 .gameboy-pill:active {
-  transform: translateY(calc(var(--pill-base-translate-y) + 1px));
-  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.5);
+  filter: brightness(0.9);
 }
 
 .gameboy-pill span {
@@ -48,6 +46,16 @@
 }
 
 @media (max-width: 768px) {
+  .gameboy-pill label {
+    display: none;
+  }
+
+  .gameboy-pill span {
+    transform: translate(-2px, 20px);
+  }
+}
+
+@media (max-width: 1024px) and (orientation: portrait) {
   .gameboy-pill label {
     display: none;
   }
