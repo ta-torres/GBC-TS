@@ -1,5 +1,5 @@
 import type { JoypadButton } from "../../../emulator/input/joypad";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import "./GameboyActionButtons.css";
 
@@ -19,6 +19,14 @@ export const GameboyActionButtons = ({
   const activePointerIdRef = useRef<number | null>(null);
   const heldButtonRef = useRef<JoypadButton | null>(null);
   const activeSecondaryButtonRef = useRef<JoypadButton | null>(null);
+
+  const [pressedA, setPressedA] = useState(false);
+  const [pressedB, setPressedB] = useState(false);
+
+  const setButtonVisualState = (button: JoypadButton, pressed: boolean) => {
+    if (button === "a") setPressedA(pressed);
+    else if (button === "b") setPressedB(pressed);
+  };
 
   const getButtonUnderPointer = (x: number, y: number): JoypadButton | null => {
     // get current button being pressed under (x, y)
@@ -50,6 +58,7 @@ export const GameboyActionButtons = ({
     if (isPointerOverSecondaryButton && currentlyActive !== secondary) {
       onButtonDown(secondary);
       activeSecondaryButtonRef.current = secondary;
+      setButtonVisualState(secondary, true);
       navigator.vibrate?.(40);
       return;
     }
@@ -57,6 +66,7 @@ export const GameboyActionButtons = ({
     if (!isPointerOverSecondaryButton && currentlyActive === secondary) {
       onButtonUp(secondary);
       activeSecondaryButtonRef.current = null;
+      setButtonVisualState(secondary, false);
     }
   };
 
@@ -66,9 +76,11 @@ export const GameboyActionButtons = ({
 
     if (secondary) {
       onButtonUp(secondary);
+      setButtonVisualState(secondary, false);
     }
     if (held) {
       onButtonUp(held);
+      setButtonVisualState(held, false);
     }
 
     activePointerIdRef.current = null;
@@ -88,6 +100,7 @@ export const GameboyActionButtons = ({
 
     navigator.vibrate?.(40);
     onButtonDown(initial);
+    setButtonVisualState(initial, true);
 
     containerRef.current?.setPointerCapture?.(event.pointerId);
     event.preventDefault();
@@ -129,17 +142,7 @@ export const GameboyActionButtons = ({
       <button
         ref={buttonARef}
         type="button"
-        className="gameboy-button gameboy-button-a"
-        onTouchStart={(e) => {
-          e.preventDefault();
-          navigator.vibrate(30);
-          onButtonDown("a");
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-
-          onButtonUp("a");
-        }}
+        className={`gameboy-button gameboy-button-a${pressedA ? " gameboy-button--pressed" : ""}`}
       >
         <label className="a-label">X</label>
         <span>A</span>
@@ -147,17 +150,7 @@ export const GameboyActionButtons = ({
       <button
         ref={buttonBRef}
         type="button"
-        className="gameboy-button gameboy-button-b"
-        onTouchStart={(e) => {
-          e.preventDefault();
-          navigator.vibrate(30);
-          onButtonDown("b");
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-
-          onButtonUp("b");
-        }}
+        className={`gameboy-button gameboy-button-b${pressedB ? " gameboy-button--pressed" : ""}`}
       >
         <label className="b-label">Z</label>
         <span>B</span>
