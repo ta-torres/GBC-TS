@@ -143,7 +143,7 @@ function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".gb,.gbc"
+          accept=".gb,.gbc,.zip"
           onChange={handleFileChange}
           className="hidden"
         />
