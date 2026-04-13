@@ -5,6 +5,7 @@ import { Channel1Pulse } from "./channels/channel1Pulse";
 import { Channel2Pulse } from "./channels/channel2Pulse";
 import { Channel3Wave } from "./channels/channel3Wave";
 import { Channel4Noise } from "./channels/channel4Noise";
+import type { ApuSnapshot } from "../types/emulator";
 import {
   CH1,
   CH2,
@@ -546,5 +547,67 @@ export class APU {
 
   _debugGetInfo(): { sampleRate: number } {
     return { sampleRate: this.sampleRate };
+  }
+
+  takeSnapshot(): ApuSnapshot {
+    return {
+      powered: this.powered,
+      nrRegisters: new Uint8Array(this.nrRegisters),
+      waveRam: new Uint8Array(this.waveRam),
+      ch1Enabled: this.ch1Enabled,
+      ch2Enabled: this.ch2Enabled,
+      ch3Enabled: this.ch3Enabled,
+      ch4Enabled: this.ch4Enabled,
+      frameSequencerStep: this.frameSequencer.getStep(),
+      frameSequencerCycles: this.frameSequencer.getCycles(),
+      samplePhaseBaseCycles: this.samplePhaseBaseCycles,
+    };
+  }
+
+  restoreSnapshot(s: ApuSnapshot): void {
+    // Reset channels first
+    this.ch1.reset();
+    this.ch2.reset();
+    this.ch3.reset();
+    this.ch4.reset();
+    this.frameSequencer.restoreState(
+      (s.frameSequencerStep & 7) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+      s.frameSequencerCycles,
+    );
+
+    this.powered = s.powered;
+    this.nrRegisters.set(s.nrRegisters);
+    this.waveRam.set(s.waveRam);
+    this.ch1Enabled = s.ch1Enabled;
+    this.ch2Enabled = s.ch2Enabled;
+    this.ch3Enabled = s.ch3Enabled;
+    this.ch4Enabled = s.ch4Enabled;
+    this.samplePhaseBaseCycles = s.samplePhaseBaseCycles;
+
+    // Flush audio FIFO
+    this.sampleFifoReadFrame = 0;
+    this.sampleFifoWriteFrame = 0;
+    this.sampleFifoBufferedFrames = 0;
+
+    // Re-apply NR registers to channels to rebuild internal state
+    if (this.powered) {
+      this.ch1.writeNR10(this.nrRegisters[CH1.NR10 - AUDIO_REG_START] ?? 0);
+      this.ch1.writeNR11(this.nrRegisters[CH1.NR11 - AUDIO_REG_START] ?? 0);
+      this.ch1.writeNR12(this.nrRegisters[CH1.NR12 - AUDIO_REG_START] ?? 0);
+      this.ch1.writeNR13(this.nrRegisters[CH1.NR13 - AUDIO_REG_START] ?? 0);
+
+      this.ch2.writeNR21(this.nrRegisters[CH2.NR21 - AUDIO_REG_START] ?? 0);
+      this.ch2.writeNR22(this.nrRegisters[CH2.NR22 - AUDIO_REG_START] ?? 0);
+      this.ch2.writeNR23(this.nrRegisters[CH2.NR23 - AUDIO_REG_START] ?? 0);
+
+      this.ch3.writeNR30(this.nrRegisters[CH3.NR30 - AUDIO_REG_START] ?? 0);
+      this.ch3.writeNR31(this.nrRegisters[CH3.NR31 - AUDIO_REG_START] ?? 0);
+      this.ch3.writeNR32(this.nrRegisters[CH3.NR32 - AUDIO_REG_START] ?? 0);
+      this.ch3.writeNR33(this.nrRegisters[CH3.NR33 - AUDIO_REG_START] ?? 0);
+
+      this.ch4.writeNR41(this.nrRegisters[CH4.NR41 - AUDIO_REG_START] ?? 0);
+      this.ch4.writeNR42(this.nrRegisters[CH4.NR42 - AUDIO_REG_START] ?? 0);
+      this.ch4.writeNR43(this.nrRegisters[CH4.NR43 - AUDIO_REG_START] ?? 0);
+    }
   }
 }

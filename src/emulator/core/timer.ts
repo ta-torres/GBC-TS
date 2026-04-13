@@ -1,4 +1,5 @@
 import { Interrupts, InterruptType } from "./interrupts";
+import type { TimerSnapshot } from "../types/emulator";
 
 export class Timer {
   // 0xFF04-0xFF07
@@ -131,5 +132,25 @@ export class Timer {
     this.tac = 0x00;
     this.divCycles = 0;
     this.timaCycles = 0;
+  }
+
+  takeSnapshot(): TimerSnapshot {
+    return {
+      div: this.div,
+      tima: this.tima,
+      tma: this.tma,
+      tac: this.tac,
+      divCycles: this.divCycles,
+      timaCycles: this.timaCycles,
+    };
+  }
+
+  restoreSnapshot(s: TimerSnapshot): void {
+    this.div = s.div;
+    this.tima = s.tima;
+    this.tma = s.tma;
+    this.tac = s.tac;
+    this.divCycles = s.divCycles;
+    this.timaCycles = s.timaCycles;
   }
 }

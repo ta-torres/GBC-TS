@@ -1,5 +1,6 @@
 import { IO_REGISTERS } from "../types/memory";
 import { Interrupts, InterruptType } from "../core/interrupts";
+import type { PpuSnapshot } from "../types/emulator";
 import {
   mapCGBBgPalette,
   mapCGBObjPalette,
@@ -622,6 +623,36 @@ export class PPU {
     this.io[IO_REGISTERS.LY - 0xff00] = 0;
     this.io[IO_REGISTERS.LCDC - 0xff00] |= 0x80;
     this.setMode(PpuMode.OAM);
+  }
+
+  takeSnapshot(): PpuSnapshot {
+    return {
+      mode: this.mode,
+      currentScanlineLY: this.currentScanlineLY,
+      cyclesInLine: this.cyclesInLine,
+      windowScanline: this.windowScanline,
+      windowDrawnThisScanline: this.windowDrawnThisScanline,
+      enteredHBlank: this.enteredHBlank,
+      frameReady: this.frameReady,
+      statInterruptSet: { ...this.statInterruptSet },
+    };
+  }
+
+  restoreSnapshot(s: PpuSnapshot): void {
+    this.mode = s.mode as PpuMode;
+    this.currentScanlineLY = s.currentScanlineLY;
+    this.cyclesInLine = s.cyclesInLine;
+    this.windowScanline = s.windowScanline;
+    this.windowDrawnThisScanline = s.windowDrawnThisScanline;
+    this.enteredHBlank = s.enteredHBlank;
+    this.frameReady = s.frameReady;
+    this.statInterruptSet = { ...s.statInterruptSet };
+
+    // sync IO LY register with restored scanline
+    this.io[IO_REGISTERS.LY - 0xff00] = this.currentScanlineLY;
+    // sync STAT mode bits
+    const statIdx = IO_REGISTERS.STAT - 0xff00;
+    this.io[statIdx] = (this.io[statIdx] & 0xfc) | (this.mode & 0x03);
   }
 
   getTileViewerData(): { width: number; height: number; data: Uint8Array } {

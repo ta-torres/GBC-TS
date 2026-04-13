@@ -2,7 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GBCEmulator } from "@/emulator/gbcEmulator";
 import type { JoypadButton } from "@/emulator/input/joypad";
 import { toast } from "sonner";
+import { toast as pixelToast } from "@/components/ui/pixelact-ui/toast";
 import { AudioOutput } from "@/emulator/frontendAudio/audioOutput";
+import type { SlotInfo } from "@/emulator/types/emulator";
+import {
+  saveSaveState,
+  loadSaveState,
+  deleteAllSaveStates,
+  getSaveStateSlotInfo,
+} from "@/emulator/utils/saveStateStorage";
 
 export const useGBCEmulator = () => {
   const emulatorRef = useRef<GBCEmulator | null>(null);
@@ -246,6 +254,7 @@ export const useGBCEmulator = () => {
 
       setIsLoaded(ok);
       setSpeedMultiplier(emu.getSpeedMultiplier());
+      refreshSlotInfo();
       emu.start();
       setIsRunning(true);
 
@@ -371,6 +380,100 @@ export const useGBCEmulator = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleDecreaseSpeed, handleIncreaseSpeed]);
 
+  const [slotInfo, setSlotInfo] = useState<SlotInfo[]>([]);
+
+  const refreshSlotInfo = useCallback(() => {
+    const emu = emulatorRef.current;
+    if (!emu) return;
+    const key = emu.getSaveStateKey();
+    if (!key) {
+      setSlotInfo([]);
+      return;
+    }
+    setSlotInfo(getSaveStateSlotInfo(key));
+  }, []);
+
+  // Refresh slot info when a ROM is loaded
+  useEffect(() => {
+    if (isLoaded) refreshSlotInfo();
+  }, [isLoaded, refreshSlotInfo, emulatorRef]);
+
+  const handleSaveState = useCallback(
+    (slot: number) => {
+      const emu = emulatorRef.current;
+      if (!emu || !isLoaded) return;
+
+      const baseKey = emu.getSaveStateKey();
+      if (!baseKey) return;
+
+      try {
+        const snapshot = emu.takeSnapshot();
+        const header = emu.getCartridgeHeader();
+
+        saveSaveState(baseKey, slot, snapshot, {
+          title: header?.title ?? "",
+          cartridgeType: header?.cartridgeType ?? 0,
+          globalChecksum: header?.globalChecksum ?? 0,
+        });
+
+        refreshSlotInfo();
+        pixelToast(`State saved to slot ${slot}`);
+      } catch (error) {
+        console.error("Failed to save state", error);
+
+        toast.error("Failed to save state", {
+          description: String(error),
+          className: "bg-gray-100! text-gray-700! border-gray-300!",
+          descriptionClassName: "text-gray-700!",
+          duration: 5000,
+        });
+      }
+    },
+    [isLoaded, refreshSlotInfo],
+  );
+
+  const handleLoadState = useCallback(
+    async (slot: number) => {
+      const emu = emulatorRef.current;
+      if (!emu || !isLoaded) return;
+
+      const baseKey = emu.getSaveStateKey();
+      if (!baseKey) return;
+
+      try {
+        const snapshot = loadSaveState(baseKey, slot);
+        if (!snapshot) {
+          pixelToast(`No save state found in slot ${slot}`);
+          return;
+        }
+
+        // RESET audio output to avoid issues with the APU state being out of sync with the audio output pipeline after restoring a snapshot
+        audioOutputRef.current?.stop();
+        emu.restoreSnapshot(snapshot);
+        setIsRunning(true);
+        await ensureAudioStarted();
+
+        pixelToast(`State loaded from slot ${slot}`);
+      } catch (error) {
+        console.error("Failed to load state", error);
+
+        toast.error("Failed to load state", {
+          description: String(error),
+          className: "bg-gray-100! text-gray-700! border-gray-300!",
+          descriptionClassName: "text-gray-700!",
+          duration: 5000,
+        });
+      }
+    },
+    [isLoaded, ensureAudioStarted],
+  );
+
+  const handleDeleteAllSaveStates = useCallback(() => {
+    deleteAllSaveStates();
+    refreshSlotInfo();
+    pixelToast("All save states deleted");
+  }, [refreshSlotInfo]);
+
   return {
     emulatorRef,
     isLoaded,
@@ -391,5 +494,9 @@ export const useGBCEmulator = () => {
     handleReset,
     handleStep,
     handleStepFrame,
+    slotInfo,
+    handleSaveState,
+    handleLoadState,
+    handleDeleteAllSaveStates,
   };
 };

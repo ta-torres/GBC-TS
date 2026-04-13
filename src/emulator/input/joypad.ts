@@ -1,4 +1,5 @@
 import { Interrupts, InterruptType } from "../core/interrupts";
+import type { JoypadSnapshot } from "../types/emulator";
 
 export type JoypadButton =
   | "right"
@@ -142,6 +143,18 @@ export class Joypad {
   reset(): void {
     this.directionalState = 0x00;
     this.buttonState = 0x00;
+  }
+
+  takeSnapshot(): JoypadSnapshot {
+    return {
+      directionalState: this.directionalState,
+      buttonState: this.buttonState,
+    };
+  }
+
+  restoreSnapshot(s: JoypadSnapshot): void {
+    this.directionalState = s.directionalState;
+    this.buttonState = s.buttonState;
   }
 
   readP1LowerNibble(selectBits: number): number {

@@ -1,4 +1,5 @@
 import type { MBC } from "./mbc";
+import type { MBC3Snapshot, MBCSnapshot } from "../types/emulator";
 
 const RTC_REG_S = 0x08;
 const RTC_REG_M = 0x09;
@@ -272,5 +273,47 @@ export class MBC3 implements MBC {
 
   clearSRAMWriteFlag(): void {
     this.sramWrite = false;
+  }
+
+  takeSnapshot(): MBC3Snapshot {
+    return {
+      type: "MBC3",
+      ramEnabled: this.ramEnabled,
+      romBank: this.romBank,
+      ramBank: this.ramBank,
+      selectedRTCReg: this.selectedRTCReg,
+      rtcS: this.rtcS,
+      rtcM: this.rtcM,
+      rtcH: this.rtcH,
+      rtcDL: this.rtcDL,
+      rtcDH: this.rtcDH,
+      latchedRtcS: this.latchedRtcS,
+      latchedRtcM: this.latchedRtcM,
+      latchedRtcH: this.latchedRtcH,
+      latchedRtcDL: this.latchedRtcDL,
+      latchedRtcDH: this.latchedRtcDH,
+      rtcLatched: this.rtcLatched,
+      lastLatchWrite: this.lastLatchWrite,
+    };
+  }
+
+  restoreSnapshot(snapshot: MBCSnapshot): void {
+    if (snapshot.type !== "MBC3") return;
+    this.ramEnabled = snapshot.ramEnabled;
+    this.romBank = snapshot.romBank;
+    this.ramBank = snapshot.ramBank;
+    this.selectedRTCReg = snapshot.selectedRTCReg;
+    this.rtcS = snapshot.rtcS;
+    this.rtcM = snapshot.rtcM;
+    this.rtcH = snapshot.rtcH;
+    this.rtcDL = snapshot.rtcDL;
+    this.rtcDH = snapshot.rtcDH;
+    this.latchedRtcS = snapshot.latchedRtcS;
+    this.latchedRtcM = snapshot.latchedRtcM;
+    this.latchedRtcH = snapshot.latchedRtcH;
+    this.latchedRtcDL = snapshot.latchedRtcDL;
+    this.latchedRtcDH = snapshot.latchedRtcDH;
+    this.rtcLatched = snapshot.rtcLatched;
+    this.lastLatchWrite = snapshot.lastLatchWrite;
   }
 }

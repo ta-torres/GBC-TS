@@ -40,4 +40,13 @@ export class FrameSequencer {
   getStep(): FrameSequencerStep {
     return this.step;
   }
+
+  getCycles(): number {
+    return this.cycles;
+  }
+
+  restoreState(step: FrameSequencerStep, cycles: number): void {
+    this.step = step;
+    this.cycles = cycles;
+  }
 }

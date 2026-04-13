@@ -8,6 +8,7 @@ import {
   // CommandSeparator,
 } from "@/components/ui/pixelact-ui/command";
 import { Dialog, DialogContent } from "@/components/ui/pixelact-ui/dialog";
+import type { SlotInfo } from "@/emulator/types/emulator";
 
 interface CommandMenuStateProps {
   showOverlay: boolean;
@@ -22,6 +23,7 @@ interface CommandMenuStateProps {
     ch3: boolean;
     ch4: boolean;
   };
+  slotInfo: SlotInfo[];
 }
 
 interface CommandMenuActionProps {
@@ -38,6 +40,9 @@ interface CommandMenuActionProps {
   onIncreaseSpeed: () => void;
   onDecreaseSpeed: () => void;
   onOpenAbout: () => void;
+  onSaveState: (slot: number) => void;
+  onLoadState: (slot: number) => void;
+  onDeleteAllSaveStates: () => void;
 }
 
 interface CommandMenuProps {
@@ -54,6 +59,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
     speedMultiplier,
     audioEnabled,
     audioChannels,
+    slotInfo,
   } = state;
 
   // render command menu inside the screen/shell if in fullscreen, otherwise render in body
@@ -100,6 +106,67 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
               >
                 Restart
               </CommandItem>
+            </CommandGroup>
+
+            <CommandGroup heading="Save State">
+              <div className="grid grid-cols-5 gap-1 px-2 py-1">
+                {[1, 2, 3, 4, 5].map((slot) => {
+                  const info = slotInfo.find((s) => s.slot === slot);
+                  return (
+                    <button
+                      key={`save-${slot}`}
+                      type="button"
+                      className={`h-7 rounded text-xs text-white ${
+                        info?.occupied
+                          ? "bg-slate-700 hover:bg-slate-600"
+                          : "bg-slate-500 hover:bg-slate-600"
+                      }`}
+                      title={
+                        info?.savedAt
+                          ? `Saved: ${new Date(info.savedAt).toLocaleString()}`
+                          : `Empty slot ${slot}`
+                      }
+                      onClick={() =>
+                        handleAction(() => actions.onSaveState(slot))
+                      }
+                    >
+                      {slot}
+                    </button>
+                  );
+                })}
+              </div>
+            </CommandGroup>
+
+            <CommandGroup heading="Load State">
+              <div className="grid grid-cols-5 gap-1 px-2 py-1">
+                {[1, 2, 3, 4, 5].map((slot) => {
+                  const info = slotInfo.find((s) => s.slot === slot);
+                  const occupied = info?.occupied ?? false;
+                  return (
+                    <button
+                      key={`load-${slot}`}
+                      type="button"
+                      disabled={!occupied}
+                      className={`h-7 rounded text-xs text-white ${
+                        occupied
+                          ? "bg-slate-700 hover:bg-slate-600"
+                          : "cursor-not-allowed bg-slate-400 opacity-50"
+                      }`}
+                      title={
+                        info?.savedAt
+                          ? `Saved: ${new Date(info.savedAt).toLocaleString()}`
+                          : `Empty slot ${slot}`
+                      }
+                      onClick={() => {
+                        if (occupied)
+                          handleAction(() => actions.onLoadState(slot));
+                      }}
+                    >
+                      {slot}
+                    </button>
+                  );
+                })}
+              </div>
             </CommandGroup>
 
             <CommandGroup heading="Emulator">
@@ -214,6 +281,12 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
                 onSelect={() => handleAction(actions.onToggleDpadDebug)}
               >
                 D-pad debug: {showDpadDebug ? "On" : "Off"}
+              </CommandItem>
+              <CommandItem
+                value="delete-all-save-states"
+                onSelect={() => handleAction(actions.onDeleteAllSaveStates)}
+              >
+                Delete all save states
               </CommandItem>
             </CommandGroup>
             <CommandGroup heading="About">

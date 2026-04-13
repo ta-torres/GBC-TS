@@ -1,3 +1,5 @@
+import type { MBCSnapshot } from "../types/emulator";
+
 export interface MBC {
   read(address: number): number;
   write(address: number, value: number): void;
@@ -5,4 +7,6 @@ export interface MBC {
   getRAMBank(): number;
   hasSRAMBeenWrittenTo(): boolean;
   clearSRAMWriteFlag(): void;
+  takeSnapshot(): MBCSnapshot;
+  restoreSnapshot(snapshot: MBCSnapshot): void;
 }

@@ -4,6 +4,7 @@ import { Timer } from "../core/timer";
 import { Interrupts } from "../core/interrupts";
 import { Joypad } from "../input/joypad";
 import { APU } from "../apu/apu";
+import type { MemorySnapshot } from "../types/emulator";
 
 export class AddressBus {
   private cartridge: Cartridge;
@@ -775,5 +776,69 @@ export class AddressBus {
 
   readInstruction(address: number): number {
     return this.read(address);
+  }
+
+  takeSnapshot(): MemorySnapshot {
+    return {
+      wramBank0: new Uint8Array(this.wramBank0),
+      wramBanks: this.wramBanks.map((b) => new Uint8Array(b)),
+      currentWramBank: this.currentWramBank,
+      vramBanks: this.vramBanks.map((b) => new Uint8Array(b)),
+      cpuVramBank: this.cpuVramBank,
+      hram: new Uint8Array(this.hram),
+      ioRegisters: new Uint8Array(this.ioRegisters),
+      oam: new Uint8Array(this.oam),
+      cgbMode: this.cgbMode,
+      cgbDoubleSpeed: this.cgbDoubleSpeed,
+      speedSwitchRequested: this.speedSwitchRequested,
+      bgPaletteRam: new Uint8Array(this.bgPaletteRam),
+      objPaletteRam: new Uint8Array(this.objPaletteRam),
+      bgPaletteIndex: this.bgPaletteIndex,
+      bgPaletteAutoInc: this.bgPaletteAutoInc,
+      objPaletteIndex: this.objPaletteIndex,
+      objPaletteAutoInc: this.objPaletteAutoInc,
+      hdmaSourceHigh: this.hdmaSourceHigh,
+      hdmaSourceLow: this.hdmaSourceLow,
+      hdmaDestHigh: this.hdmaDestHigh,
+      hdmaDestLow: this.hdmaDestLow,
+      hdmaActive: this.hdmaActive,
+      hdmaBlocksRemaining: this.hdmaBlocksRemaining,
+      hdmaCurrentSource: this.hdmaCurrentSource,
+      hdmaCurrentDest: this.hdmaCurrentDest,
+    };
+  }
+
+  restoreSnapshot(s: MemorySnapshot): void {
+    // CRITICAL: Use .set() to copy INTO existing arrays, not replace references.
+    // PPU holds direct views of vramBanks, oam, ioRegisters, palette RAM.
+    this.wramBank0.set(s.wramBank0);
+    for (let i = 0; i < this.wramBanks.length && i < s.wramBanks.length; i++) {
+      this.wramBanks[i].set(s.wramBanks[i]);
+    }
+    this.currentWramBank = s.currentWramBank;
+    for (let i = 0; i < this.vramBanks.length && i < s.vramBanks.length; i++) {
+      this.vramBanks[i].set(s.vramBanks[i]);
+    }
+    this.cpuVramBank = s.cpuVramBank as 0 | 1;
+    this.hram.set(s.hram);
+    this.ioRegisters.set(s.ioRegisters);
+    this.oam.set(s.oam);
+    this.cgbMode = s.cgbMode;
+    this.cgbDoubleSpeed = s.cgbDoubleSpeed;
+    this.speedSwitchRequested = s.speedSwitchRequested;
+    this.bgPaletteRam.set(s.bgPaletteRam);
+    this.objPaletteRam.set(s.objPaletteRam);
+    this.bgPaletteIndex = s.bgPaletteIndex;
+    this.bgPaletteAutoInc = s.bgPaletteAutoInc;
+    this.objPaletteIndex = s.objPaletteIndex;
+    this.objPaletteAutoInc = s.objPaletteAutoInc;
+    this.hdmaSourceHigh = s.hdmaSourceHigh;
+    this.hdmaSourceLow = s.hdmaSourceLow;
+    this.hdmaDestHigh = s.hdmaDestHigh;
+    this.hdmaDestLow = s.hdmaDestLow;
+    this.hdmaActive = s.hdmaActive;
+    this.hdmaBlocksRemaining = s.hdmaBlocksRemaining;
+    this.hdmaCurrentSource = s.hdmaCurrentSource;
+    this.hdmaCurrentDest = s.hdmaCurrentDest;
   }
 }
