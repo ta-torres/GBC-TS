@@ -108,35 +108,6 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
               </CommandItem>
             </CommandGroup>
 
-            <CommandGroup heading="Save State">
-              <div className="grid grid-cols-5 gap-1 px-2 py-1">
-                {[1, 2, 3, 4, 5].map((slot) => {
-                  const info = slotInfo.find((s) => s.slot === slot);
-                  return (
-                    <button
-                      key={`save-${slot}`}
-                      type="button"
-                      className={`h-7 rounded text-xs text-white ${
-                        info?.occupied
-                          ? "bg-slate-700 hover:bg-slate-600"
-                          : "bg-slate-500 hover:bg-slate-600"
-                      }`}
-                      title={
-                        info?.savedAt
-                          ? `Saved: ${new Date(info.savedAt).toLocaleString()}`
-                          : `Empty slot ${slot}`
-                      }
-                      onClick={() =>
-                        handleAction(() => actions.onSaveState(slot))
-                      }
-                    >
-                      {slot}
-                    </button>
-                  );
-                })}
-              </div>
-            </CommandGroup>
-
             <CommandGroup heading="Load State">
               <div className="grid grid-cols-5 gap-1 px-2 py-1">
                 {[1, 2, 3, 4, 5].map((slot) => {
@@ -161,6 +132,35 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
                         if (occupied)
                           handleAction(() => actions.onLoadState(slot));
                       }}
+                    >
+                      {slot}
+                    </button>
+                  );
+                })}
+              </div>
+            </CommandGroup>
+
+            <CommandGroup heading="Save State">
+              <div className="grid grid-cols-5 gap-1 px-2 py-1">
+                {[1, 2, 3, 4, 5].map((slot) => {
+                  const info = slotInfo.find((s) => s.slot === slot);
+                  return (
+                    <button
+                      key={`save-${slot}`}
+                      type="button"
+                      className={`h-7 rounded text-xs text-white ${
+                        info?.occupied
+                          ? "bg-slate-700 hover:bg-slate-600"
+                          : "bg-slate-500 hover:bg-slate-600"
+                      }`}
+                      title={
+                        info?.savedAt
+                          ? `Saved: ${new Date(info.savedAt).toLocaleString()}`
+                          : `Empty slot ${slot}`
+                      }
+                      onClick={() =>
+                        handleAction(() => actions.onSaveState(slot))
+                      }
                     >
                       {slot}
                     </button>

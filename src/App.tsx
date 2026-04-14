@@ -249,6 +249,10 @@ function App() {
           </div>
 
           <div className="text-sm text-gray-800">
+            <p>To play, load a game backup in a .gb, .gbc or .zip format</p>
+          </div>
+
+          <div className="text-sm text-gray-800">
             <p>Developed by Thomás. Built with TypeScript and React.</p>
           </div>
 
