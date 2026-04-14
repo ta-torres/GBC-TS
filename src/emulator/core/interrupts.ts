@@ -16,6 +16,8 @@ export const INTERRUPT_ADDRESSES = {
   [InterruptType.JOYPAD]: 0x0060,
 } as const;
 
+import type { InterruptSnapshot } from "../types/emulator";
+
 export class Interrupts {
   private ie: number = 0x00;
   private if: number = 0x00;
@@ -65,5 +67,14 @@ export class Interrupts {
   reset(): void {
     this.ie = 0x00;
     this.if = 0x00;
+  }
+
+  takeSnapshot(): InterruptSnapshot {
+    return { ie: this.ie, if: this.if };
+  }
+
+  restoreSnapshot(s: InterruptSnapshot): void {
+    this.ie = s.ie & 0x1f;
+    this.if = s.if & 0x1f;
   }
 }

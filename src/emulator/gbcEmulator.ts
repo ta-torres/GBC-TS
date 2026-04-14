@@ -10,6 +10,7 @@ import { Joypad } from "./input/joypad";
 import type { JoypadButton } from "./input/joypad";
 import { APU } from "./apu/apu";
 import type { APUSettings } from "./apu/types";
+import type { EmulatorSnapshot, EmulatorStateSnapshot } from "./types/emulator";
 
 export class GBCEmulator {
   private cartridge: Cartridge;
@@ -63,24 +64,28 @@ export class GBCEmulator {
     try {
       this.errorMessage = null;
       const data = await loadROMFile(file);
-      if (!this.cartridge.load(data)) {
-        this.errorMessage = this.cartridge.getErrorMessage();
-        return false;
-      }
-
-      const header = this.cartridge.getHeader();
-      const cgbFlag = header?.cgbFlag ?? 0x00;
-      // either CGB compatible or CGB only
-      const isCgb = cgbFlag === 0x80 || cgbFlag === 0xc0;
-      this.cgbMode = isCgb;
-
-      this.reset();
-      return true;
+      return this.loadROMFromBuffer(data);
     } catch (error) {
       console.error("Error loading ROM:", error);
       this.errorMessage = "Error loading ROM";
       return false;
     }
+  }
+
+  loadROMFromBuffer(data: ArrayBuffer | SharedArrayBuffer): boolean {
+    this.errorMessage = null;
+    if (!this.cartridge.load(data)) {
+      this.errorMessage = this.cartridge.getErrorMessage();
+      return false;
+    }
+
+    const header = this.cartridge.getHeader();
+    const cgbFlag = header?.cgbFlag ?? 0x00;
+    const isCgb = cgbFlag === 0x80 || cgbFlag === 0xc0;
+    this.cgbMode = isCgb;
+
+    this.reset();
+    return true;
   }
 
   start(): void {
@@ -263,5 +268,63 @@ export class GBCEmulator {
 
   setAudioConfig(cfg: Partial<APUSettings>): void {
     this.apu.setAPUSettings(cfg);
+  }
+
+  getSaveStateKey(): string | null {
+    return this.cartridge.getSaveStateKey();
+  }
+
+  takeSnapshot(): EmulatorSnapshot {
+    const state: EmulatorStateSnapshot = {
+      cgbMode: this.cgbMode,
+      ticks: this.ticks,
+      speedMultiplier: this.speedMultiplier,
+    };
+
+    return {
+      version: 2,
+      cpu: this.cpu.takeSnapshot(),
+      ppu: this.ppu.takeSnapshot(),
+      timer: this.timer.takeSnapshot(),
+      interrupts: this.interrupts.takeSnapshot(),
+      cartridge: this.cartridge.takeSnapshot(),
+      memory: this.bus.takeSnapshot(),
+      apu: this.apu.takeSnapshot(),
+      joypad: this.joypad.takeSnapshot(),
+      emulatorState: state,
+    };
+  }
+
+  restoreSnapshot(snapshot: EmulatorSnapshot): void {
+    /* 
+    Subsystems are restored in dependency order to avoid stale reads:
+
+    1. Interrupts - no dependencies
+    2. AddressBus - owns the shared memory arrays, must be first so PPU views see correct data
+    3. Timer - reads from interrupts
+    4. Cartridge / MBC - ROM bank state
+    5. PPU - syncs LY/STAT from already-restored IO registers
+    6. APU - independent
+    7. CPU - depends on bus and interrupts being ready
+    8. Joypad - independent
+    9. Emulator state fields (cgbMode, ticks, speedMultiplier)
+    */
+
+    this.interrupts.restoreSnapshot(snapshot.interrupts);
+    this.bus.restoreSnapshot(snapshot.memory);
+    this.timer.restoreSnapshot(snapshot.timer);
+    this.cartridge.restoreSnapshot(snapshot.cartridge);
+    this.ppu.restoreSnapshot(snapshot.ppu);
+    this.apu.restoreSnapshot(snapshot.apu);
+    this.cpu.restoreSnapshot(snapshot.cpu);
+    this.joypad.restoreSnapshot(snapshot.joypad);
+
+    this.cgbMode = snapshot.emulatorState.cgbMode;
+    this.ticks = snapshot.emulatorState.ticks;
+    this.speedMultiplier = snapshot.emulatorState.speedMultiplier;
+
+    this.running = true;
+    this.paused = false;
+    this.errorMessage = null;
   }
 }

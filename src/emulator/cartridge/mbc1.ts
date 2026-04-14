@@ -1,4 +1,5 @@
 import type { MBC } from "./mbc";
+import type { MBC1Snapshot, MBCSnapshot } from "../types/emulator";
 
 export class MBC1 implements MBC {
   private rom: Uint8Array;
@@ -197,5 +198,23 @@ export class MBC1 implements MBC {
 
   clearSRAMWriteFlag(): void {
     this.sramWrite = false;
+  }
+
+  takeSnapshot(): MBC1Snapshot {
+    return {
+      type: "MBC1",
+      ramEnabled: this.ramEnabled,
+      romBankLow5: this.romBankLow5,
+      ramBank: this.ramBank,
+      bankingMode: this.bankingMode,
+    };
+  }
+
+  restoreSnapshot(snapshot: MBCSnapshot): void {
+    if (snapshot.type !== "MBC1") return;
+    this.ramEnabled = snapshot.ramEnabled;
+    this.romBankLow5 = snapshot.romBankLow5;
+    this.ramBank = snapshot.ramBank;
+    this.bankingMode = snapshot.bankingMode;
   }
 }

@@ -4,6 +4,7 @@ import { OPCODE_TABLE } from "./opcodes/opcodes";
 import { CB_OPCODE_TABLE } from "./opcodes/opcodesCB";
 import { toHex16, toHex8 } from "../utils/bitwise";
 import { Interrupts, InterruptType, INTERRUPT_ADDRESSES } from "./interrupts";
+import type { CpuSnapshot } from "../types/emulator";
 
 export class CPU {
   // only setting A might be necessary for CGB mode?
@@ -217,5 +218,43 @@ export class CPU {
   }
   scheduleIME(): void {
     this.imeScheduled = true;
+  }
+
+  takeSnapshot(): CpuSnapshot {
+    return {
+      pc: this.programCounter,
+      sp: this.stackPointer,
+      a: this.registers.getA(),
+      b: this.registers.getB(),
+      c: this.registers.getC(),
+      d: this.registers.getD(),
+      e: this.registers.getE(),
+      h: this.registers.getH(),
+      l: this.registers.getL(),
+      f: this.registers.getF(),
+      ime: this.interruptMasterEnable,
+      imeScheduled: this.imeScheduled,
+      halted: this.halted,
+      stopped: this.stopped,
+      haltBug: this.haltBug,
+    };
+  }
+
+  restoreSnapshot(s: CpuSnapshot): void {
+    this.programCounter = s.pc & 0xffff;
+    this.stackPointer = s.sp & 0xffff;
+    this.registers.setA(s.a);
+    this.registers.setB(s.b);
+    this.registers.setC(s.c);
+    this.registers.setD(s.d);
+    this.registers.setE(s.e);
+    this.registers.setH(s.h);
+    this.registers.setL(s.l);
+    this.registers.setF(s.f);
+    this.interruptMasterEnable = s.ime;
+    this.imeScheduled = s.imeScheduled;
+    this.halted = s.halted;
+    this.stopped = s.stopped;
+    this.haltBug = s.haltBug;
   }
 }

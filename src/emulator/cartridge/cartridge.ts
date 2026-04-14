@@ -4,6 +4,7 @@ import type { MBC } from "./mbc";
 import { MBC1 } from "./mbc1";
 import { MBC3 } from "./mbc3";
 import { MBC5 } from "./mbc5";
+import type { CartridgeSnapshot } from "../types/emulator";
 
 export class Cartridge {
   private rom: Uint8Array;
@@ -276,5 +277,34 @@ export class Cartridge {
     const type = this.header.cartridgeType.toString(16);
     const checksum = this.header.globalChecksum.toString(16);
     return `gbc-save:${title}:${type}:${checksum}`;
+  }
+
+  getSaveStateKey(): string | null {
+    if (!this.header) return null;
+    const title = this.header.title || "UNKNOWN";
+    const type = this.header.cartridgeType.toString(16);
+    const checksum = this.header.globalChecksum.toString(16);
+    return `gbc-state:${title}:${type}:${checksum}`;
+  }
+
+  takeSnapshot(): CartridgeSnapshot {
+    return {
+      title: this.header?.title ?? "",
+      cartridgeType: this.header?.cartridgeType ?? 0,
+      globalChecksum: this.header?.globalChecksum ?? 0,
+      ram: this.ram ? new Uint8Array(this.ram) : null,
+      mbc: this.mbc ? this.mbc.takeSnapshot() : null,
+    };
+  }
+
+  restoreSnapshot(s: CartridgeSnapshot): void {
+    if (s.ram !== null && this.ram) {
+      const len = Math.min(this.ram.length, s.ram.length);
+      this.ram.set(s.ram.subarray(0, len), 0);
+    }
+    if (s.mbc !== null && this.mbc) {
+      this.mbc.restoreSnapshot(s.mbc);
+    }
+    this.sramWrite = false;
   }
 }

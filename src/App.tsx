@@ -50,6 +50,10 @@ function App() {
     handleStep,
     handleStepFrame,
     handleSRAMSave,
+    slotInfo,
+    handleSaveState,
+    handleLoadState,
+    handleDeleteAllSaveStates,
   } = useGBCEmulator();
 
   const handleRequestLoadRom = () => {
@@ -177,6 +181,7 @@ function App() {
                         speedMultiplier,
                         audioEnabled,
                         audioChannels,
+                        slotInfo,
                       }}
                       actions={{
                         onClose: closeCommandMenu,
@@ -192,6 +197,9 @@ function App() {
                         onIncreaseSpeed: handleIncreaseSpeed,
                         onDecreaseSpeed: handleDecreaseSpeed,
                         onOpenAbout: handleOpenAbout,
+                        onSaveState: handleSaveState,
+                        onLoadState: handleLoadState,
+                        onDeleteAllSaveStates: handleDeleteAllSaveStates,
                       }}
                     />
                   }
