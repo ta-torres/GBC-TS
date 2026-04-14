@@ -382,7 +382,7 @@ export const useGBCEmulator = () => {
 
   const [slotInfo, setSlotInfo] = useState<SlotInfo[]>([]);
 
-  const refreshSlotInfo = useCallback(() => {
+  const refreshSlotInfo = useCallback(async () => {
     const emu = emulatorRef.current;
     if (!emu) return;
     const key = emu.getSaveStateKey();
@@ -390,7 +390,7 @@ export const useGBCEmulator = () => {
       setSlotInfo([]);
       return;
     }
-    setSlotInfo(getSaveStateSlotInfo(key));
+    setSlotInfo(await getSaveStateSlotInfo(key));
   }, []);
 
   // Refresh slot info when a ROM is loaded
@@ -399,7 +399,7 @@ export const useGBCEmulator = () => {
   }, [isLoaded, refreshSlotInfo, emulatorRef]);
 
   const handleSaveState = useCallback(
-    (slot: number) => {
+    async (slot: number) => {
       const emu = emulatorRef.current;
       if (!emu || !isLoaded) return;
 
@@ -410,13 +410,13 @@ export const useGBCEmulator = () => {
         const snapshot = emu.takeSnapshot();
         const header = emu.getCartridgeHeader();
 
-        saveSaveState(baseKey, slot, snapshot, {
+        await saveSaveState(baseKey, slot, snapshot, {
           title: header?.title ?? "",
           cartridgeType: header?.cartridgeType ?? 0,
           globalChecksum: header?.globalChecksum ?? 0,
         });
 
-        refreshSlotInfo();
+        await refreshSlotInfo();
         pixelToast(`State saved to slot ${slot}`);
       } catch (error) {
         console.error("Failed to save state", error);
@@ -441,7 +441,7 @@ export const useGBCEmulator = () => {
       if (!baseKey) return;
 
       try {
-        const snapshot = loadSaveState(baseKey, slot);
+        const snapshot = await loadSaveState(baseKey, slot);
         if (!snapshot) {
           pixelToast(`No save state found in slot ${slot}`);
           return;
@@ -468,9 +468,9 @@ export const useGBCEmulator = () => {
     [isLoaded, ensureAudioStarted],
   );
 
-  const handleDeleteAllSaveStates = useCallback(() => {
-    deleteAllSaveStates();
-    refreshSlotInfo();
+  const handleDeleteAllSaveStates = useCallback(async () => {
+    await deleteAllSaveStates();
+    await refreshSlotInfo();
     pixelToast("All save states deleted");
   }, [refreshSlotInfo]);
 
