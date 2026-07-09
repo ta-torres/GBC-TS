@@ -1,14 +1,41 @@
+import { useState } from "react";
 import {
   Command,
-  // CommandEmpty,
   CommandGroup,
-  // CommandInput,
   CommandItem,
   CommandList,
-  // CommandSeparator,
 } from "@/components/ui/pixelact-ui/command";
-import { Dialog, DialogContent } from "@/components/ui/pixelact-ui/dialog";
+import { Card } from "@/components/ui/pixelact-ui/card";
+import {
+  Dialog,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/pixelact-ui/dialog";
 import type { SlotInfo } from "@/emulator/types/emulator";
+import { SiGithub } from "@icons-pack/react-simple-icons";
+
+type MenuView = "main" | "emulator-settings" | "input-settings" | "about";
+
+const CloseButton = ({ onClose }: { onClose?: () => void }) => (
+  <button
+    type="button"
+    className="absolute top-4 right-4 z-10 cursor-pointer opacity-70 transition-opacity hover:opacity-100"
+    onClick={onClose}
+    aria-label="Close menu"
+  >
+    <span className="text-xl">X</span>
+  </button>
+);
+
+const BackButton = ({ onBack }: { onBack: () => void }) => (
+  <button
+    type="button"
+    className="cursor-pointer text-xs text-gray-700 hover:text-gray-900"
+    onClick={onBack}
+  >
+    {"< Back"}
+  </button>
+);
 
 interface CommandMenuStateProps {
   showOverlay: boolean;
@@ -39,7 +66,6 @@ interface CommandMenuActionProps {
   onToggleAudioChannel: (channel: "ch1" | "ch2" | "ch3" | "ch4") => void;
   onIncreaseSpeed: () => void;
   onDecreaseSpeed: () => void;
-  onOpenAbout: () => void;
   onSaveState: (slot: number) => void;
   onLoadState: (slot: number) => void;
   onDeleteAllSaveStates: () => void;
@@ -50,7 +76,13 @@ interface CommandMenuProps {
   actions: CommandMenuActionProps;
 }
 
-export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
+const renderMenuView = (
+  activeView: MenuView,
+  state: CommandMenuStateProps,
+  actions: CommandMenuActionProps,
+  setActiveView: (view: MenuView) => void,
+  handleAction: (action: () => void) => void,
+) => {
   const {
     showOverlay,
     showDebugTools,
@@ -62,31 +94,140 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
     slotInfo,
   } = state;
 
-  // render command menu inside the screen/shell if in fullscreen, otherwise render in body
-  const portalContainer =
-    typeof document !== "undefined"
-      ? (document.fullscreenElement as HTMLElement | null)
-      : null;
+  if (activeView === "emulator-settings") {
+    return (
+      <Card className="border-none bg-slate-400 p-0 shadow-none">
+        <div className="relative">
+          <CloseButton onClose={actions.onClose} />
 
-  const handleAction = (action: () => void) => {
-    action();
-    if (actions.onClose) {
-      actions.onClose();
-    }
-  };
+          <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
+            <div className="mb-2 flex items-center gap-2 pr-6">
+              <BackButton onBack={() => setActiveView("main")} />
+              <span className="text-xs text-gray-600">/ Emulator </span>
+            </div>
+            <CommandList>
+              <CommandGroup heading="Battery Saves (SRAM)">
+                <CommandItem
+                  value="export-sram-saves"
+                  onSelect={() => handleAction(actions.onExportSRAMSaves)}
+                >
+                  Export
+                </CommandItem>
+                <CommandItem
+                  value="import-sram-saves"
+                  onSelect={() => handleAction(actions.onImportSRAMSaves)}
+                >
+                  Import
+                </CommandItem>
+              </CommandGroup>
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      actions.onClose?.();
-    }
-  };
+              <CommandGroup heading="Debug">
+                <CommandItem
+                  value="toggle-overlay"
+                  onSelect={() => handleAction(actions.onToggleOverlay)}
+                >
+                  Overlay: {showOverlay ? "On" : "Off"}
+                </CommandItem>
+                <CommandItem
+                  value="toggle-debug-tools"
+                  onSelect={() => handleAction(actions.onToggleDebugTools)}
+                >
+                  {showDebugTools ? "Hide debug tools" : "Show debug tools"}
+                </CommandItem>
+                <CommandItem
+                  value="toggle-dpad-debug-visuals"
+                  onSelect={() => handleAction(actions.onToggleDpadDebug)}
+                >
+                  D-pad debug: {showDpadDebug ? "On" : "Off"}
+                </CommandItem>
+              </CommandGroup>
+
+              <CommandGroup heading="Save States">
+                <CommandItem
+                  value="delete-all-save-states"
+                  onSelect={() => handleAction(actions.onDeleteAllSaveStates)}
+                >
+                  Delete all save states
+                </CommandItem>
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </div>
+      </Card>
+    );
+  }
+
+  if (activeView === "input-settings") {
+    return (
+      <Card className="border-none bg-slate-400 p-0 shadow-none">
+        <div className="relative">
+          <CloseButton onClose={actions.onClose} />
+          <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
+            <div className="mb-2 flex items-center gap-2 pr-6">
+              <BackButton onBack={() => setActiveView("main")} />
+              <span className="text-xs text-gray-600">/ Input </span>
+            </div>
+            <CommandList>
+              <CommandGroup heading="Touch"></CommandGroup>
+              <CommandGroup heading="Controller"></CommandGroup>
+            </CommandList>
+          </Command>
+        </div>
+      </Card>
+    );
+  }
+
+  if (activeView === "about") {
+    return (
+      <Card className="border-none bg-slate-400 p-0 shadow-none">
+        <div className="relative">
+          <CloseButton onClose={actions.onClose} />
+          <Command className="gap-4 border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
+            <div className="mb-2 flex items-center gap-2 pr-6">
+              <BackButton onBack={() => setActiveView("main")} />
+              <span className="text-xs text-gray-600">/ About </span>
+            </div>
+
+            <Dialog>
+              <DialogTitle className="text-muted-foreground text-center">
+                About
+              </DialogTitle>
+            </Dialog>
+            <div className="text-sm text-gray-800">
+              <p>
+                GBC-TS is an open-source Game Boy and Game Boy Color emulator
+              </p>
+            </div>
+
+            <div className="text-sm text-gray-800">
+              <p>To play, load a game backup in a .gb, .gbc or .zip format</p>
+            </div>
+
+            <div className="text-sm text-gray-800">
+              <p>Developed by Thomás. Built with TypeScript and React.</p>
+            </div>
+
+            <div className="flex items-center gap-2 text-[0.70rem]">
+              <SiGithub />
+              <a
+                className="text-primary underline underline-offset-4"
+                href="https://github.com/ta-torres/GBC-TS"
+                target="_blank"
+                rel="noreferrer"
+              >
+                https://github.com/ta-torres/GBC-TS
+              </a>
+            </div>
+          </Command>
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent
-        portalContainer={portalContainer}
-        className="w-[25vw] border-none bg-transparent p-0 shadow-none max-sm:w-[90vw] max-sm:translate-x-[-52%]"
-      >
+    <Card className="border-none bg-slate-400 p-0 shadow-none">
+      <div className="relative">
+        <CloseButton onClose={actions.onClose} />
         <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
           <CommandList>
             {fileName && (
@@ -190,24 +331,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
                   </button>
                 </div>
               </div>
-            </CommandGroup>
 
-            <CommandGroup heading="SRAM Savedata">
-              <CommandItem
-                value="export-sram-saves"
-                onSelect={() => handleAction(actions.onExportSRAMSaves)}
-              >
-                Export
-              </CommandItem>
-              <CommandItem
-                value="import-sram-saves"
-                onSelect={() => handleAction(actions.onImportSRAMSaves)}
-              >
-                Import
-              </CommandItem>
-            </CommandGroup>
-
-            <CommandGroup heading="Settings">
               <CommandItem
                 value="toggle-audio-enabled"
                 onSelect={() => handleAction(actions.onToggleAudioEnabled)}
@@ -217,89 +341,79 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
 
               {audioEnabled && (
                 <div className="mt-1 grid grid-cols-4 gap-2 px-2 pb-2">
-                  <button
-                    type="button"
-                    className={`h-7 rounded text-xs text-white ${
-                      audioChannels.ch1
-                        ? "bg-slate-700 hover:bg-slate-600"
-                        : "bg-slate-500 hover:bg-slate-600"
-                    }`}
-                    onClick={() => actions.onToggleAudioChannel("ch1")}
-                  >
-                    CH1
-                  </button>
-                  <button
-                    type="button"
-                    className={`h-7 rounded text-xs text-white ${
-                      audioChannels.ch2
-                        ? "bg-slate-700 hover:bg-slate-600"
-                        : "bg-slate-500 hover:bg-slate-600"
-                    }`}
-                    onClick={() => actions.onToggleAudioChannel("ch2")}
-                  >
-                    CH2
-                  </button>
-                  <button
-                    type="button"
-                    className={`h-7 rounded text-xs text-white ${
-                      audioChannels.ch3
-                        ? "bg-slate-700 hover:bg-slate-600"
-                        : "bg-slate-500 hover:bg-slate-600"
-                    }`}
-                    onClick={() => actions.onToggleAudioChannel("ch3")}
-                  >
-                    CH3
-                  </button>
-                  <button
-                    type="button"
-                    className={`h-7 rounded text-xs text-white ${
-                      audioChannels.ch4
-                        ? "bg-slate-700 hover:bg-slate-600"
-                        : "bg-slate-500 hover:bg-slate-600"
-                    }`}
-                    onClick={() => actions.onToggleAudioChannel("ch4")}
-                  >
-                    CH4
-                  </button>
+                  {(["ch1", "ch2", "ch3", "ch4"] as const).map((ch) => (
+                    <button
+                      key={ch}
+                      type="button"
+                      className={`h-7 rounded text-xs text-white ${
+                        audioChannels[ch]
+                          ? "bg-slate-700 hover:bg-slate-600"
+                          : "bg-slate-500 hover:bg-slate-600"
+                      }`}
+                      onClick={() => actions.onToggleAudioChannel(ch)}
+                    >
+                      {ch.toUpperCase()}
+                    </button>
+                  ))}
                 </div>
               )}
+            </CommandGroup>
 
+            <CommandGroup heading="Settings">
               <CommandItem
-                value="toggle-overlay"
-                onSelect={() => handleAction(actions.onToggleOverlay)}
+                value="emulator-settings"
+                onSelect={() => setActiveView("emulator-settings")}
               >
-                Overlay: {showOverlay ? "On" : "Off"}
+                Emulator {">"}
               </CommandItem>
               <CommandItem
-                value="toggle-debug-tools"
-                onSelect={() => handleAction(actions.onToggleDebugTools)}
+                value="input-settings"
+                onSelect={() => setActiveView("input-settings")}
               >
-                {showDebugTools ? "Hide debug tools" : "Show debug tools"}
-              </CommandItem>
-              <CommandItem
-                value="toggle-dpad-debug-visuals"
-                onSelect={() => handleAction(actions.onToggleDpadDebug)}
-              >
-                D-pad debug: {showDpadDebug ? "On" : "Off"}
-              </CommandItem>
-              <CommandItem
-                value="delete-all-save-states"
-                onSelect={() => handleAction(actions.onDeleteAllSaveStates)}
-              >
-                Delete all save states
+                Input {">"}
               </CommandItem>
             </CommandGroup>
+
             <CommandGroup heading="About">
               <CommandItem
                 value="about"
-                onSelect={() => handleAction(actions.onOpenAbout)}
+                onSelect={() => setActiveView("about")}
               >
-                About GBC-TS
+                About GBC-TS {">"}
               </CommandItem>
             </CommandGroup>
           </CommandList>
         </Command>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </Card>
+  );
+};
+
+export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
+  const [activeView, setActiveView] = useState<MenuView>("main");
+
+  const handleAction = (action: () => void) => {
+    action();
+    actions.onClose?.();
+  };
+
+  return (
+    <>
+      <Dialog>
+        <DialogOverlay
+          className="animate-in fade-in-0 z-40 duration-200"
+          onClick={actions.onClose}
+        />
+      </Dialog>
+      <div className="animate-in fade-in-0 zoom-in-95 z-50 h-[25vh] w-[25vw] max-w-sm translate-x-[-20%] translate-y-[10%] border-none bg-transparent p-0 shadow-none duration-200 max-sm:w-[90vw] max-sm:translate-x-[-15%] max-sm:translate-y-[100%] max-sm:scale-140 md:max-w-md md:min-w-sm">
+        {renderMenuView(
+          activeView,
+          state,
+          actions,
+          setActiveView,
+          handleAction,
+        )}
+      </div>
+    </>
   );
 };
