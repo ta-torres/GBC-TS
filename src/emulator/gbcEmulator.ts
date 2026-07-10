@@ -10,7 +10,11 @@ import { Joypad } from "./input/joypad";
 import type { JoypadButton } from "./input/joypad";
 import { APU } from "./apu/apu";
 import type { APUSettings } from "./apu/types";
-import type { EmulatorSnapshot, EmulatorStateSnapshot } from "./types/emulator";
+import type {
+  EmulatorSnapshot,
+  EmulatorStateSnapshot,
+  MBC3RTCSnapshot,
+} from "./types/emulator";
 
 export class GBCEmulator {
   private cartridge: Cartridge;
@@ -135,6 +139,7 @@ export class GBCEmulator {
       this.ppu.step(baseCycles);
       this.apu.step(baseCycles);
       if (this.ppu.hasEnteredHBlank()) this.bus.stepHDMAHBlank();
+      this.cartridge.step(baseCycles);
 
       this.ticks += baseCycles;
 
@@ -254,6 +259,22 @@ export class GBCEmulator {
 
   clearSRAMWriteFlag(): void {
     this.cartridge.clearSRAMWriteFlag();
+  }
+
+  hasRTC(): boolean {
+    return this.cartridge.hasRTC();
+  }
+
+  getRTCSnapshot(): MBC3RTCSnapshot | null {
+    return this.cartridge.getRTCSnapshot();
+  }
+
+  loadRTCSnapshot(snapshot: MBC3RTCSnapshot): void {
+    this.cartridge.loadRTCSnapshot(snapshot);
+  }
+
+  getRTCSaveKey(): string | null {
+    return this.cartridge.getRTCSaveKey();
   }
 
   /* APU */

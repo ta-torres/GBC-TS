@@ -1,11 +1,20 @@
 import type { MBC } from "./mbc";
-import type { MBC3Snapshot, MBCSnapshot } from "../types/emulator";
+import type {
+  MBC3RTCSnapshot,
+  MBC3Snapshot,
+  MBCSnapshot,
+} from "../types/emulator";
 
 const RTC_REG_S = 0x08;
 const RTC_REG_M = 0x09;
 const RTC_REG_H = 0x0a;
 const RTC_REG_DL = 0x0b;
 const RTC_REG_DH = 0x0c;
+
+const CYCLES_PER_SECOND = 4194304;
+const RTC_DH_HALT_BIT = 0x40;
+const RTC_DH_CARRY_BIT = 0x80;
+const RTC_DH_DAY_HIGH_BIT = 0x01;
 
 export class MBC3 implements MBC {
   private rom: Uint8Array;
@@ -38,6 +47,9 @@ export class MBC3 implements MBC {
   private lastLatchWrite = 0;
 
   private sramWrite = false;
+
+  // RTC sub-second accumulator (base clock cycles since last whole second)
+  private subSecondCycles = 0;
 
   constructor(rom: Uint8Array, ram: Uint8Array | null, hasRTC: boolean) {
     this.rom = rom;
@@ -99,6 +111,66 @@ export class MBC3 implements MBC {
     return offset;
   }
 
+  /*
+    Advances the RTC by `cycles` base clock cycles. No-op if the cartridge
+    has no RTC or if the timer halt bit (RTC DH bit 6) is set.
+   */
+  step(cycles: number): void {
+    if (!this.hasRTC) return;
+    if (this.rtcDH & RTC_DH_HALT_BIT) return;
+
+    this.subSecondCycles += cycles;
+
+    while (this.subSecondCycles >= CYCLES_PER_SECOND) {
+      this.subSecondCycles -= CYCLES_PER_SECOND;
+      this.advanceSeconds(1);
+    }
+  }
+
+  /*
+    Count whole-second increments through S -> M -> H -> day
+    counter and 9-bit day counter overflow (with carry). Used by both
+    the per-cycle step() path and loadRTCSnapshot() catch-up path.
+   */
+  private advanceSeconds(count: number): void {
+    for (let i = 0; i < count; i++) {
+      this.rtcS = (this.rtcS + 1) & 0x3f;
+      if (this.rtcS !== 60) continue;
+
+      this.rtcS = 0;
+      this.rtcM = (this.rtcM + 1) & 0x3f;
+      if (this.rtcM !== 60) continue;
+
+      this.rtcM = 0;
+      this.rtcH = (this.rtcH + 1) & 0x1f;
+      if (this.rtcH !== 24) continue;
+
+      this.rtcH = 0;
+      this.incrementDay();
+    }
+  }
+
+  private incrementDay(): void {
+    const day = this.getDayCounter() + 1;
+    if (day > 511) {
+      // 9-bit day counter overflow
+      this.setDayCounter(day & 0x1ff);
+      this.rtcDH |= RTC_DH_CARRY_BIT;
+    } else {
+      this.setDayCounter(day);
+    }
+  }
+
+  private getDayCounter(): number {
+    return ((this.rtcDH & RTC_DH_DAY_HIGH_BIT) << 8) | this.rtcDL;
+  }
+
+  private setDayCounter(day: number): void {
+    this.rtcDL = day & 0xff;
+    this.rtcDH =
+      (this.rtcDH & ~RTC_DH_DAY_HIGH_BIT) | ((day >> 8) & RTC_DH_DAY_HIGH_BIT);
+  }
+
   private latchRtc(): void {
     if (!this.hasRTC) return;
 
@@ -146,6 +218,8 @@ export class MBC3 implements MBC {
     switch (reg) {
       case RTC_REG_S:
         this.rtcS = value & 0x3f;
+        // Writing seconds resets the internal sub-second accumulator.
+        this.subSecondCycles = 0;
         break;
       case RTC_REG_M:
         this.rtcM = value & 0x3f;
@@ -156,9 +230,14 @@ export class MBC3 implements MBC {
       case RTC_REG_DL:
         this.rtcDL = value & 0xff;
         break;
-      case RTC_REG_DH:
-        this.rtcDH = value & 0xc1;
+      case RTC_REG_DH: {
+        // Carry Bit can only be reset to 0 by writing 0 to it;
+        // writing 1 does not force-set it, it leaves the existing carry unchanged.
+        const writtenCarryBit = value & RTC_DH_CARRY_BIT;
+        const carry = writtenCarryBit === 0 ? 0 : this.rtcDH & RTC_DH_CARRY_BIT;
+        this.rtcDH = (value & (RTC_DH_HALT_BIT | RTC_DH_DAY_HIGH_BIT)) | carry;
         break;
+      }
       default:
         break;
     }
@@ -315,5 +394,62 @@ export class MBC3 implements MBC {
     this.latchedRtcDH = snapshot.latchedRtcDH;
     this.rtcLatched = snapshot.rtcLatched;
     this.lastLatchWrite = snapshot.lastLatchWrite;
+  }
+
+  /*
+    Battery-backed RTC persistence (separate from save-state snapshots).
+    Returns null for cartridges without an RTC.
+  */
+  getRTCSnapshot(): MBC3RTCSnapshot | null {
+    if (!this.hasRTC) return null;
+
+    return {
+      version: 1,
+      s: this.rtcS & 0x3f,
+      m: this.rtcM & 0x3f,
+      h: this.rtcH & 0x1f,
+      day: this.getDayCounter(),
+      halt: this.rtcDH & RTC_DH_HALT_BIT ? 1 : 0,
+      carry: this.rtcDH & RTC_DH_CARRY_BIT ? 1 : 0,
+      subSecondCycles: this.subSecondCycles,
+      savedAtUnixMs: Date.now(),
+    };
+  }
+
+  loadRTCSnapshot(snapshot: MBC3RTCSnapshot): void {
+    if (!this.hasRTC || snapshot.version !== 1) return;
+
+    this.rtcS = snapshot.s & 0x3f;
+    this.rtcM = snapshot.m & 0x3f;
+    this.rtcH = snapshot.h & 0x1f;
+    this.setDayCounter(snapshot.day & 0x1ff);
+    this.rtcDH =
+      (this.rtcDH & ~(RTC_DH_HALT_BIT | RTC_DH_CARRY_BIT)) |
+      (snapshot.halt ? RTC_DH_HALT_BIT : 0) |
+      (snapshot.carry ? RTC_DH_CARRY_BIT : 0);
+    this.subSecondCycles = snapshot.subSecondCycles;
+
+    /* 
+      Wall-clock catch-up: fast-forward elapsed real time since the save,
+      unless the RTC was halted. Done in bulk (not a per-cycle step() loop)
+      to keep load time O(1) regardless of how long the emulator was closed.
+    */
+    if (!snapshot.halt) {
+      const elapsedMs = Math.max(0, Date.now() - snapshot.savedAtUnixMs);
+      const elapsedCycles = (elapsedMs / 1000) * CYCLES_PER_SECOND;
+      const totalCycles = this.subSecondCycles + elapsedCycles;
+      const wholeSeconds = Math.floor(totalCycles / CYCLES_PER_SECOND);
+      this.subSecondCycles = totalCycles - wholeSeconds * CYCLES_PER_SECOND;
+
+      if (wholeSeconds > 0) {
+        this.advanceSeconds(wholeSeconds);
+      }
+    }
+
+    /* 
+      Pre-latch so reads immediately after load return sane values 
+      even if the game hasn't performed a latch write yet.
+    */
+    this.latchRtc();
   }
 }

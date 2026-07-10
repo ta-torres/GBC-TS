@@ -4,7 +4,7 @@ import type { MBC } from "./mbc";
 import { MBC1 } from "./mbc1";
 import { MBC3 } from "./mbc3";
 import { MBC5 } from "./mbc5";
-import type { CartridgeSnapshot } from "../types/emulator";
+import type { CartridgeSnapshot, MBC3RTCSnapshot } from "../types/emulator";
 
 export class Cartridge {
   private rom: Uint8Array;
@@ -258,6 +258,35 @@ export class Cartridge {
       default:
         return false;
     }
+  }
+
+  hasRTC(): boolean {
+    if (!this.header) return false;
+    const type = this.header.cartridgeType;
+    return (
+      type === CARTRIDGE_TYPE.MBC3_TIMER_BATTERY ||
+      type === CARTRIDGE_TYPE.MBC3_TIMER_RAM_BATTERY
+    );
+  }
+
+  step(cycles: number): void {
+    this.mbc?.step?.(cycles);
+  }
+
+  getRTCSnapshot(): MBC3RTCSnapshot | null {
+    return this.mbc?.getRTCSnapshot?.() ?? null;
+  }
+
+  loadRTCSnapshot(snapshot: MBC3RTCSnapshot): void {
+    this.mbc?.loadRTCSnapshot?.(snapshot);
+  }
+
+  getRTCSaveKey(): string | null {
+    if (!this.header || !this.hasRTC()) return null;
+    const title = this.header.title || "UNKNOWN";
+    const type = this.header.cartridgeType.toString(16);
+    const checksum = this.header.globalChecksum.toString(16);
+    return `gbc-rtc:${title}:${type}:${checksum}`;
   }
 
   getSRAMSnapshot(): Uint8Array | null {

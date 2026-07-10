@@ -187,6 +187,7 @@ export const useGBCEmulator = () => {
     const interval = window.setInterval(() => {
       const emu = emulatorRef.current;
       if (!emu) return;
+      if (emu.hasRTC()) saveRTCToLocalStorage(emu);
       if (!emu.hasSRAMBeenWrittenTo()) return;
       saveSRAMToLocalStorage(emu);
       emu.clearSRAMWriteFlag();
@@ -212,10 +213,25 @@ export const useGBCEmulator = () => {
     }
   };
 
+  const saveRTCToLocalStorage = (emu: GBCEmulator) => {
+    const rtcKey = emu.getRTCSaveKey();
+    if (!rtcKey || typeof window === "undefined") return;
+
+    try {
+      const snapshot = emu.getRTCSnapshot();
+      if (!snapshot) return;
+
+      window.localStorage.setItem(rtcKey, JSON.stringify(snapshot));
+    } catch (error) {
+      console.error("Error saving RTC state", error);
+    }
+  };
+
   const handleSRAMSave = () => {
     const emu = emulatorRef.current;
     if (!emu) return;
     saveSRAMToLocalStorage(emu);
+    if (emu.hasRTC()) saveRTCToLocalStorage(emu);
   };
 
   const handleButtonDown = (button: JoypadButton) => {
@@ -236,6 +252,7 @@ export const useGBCEmulator = () => {
 
     void ensureAudioStarted();
     saveSRAMToLocalStorage(emu);
+    if (emu.hasRTC()) saveRTCToLocalStorage(emu);
     const ok = await emu.loadROM(file);
 
     if (ok) {
@@ -249,6 +266,23 @@ export const useGBCEmulator = () => {
           }
         } catch (error) {
           console.error("Failed to load SRAM from localStorage", error);
+        }
+      }
+
+      if (emu.hasRTC()) {
+        const rtcKey = emu.getRTCSaveKey();
+        if (rtcKey && typeof window !== "undefined") {
+          try {
+            const raw = window.localStorage.getItem(rtcKey);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && parsed.version === 1) {
+                emu.loadRTCSnapshot(parsed);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to load RTC state from localStorage", error);
+          }
         }
       }
 
@@ -298,6 +332,7 @@ export const useGBCEmulator = () => {
     const emu = emulatorRef.current;
     if (!emu) return;
     saveSRAMToLocalStorage(emu);
+    if (emu.hasRTC()) saveRTCToLocalStorage(emu);
 
     audioOutputRef.current?.stop();
     emu.reset();

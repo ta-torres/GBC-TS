@@ -1,4 +1,4 @@
-import type { MBCSnapshot } from "../types/emulator";
+import type { MBC3RTCSnapshot, MBCSnapshot } from "../types/emulator";
 
 export interface MBC {
   read(address: number): number;
@@ -9,4 +9,9 @@ export interface MBC {
   clearSRAMWriteFlag(): void;
   takeSnapshot(): MBCSnapshot;
   restoreSnapshot(snapshot: MBCSnapshot): void;
+
+  // MBC3 RTC only
+  step?(cycles: number): void;
+  getRTCSnapshot?(): MBC3RTCSnapshot | null;
+  loadRTCSnapshot?(snapshot: MBC3RTCSnapshot): void;
 }

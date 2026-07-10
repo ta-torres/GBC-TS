@@ -113,6 +113,18 @@ export interface MBC5Snapshot {
   ramBank: number;
 }
 
+export interface MBC3RTCSnapshot {
+  version: 1;
+  s: number;
+  m: number;
+  h: number;
+  day: number;
+  halt: 0 | 1;
+  carry: 0 | 1;
+  subSecondCycles: number;
+  savedAtUnixMs: number;
+}
+
 /* AddressBus */
 
 export interface MemorySnapshot {
