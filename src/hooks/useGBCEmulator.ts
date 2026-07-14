@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GBCEmulator } from "@/emulator/gbcEmulator";
 import type { JoypadButton } from "@/emulator/input/joypad";
+import { KeyboardInput } from "@/input/keyboardInput";
+import { GamepadInput } from "@/input/gamepadInput";
+import { InputManager } from "@/input/inputManager";
 import { toast } from "sonner";
 import { toast as pixelToast } from "@/components/ui/pixelact-ui/toast";
 import { AudioOutput } from "@/emulator/frontendAudio/audioOutput";
@@ -34,6 +37,17 @@ export const useGBCEmulator = () => {
 
   if (!audioOutputRef.current) {
     audioOutputRef.current = new AudioOutput();
+  }
+
+  const inputManagerRef = useRef<InputManager | null>(null);
+  const keyboardInputRef = useRef<KeyboardInput | null>(null);
+
+  if (!inputManagerRef.current) {
+    inputManagerRef.current = new InputManager(emulatorRef.current);
+  }
+
+  if (!keyboardInputRef.current) {
+    keyboardInputRef.current = new KeyboardInput();
   }
 
   useEffect(() => {
@@ -72,6 +86,11 @@ export const useGBCEmulator = () => {
       // clamp maximum time to avoid catching up when idle
       const deltaTimeMs = Math.min(250, timestampMs - previousFrameTimestamp);
       previousFrameTimestamp = timestampMs;
+
+      /* 
+      Gamepad API needs to poll its input state. This is done every frame, even when the emulator is paused, so that button releases are not "stuck" while paused.
+      */
+      inputManagerRef.current?.update();
 
       const emulator = emulatorRef.current;
       if (emulator && emulator.isRunning() && !emulator.isPaused()) {
@@ -141,45 +160,23 @@ export const useGBCEmulator = () => {
     };
   }, []);
 
+  // Register physical input devices (keyboard + gamepad) within InputManager. Key and gamepad button mappings are now handled by each InputDevice. This is so that now theres a single source for the input state.
+  // InputManager now calls GBCEmulator.pressButton and GBCEmulator.releaseButton, and polls the physical input devices every frame to update the input state.
   useEffect(() => {
-    const keyToButton: Record<string, JoypadButton> = {
-      ArrowRight: "right",
-      ArrowLeft: "left",
-      ArrowUp: "up",
-      ArrowDown: "down",
-      KeyZ: "b",
-      KeyX: "a",
-      Enter: "start",
-      ShiftRight: "select",
-      ShiftLeft: "select",
-    };
+    const inputManager = inputManagerRef.current;
+    const keyboard = keyboardInputRef.current;
+    if (!inputManager || !keyboard) return;
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const emu = emulatorRef.current;
-      if (!emu) return;
-      const button = keyToButton[event.code];
-      if (!button) return;
+    const gamepad = new GamepadInput();
 
-      event.preventDefault();
-      emu.pressButton(button);
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      const emu = emulatorRef.current;
-      if (!emu) return;
-      const button = keyToButton[event.code];
-      if (!button) return;
-
-      event.preventDefault();
-      emu.releaseButton(button);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    keyboard.start();
+    inputManager.addDevice(keyboard);
+    inputManager.addDevice(gamepad);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      keyboard.stop();
+      inputManager.removeDevice(keyboard);
+      inputManager.removeDevice(gamepad);
     };
   }, []);
 

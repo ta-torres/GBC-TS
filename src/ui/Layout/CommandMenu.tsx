@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/pixelact-ui/dialog";
 import type { SlotInfo } from "@/emulator/types/emulator";
 import { SiGithub } from "@icons-pack/react-simple-icons";
+import { useGamepadDebugInfo } from "@/input/useGamepadDebugInfo";
+import type { InputState } from "@/input/types";
 
 type MenuView = "main" | "emulator-settings" | "input-settings" | "about";
 
@@ -75,6 +77,95 @@ interface CommandMenuProps {
   state: CommandMenuStateProps;
   actions: CommandMenuActionProps;
 }
+
+const GB_BUTTON_LABELS: { key: keyof InputState; label: string }[] = [
+  { key: "up", label: "↑" },
+  { key: "down", label: "↓" },
+  { key: "left", label: "←" },
+  { key: "right", label: "→" },
+  { key: "a", label: "A" },
+  { key: "b", label: "B" },
+  { key: "start", label: "Start" },
+  { key: "select", label: "Select" },
+];
+
+const ControllerDebugPanel = () => {
+  const info = useGamepadDebugInfo();
+
+  return (
+    <div className="space-y-2 px-2 py-1 text-xs text-gray-800">
+      <div className="flex items-center gap-2">
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${
+            info.connected ? "bg-green-500" : "bg-red-500"
+          }`}
+        />
+        <span>
+          {info.connected ? "Controller connected" : "No controller detected"}
+        </span>
+      </div>
+
+      {!info.connected && (
+        <p className="text-[0.65rem] text-gray-600">
+          Connect a controller and press any button to test it.
+        </p>
+      )}
+
+      {info.connected && (
+        <>
+          <div
+            className="truncate text-[0.65rem] text-gray-600"
+            title={info.id ?? undefined}
+          >
+            {info.id}
+          </div>
+
+          <div className="text-[0.65rem] text-gray-600">
+            Mapping:{" "}
+            <span
+              className={
+                info.mapping === "standard"
+                  ? "text-green-700"
+                  : "text-amber-700"
+              }
+            >
+              {info.mapping}
+            </span>
+            {info.mapping !== "standard" && (
+              <span className="ml-1">(buttons may not map correctly)</span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-4 gap-1 pt-1">
+            {GB_BUTTON_LABELS.map(({ key, label }) => (
+              <div
+                key={key}
+                className={`flex h-6 items-center justify-center rounded text-[0.65rem] text-white transition-colors ${
+                  info.mappedButtons[key] ? "bg-green-600" : "bg-slate-600"
+                }`}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+
+          {info.axes.length > 0 && (
+            <div className="pt-1">
+              <div className="text-[0.65rem] text-gray-600">Axes</div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                {info.axes.map((axis, i) => (
+                  <div key={i} className="text-[0.6rem] text-gray-700">
+                    A{i}: {axis.toFixed(2)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 
 const renderMenuView = (
   activeView: MenuView,
@@ -169,7 +260,9 @@ const renderMenuView = (
             </div>
             <CommandList>
               <CommandGroup heading="Touch"></CommandGroup>
-              <CommandGroup heading="Controller"></CommandGroup>
+              <CommandGroup heading="Controller">
+                <ControllerDebugPanel />
+              </CommandGroup>
             </CommandList>
           </Command>
         </div>
