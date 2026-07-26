@@ -78,14 +78,23 @@ export const useGBCEmulator = () => {
     let previousFrameTimestamp: number | null = null;
     let accumulatedTimeMs = 0;
 
+    // RTC catch-up if the emulator was in the background. This is to avoid the RTC being out of sync with real time when the user comes back to the tab after some time.
+    const BACKGROUND_GAP_THRESHOLD_MS = 1000;
+
     const loop = (timestampMs: number) => {
       if (previousFrameTimestamp === null) {
         previousFrameTimestamp = timestampMs;
       }
 
-      // clamp maximum time to avoid catching up when idle
-      const deltaTimeMs = Math.min(250, timestampMs - previousFrameTimestamp);
+      const rawDeltaMs = timestampMs - previousFrameTimestamp;
       previousFrameTimestamp = timestampMs;
+
+      if (rawDeltaMs >= BACKGROUND_GAP_THRESHOLD_MS) {
+        emulatorRef.current?.advanceRTCTime(rawDeltaMs);
+      }
+
+      // clamp maximum time to avoid catching up emulation itself when idle
+      const deltaTimeMs = Math.min(250, rawDeltaMs);
 
       /* 
       Gamepad API needs to poll its input state. This is done every frame, even when the emulator is paused, so that button releases are not "stuck" while paused.
@@ -192,34 +201,6 @@ export const useGBCEmulator = () => {
 
     return () => {
       window.clearInterval(interval);
-    };
-  }, []);
-
-  /* 
-  The RequestAnimationFrame loop stops while the tab is in the background, so the RTC's cycle-based stepping stops with it and drifts from wall-clock time. 
-  Track when we lost visibility, and on regaining it, fast-forward the RTC by exactly however long we were away.
-  */
-  useEffect(() => {
-    let hiddenAtMs: number | null = null;
-
-    const handleVisibilityChange = () => {
-      const emu = emulatorRef.current;
-      if (!emu || !emu.hasRTC()) return;
-
-      if (document.hidden) {
-        hiddenAtMs = Date.now();
-        return;
-      }
-
-      if (hiddenAtMs === null) return;
-      const elapsedMs = Date.now() - hiddenAtMs;
-      hiddenAtMs = null;
-      emu.advanceRTCTime(elapsedMs);
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
