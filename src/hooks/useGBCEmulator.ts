@@ -195,6 +195,34 @@ export const useGBCEmulator = () => {
     };
   }, []);
 
+  /* 
+  The RequestAnimationFrame loop stops while the tab is in the background, so the RTC's cycle-based stepping stops with it and drifts from wall-clock time. 
+  Track when we lost visibility, and on regaining it, fast-forward the RTC by exactly however long we were away.
+  */
+  useEffect(() => {
+    let hiddenAtMs: number | null = null;
+
+    const handleVisibilityChange = () => {
+      const emu = emulatorRef.current;
+      if (!emu || !emu.hasRTC()) return;
+
+      if (document.hidden) {
+        hiddenAtMs = Date.now();
+        return;
+      }
+
+      if (hiddenAtMs === null) return;
+      const elapsedMs = Date.now() - hiddenAtMs;
+      hiddenAtMs = null;
+      emu.advanceRTCTime(elapsedMs);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   const saveSRAMToLocalStorage = (emu: GBCEmulator) => {
     const saveKey = emu.getSaveKey();
     if (!saveKey || typeof window === "undefined") return;

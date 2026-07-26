@@ -103,6 +103,7 @@ export interface MBC3Snapshot {
   latchedRtcDH: number;
   rtcLatched: boolean;
   lastLatchWrite: number;
+  savedAtUnixMs: number;
 }
 
 export interface MBC5Snapshot {

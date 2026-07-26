@@ -14,4 +14,5 @@ export interface MBC {
   step?(cycles: number): void;
   getRTCSnapshot?(): MBC3RTCSnapshot | null;
   loadRTCSnapshot?(snapshot: MBC3RTCSnapshot): void;
+  syncRTCWithElapsedTime?(elapsedMs: number): void;
 }

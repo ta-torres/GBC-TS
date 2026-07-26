@@ -182,6 +182,34 @@ export class MBC3 implements MBC {
     this.rtcLatched = true;
   }
 
+  /*
+    wall clock catch-up shared by loadRTCSnapshot() (battery-backed persistence), restoreSnapshot() (save states), and syncRTCWithElapsedTime() (tab regains focus and the RAF loop is resumed).
+  */
+  private catchUpRTC(elapsedMs: number): void {
+    if (!this.hasRTC) return;
+    if (this.rtcDH & RTC_DH_HALT_BIT) return;
+    if (elapsedMs <= 0) return;
+
+    // done in bulk rather than per-cycle to avoid O(n) time for long elapsedMs
+    const elapsedCycles = (elapsedMs / 1000) * CYCLES_PER_SECOND;
+    const totalCycles = this.subSecondCycles + elapsedCycles;
+    const wholeSeconds = Math.floor(totalCycles / CYCLES_PER_SECOND);
+    this.subSecondCycles = totalCycles - wholeSeconds * CYCLES_PER_SECOND;
+
+    if (wholeSeconds > 0) {
+      this.advanceSeconds(wholeSeconds);
+    }
+  }
+
+  /*
+    Called when the emulator regains focus. Force register re-latch because the catch-up logic is done in a single update, unlike a real cartridge whose counters tick continuously. 
+    Without this, stale time could persist if the game doesn't re-latch soon.
+  */
+  syncRTCWithElapsedTime(elapsedMs: number): void {
+    this.catchUpRTC(elapsedMs);
+    this.latchRtc();
+  }
+
   private readRtc(reg: number): number {
     if (!this.hasRTC || !this.rtcLatched) return 0xff;
 
@@ -373,6 +401,7 @@ export class MBC3 implements MBC {
       latchedRtcDH: this.latchedRtcDH,
       rtcLatched: this.rtcLatched,
       lastLatchWrite: this.lastLatchWrite,
+      savedAtUnixMs: Date.now(),
     };
   }
 
@@ -394,6 +423,13 @@ export class MBC3 implements MBC {
     this.latchedRtcDH = snapshot.latchedRtcDH;
     this.rtcLatched = snapshot.rtcLatched;
     this.lastLatchWrite = snapshot.lastLatchWrite;
+
+    if (this.hasRTC && snapshot.savedAtUnixMs !== undefined) {
+      this.catchUpRTC(Math.max(0, Date.now() - snapshot.savedAtUnixMs));
+    }
+
+    // Force a re-latch so reads after restoring return real time values
+    this.latchRtc();
   }
 
   /*
@@ -429,27 +465,11 @@ export class MBC3 implements MBC {
       (snapshot.carry ? RTC_DH_CARRY_BIT : 0);
     this.subSecondCycles = snapshot.subSecondCycles;
 
-    /* 
-      Wall-clock catch-up: fast-forward elapsed real time since the save,
-      unless the RTC was halted. Done in bulk (not a per-cycle step() loop)
-      to keep load time O(1) regardless of how long the emulator was closed.
-    */
+    // Fast-forward elapsed real time since the save, unless the RTC was halted.
     if (!snapshot.halt) {
-      const elapsedMs = Math.max(0, Date.now() - snapshot.savedAtUnixMs);
-      const elapsedCycles = (elapsedMs / 1000) * CYCLES_PER_SECOND;
-      const totalCycles = this.subSecondCycles + elapsedCycles;
-      const wholeSeconds = Math.floor(totalCycles / CYCLES_PER_SECOND);
-      this.subSecondCycles = totalCycles - wholeSeconds * CYCLES_PER_SECOND;
-
-      if (wholeSeconds > 0) {
-        this.advanceSeconds(wholeSeconds);
-      }
+      this.catchUpRTC(Math.max(0, Date.now() - snapshot.savedAtUnixMs));
     }
 
-    /* 
-      Pre-latch so reads immediately after load return sane values 
-      even if the game hasn't performed a latch write yet.
-    */
     this.latchRtc();
   }
 }

@@ -273,6 +273,10 @@ export class GBCEmulator {
     this.cartridge.loadRTCSnapshot(snapshot);
   }
 
+  advanceRTCTime(elapsedMs: number): void {
+    this.cartridge.advanceRTCTime(elapsedMs);
+  }
+
   getRTCSaveKey(): string | null {
     return this.cartridge.getRTCSaveKey();
   }

@@ -281,6 +281,10 @@ export class Cartridge {
     this.mbc?.loadRTCSnapshot?.(snapshot);
   }
 
+  advanceRTCTime(elapsedMs: number): void {
+    this.mbc?.syncRTCWithElapsedTime?.(elapsedMs);
+  }
+
   getRTCSaveKey(): string | null {
     if (!this.header || !this.hasRTC()) return null;
     const title = this.header.title || "UNKNOWN";
