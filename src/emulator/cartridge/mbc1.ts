@@ -18,11 +18,15 @@ export class MBC1 implements MBC {
 
   private sramWrite = false;
 
-  constructor(rom: Uint8Array, ram: Uint8Array | null) {
+  constructor(rom: Uint8Array, ram: Uint8Array | null, romSizeCode: number) {
     this.rom = rom;
     this.ram = ram;
 
-    const romBanks = Math.max(1, Math.floor(this.rom.length / 0x4000));
+    // figure out how many 16KB banks we have, either from the header or by calculating from the actual ROM size
+    const romBanks =
+      romSizeCode <= 8
+        ? 2 << romSizeCode
+        : Math.max(2, Math.floor(this.rom.length / 0x4000));
     this.romBanks = romBanks;
     this.romBankMask = romBanks - 1;
 
@@ -59,7 +63,9 @@ export class MBC1 implements MBC {
 
     bank &= this.romBankMask;
 
-    if ((bank & 0x1f) === 0) {
+    // look at the 5-bit register value, not the masked result
+    // If this register is set to $00, it behaves as if it is set to $01.
+    if (this.romBankLow5 === 0) {
       bank = (bank + 1) & this.romBankMask;
     }
 
@@ -160,7 +166,7 @@ export class MBC1 implements MBC {
 
     if (address < 0x4000) {
       this.romBankLow5 = value & 0x1f;
-      if (this.romBankLow5 === 0) this.romBankLow5 = 1;
+      // Do NOT force 0 to 1 translation here, it happens at read time by checking romBankLow5 against the full 5-bit register value.
       return;
     }
 

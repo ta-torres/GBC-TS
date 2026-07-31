@@ -119,7 +119,7 @@ export class Cartridge {
       case CARTRIDGE_TYPE.MBC1:
       case CARTRIDGE_TYPE.MBC1_RAM:
       case CARTRIDGE_TYPE.MBC1_RAM_BATTERY:
-        this.mbc = new MBC1(this.rom, this.ram);
+        this.mbc = new MBC1(this.rom, this.ram, this.header!.romSize);
         console.log("MBC1 initialized");
         console.log(this.mbc);
         return true;
