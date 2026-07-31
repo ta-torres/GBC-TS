@@ -380,6 +380,103 @@
   }
 }
 
+/* Landscape mobile/tablet */
+
+@media screen and (orientation: landscape) and (max-width: 1024px) {
+  #root {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .gameboy-shell {
+    width: 100dvw;
+    height: 100dvh;
+    transform: none;
+  }
+
+  /* Hide the shell background images */
+  .gameboy-shell-bg {
+    display: none;
+  }
+
+  /* Switch from image-overlay layout to a flex row */
+  .gameboy-stage {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100dvw;
+    height: 100dvh;
+    aspect-ratio: unset;
+    gap: 16px;
+    padding: 8px;
+  }
+
+  /* Reset all absolute slots to static flex items */
+  .gb-slot {
+    /* position: static; */
+    transform: none !important;
+  }
+
+  /* Screen: centered, fills available height, preserves 160:144 ratio */
+  .gb-slot-screen {
+    position: static;
+    flex: 0 0 auto;
+    height: 100%;
+    width: auto;
+    aspect-ratio: 160 / 144;
+    max-height: 100%;
+    z-index: auto;
+  }
+
+  .gameboy-screen-window {
+    width: auto;
+    height: 100%;
+    transform: translate(-40px, 15px) !important;
+    transform-origin: center;
+  }
+
+  .gb-slot-dpad .gameboy-dpad {
+    transform: none !important;
+    scale: 1.4;
+  }
+
+  /* AB buttons: right side */
+
+  .gb-slot-ab .gameboy-ab-buttons {
+    transform: translate(30px, -12px) rotate(36deg) !important;
+    scale: 1.2;
+  }
+
+  .gameboy-shell:fullscreen .gameboy-ab-buttons {
+    transform: translate(90px, -12px) rotate(36deg) !important;
+  }
+
+  .gameboy-shell:fullscreen .gameboy-screen-window {
+    scale: 1;
+    transform: translate(-29px, 0px) !important;
+  }
+
+  .gameboy-shell:fullscreen .gb-slot-dpad .gameboy-dpad {
+    transform: translate(-23px, 8px) !important;
+  }
+
+  .gameboy-shell:fullscreen .gameboy-settings-button {
+    transform: translate(-23px, 8px) !important;
+  }
+
+  .gameboy-shell:fullscreen .gameboy-select-start {
+    transform: translate(60px, 0px) !important;
+  }
+
+  .gb-slot-select-start {
+    transform: translate(380px, -200px) !important;
+  }
+}
+
 /* Fullscreen: tablet portrait */
 
 @media screen and (min-width: 720px) and (max-width: 1024px) and (orientation: portrait) {
