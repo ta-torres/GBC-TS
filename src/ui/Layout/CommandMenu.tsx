@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/pixelact-ui/dialog";
 import type { SlotInfo } from "@/emulator/types/emulator";
+import type { LayoutOrientation } from "@/hooks/useTouchControlLayout";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { useGamepadDebugInfo } from "@/input/useGamepadDebugInfo";
 import type { InputState } from "@/input/types";
@@ -53,6 +54,8 @@ interface CommandMenuStateProps {
     ch4: boolean;
   };
   slotInfo: SlotInfo[];
+  isEditingLayout: boolean;
+  touchControlOrientation: LayoutOrientation;
 }
 
 interface CommandMenuActionProps {
@@ -71,6 +74,8 @@ interface CommandMenuActionProps {
   onSaveState: (slot: number) => void;
   onLoadState: (slot: number) => void;
   onDeleteAllSaveStates: () => void;
+  onSetLayoutEditing: (isEditingLayout: boolean) => void;
+  onResetTouchControls: () => void;
 }
 
 interface CommandMenuProps {
@@ -183,6 +188,8 @@ const renderMenuView = (
     audioEnabled,
     audioChannels,
     slotInfo,
+    isEditingLayout,
+    touchControlOrientation,
   } = state;
 
   if (activeView === "emulator-settings") {
@@ -259,7 +266,26 @@ const renderMenuView = (
               <span className="text-xs text-gray-600">/ Input </span>
             </div>
             <CommandList>
-              <CommandGroup heading="Touch"></CommandGroup>
+              <CommandGroup heading="Touch">
+                <CommandItem
+                  value="toggle-touch-control-editing"
+                  onSelect={() =>
+                    handleAction(() =>
+                      actions.onSetLayoutEditing(!isEditingLayout),
+                    )
+                  }
+                >
+                  {isEditingLayout
+                    ? "Done editing layout"
+                    : "Edit button layout"}
+                </CommandItem>
+                <CommandItem
+                  value="reset-touch-control-layout"
+                  onSelect={() => handleAction(actions.onResetTouchControls)}
+                >
+                  Reset {touchControlOrientation} layout
+                </CommandItem>
+              </CommandGroup>
               <CommandGroup heading="Controller">
                 <ControllerDebugPanel />
               </CommandGroup>

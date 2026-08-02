@@ -5,6 +5,7 @@ import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
 import { CommandMenu } from "./ui/Layout/CommandMenu";
 import { useGBCEmulator } from "./hooks/useGBCEmulator";
+import { useTouchControlLayout } from "./hooks/useTouchControlLayout";
 import {
   exportSRAMSavesToFile,
   importSRAMSavesFromFile,
@@ -19,6 +20,7 @@ function App() {
   const [showDpadDebug, setShowDpadDebug] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
+  const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
   const {
     emulatorRef,
@@ -45,6 +47,12 @@ function App() {
     handleLoadState,
     handleDeleteAllSaveStates,
   } = useGBCEmulator();
+  const {
+    orientation: touchControlOrientation,
+    positions: touchControlPositions,
+    updatePosition: updateTouchControlPosition,
+    resetCurrentOrientation: resetTouchControlLayout,
+  } = useTouchControlLayout();
 
   const handleRequestLoadRom = () => {
     fileInputRef.current?.click();
@@ -157,6 +165,9 @@ function App() {
                   speedMultiplier={speedMultiplier}
                   onIncreaseSpeed={handleIncreaseSpeed}
                   onDecreaseSpeed={handleDecreaseSpeed}
+                  isEditingLayout={isEditingLayout}
+                  buttonLayout={touchControlPositions}
+                  onLayoutChange={updateTouchControlPosition}
                   commandMenu={
                     <CommandMenu
                       state={{
@@ -168,6 +179,8 @@ function App() {
                         audioEnabled,
                         audioChannels,
                         slotInfo,
+                        isEditingLayout,
+                        touchControlOrientation,
                       }}
                       actions={{
                         onClose: closeCommandMenu,
@@ -185,6 +198,8 @@ function App() {
                         onSaveState: handleSaveState,
                         onLoadState: handleLoadState,
                         onDeleteAllSaveStates: handleDeleteAllSaveStates,
+                        onSetLayoutEditing: setIsEditingLayout,
+                        onResetTouchControls: resetTouchControlLayout,
                       }}
                     />
                   }

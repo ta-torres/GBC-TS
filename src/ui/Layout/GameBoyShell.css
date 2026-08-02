@@ -28,6 +28,7 @@
   aspect-ratio: calc(856 / 1416);
   user-select: none;
   isolation: isolate;
+  container-type: size;
 }
 
 .gameboy-shell:fullscreen .gameboy-stage {
@@ -72,6 +73,7 @@
 .gb-slot--settings {
   left: 11.5%;
   top: 15%;
+  z-index: 100;
 }
 
 .gb-slot--screen {
@@ -243,6 +245,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  translate: var(--touch-control-offset-x, 0px)
+    var(--touch-control-offset-y, 0px);
+}
+
+.gameboy-control-slot--editing {
+  cursor: grab;
+  outline: 2px dashed rgb(255 255 255 / 80%);
+  outline-offset: 6px;
+  touch-action: none;
+}
+
+.gameboy-control-slot--editing:active {
+  cursor: grabbing;
+}
+
+.gameboy-control-editing-notice {
+  position: absolute;
+  z-index: 30;
+  top: 10%;
+  left: 50%;
+  translate: -50% 0;
+  border-radius: 4px;
+  background: rgb(15 23 42 / 90%);
+  padding: 4px 6px;
+  color: white;
+  font-size: 0.625rem;
+  text-align: center;
+  pointer-events: none;
 }
 
 .gb-slot-screen {
@@ -465,7 +495,11 @@
   }
 
   .gameboy-shell:fullscreen .gameboy-settings-button {
-    transform: translate(-23px, 8px) !important;
+    transform: translate(-23px, -35px) !important;
+  }
+
+  .gameboy-shell:fullscreen .speed-button-wrapper {
+    transform: translate(-238px, -300px) !important;
   }
 
   .gameboy-shell:fullscreen .gameboy-select-start {
