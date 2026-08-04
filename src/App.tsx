@@ -5,34 +5,10 @@ import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
 import { CommandMenu } from "./ui/Layout/CommandMenu";
 import { useGBCEmulator } from "./hooks/useGBCEmulator";
+import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useTouchControlLayout } from "./hooks/useTouchControlLayout";
-import {
-  exportSRAMSavesToFile,
-  importSRAMSavesFromFile,
-} from "./emulator/utils/savesTransfer";
-import {
-  DMG_COLOR_PALETTES,
-  type DmgColorPalette,
-  CGB_COLOR_PALETTES,
-  type CgbColorPalette,
-  CGB_DEFAULT,
-} from "./emulator/ppu/palettes";
 
 import { Toaster } from "@/components/ui/sonner";
-
-const initializeDmgPalette = (): DmgColorPalette => {
-  const savedPalette = window.localStorage.getItem("gbc-dmg-palette");
-  return savedPalette && savedPalette in DMG_COLOR_PALETTES
-    ? (savedPalette as DmgColorPalette)
-    : "Gray";
-};
-
-const initializeCgbPalette = (): CgbColorPalette => {
-  const savedPalette = window.localStorage.getItem("gbc-cgb-palette");
-  return savedPalette && savedPalette in CGB_COLOR_PALETTES
-    ? (savedPalette as CgbColorPalette)
-    : CGB_DEFAULT;
-};
 
 function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -43,10 +19,6 @@ function App() {
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
-  const [dmgColorPalette, setDmgColorPalette] =
-    useState<DmgColorPalette>(initializeDmgPalette);
-  const [cgbColorPalette, setCgbColorPalette] =
-    useState<CgbColorPalette>(initializeCgbPalette);
   const {
     emulatorRef,
     isLoaded,
@@ -66,12 +38,19 @@ function App() {
     handleReset,
     handleStep,
     handleStepFrame,
-    handleSRAMSave,
     slotInfo,
     handleSaveState,
     handleLoadState,
     handleDeleteAllSaveStates,
   } = useGBCEmulator();
+  const {
+    dmgColorPalette,
+    cgbColorPalette,
+    setDisplayPalette,
+    setCgbColorPalette,
+    exportSRAMSaves,
+    importSRAMSave,
+  } = useLocalStorage({ emulatorRef });
   const {
     orientation: touchControlOrientation,
     positions: touchControlPositions,
@@ -90,36 +69,8 @@ function App() {
     void handleLoadROM(file);
   };
 
-  const handleExportSRAMSaves = () => {
-    if (typeof window === "undefined") return;
-
-    handleSRAMSave();
-
-    try {
-      exportSRAMSavesToFile();
-    } catch (error) {
-      console.error("Failed to export SRAM saves", error);
-    }
-  };
-
   const handleImportSRAMSaves = () => {
     sramImportInputRef.current?.click();
-  };
-
-  const loadCurrentSRAMFromLocalStorage = () => {
-    const emu = emulatorRef.current;
-    if (!emu || typeof window === "undefined") return;
-    const saveKey = emu.getSaveKey();
-    if (!saveKey) return;
-
-    try {
-      const raw = window.localStorage.getItem(saveKey);
-      if (!raw) return;
-      const decoded = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
-      emu.loadSRAMSnapshot(decoded);
-    } catch (error) {
-      console.error("Failed to load SRAM from localStorage", error);
-    }
   };
 
   const handleImportSRAMFileChange = async (
@@ -129,13 +80,7 @@ function App() {
     e.target.value = "";
     if (!file || typeof window === "undefined") return;
 
-    try {
-      await importSRAMSavesFromFile(file);
-
-      loadCurrentSRAMFromLocalStorage();
-    } catch (error) {
-      console.error("Failed to import SRAM saves", error);
-    }
+    await importSRAMSave(file);
   };
 
   const toggleOverlay = () => {
@@ -156,11 +101,6 @@ function App() {
 
   const closeCommandMenu = () => {
     setShowCommandMenu(false);
-  };
-
-  const setDisplayPalette = (palette: DmgColorPalette) => {
-    window.localStorage.setItem("gbc-dmg-palette", palette);
-    setDmgColorPalette(palette);
   };
 
   useEffect(() => {
@@ -223,7 +163,7 @@ function App() {
                         onClose: closeCommandMenu,
                         onLoadGame: handleRequestLoadRom,
                         onRestart: handleReset,
-                        onExportSRAMSaves: handleExportSRAMSaves,
+                        onExportSRAMSaves: exportSRAMSaves,
                         onImportSRAMSaves: handleImportSRAMSaves,
                         onToggleOverlay: toggleOverlay,
                         onToggleDebugTools: toggleDebugTools,

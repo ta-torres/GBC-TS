@@ -14,6 +14,7 @@ import {
   deleteAllSaveStates,
   getSaveStateSlotInfo,
 } from "@/emulator/utils/saveStateStorage";
+import { useLocalStorage } from "./useLocalStorage";
 
 export const useGBCEmulator = () => {
   const emulatorRef = useRef<GBCEmulator | null>(null);
@@ -49,6 +50,10 @@ export const useGBCEmulator = () => {
   if (!keyboardInputRef.current) {
     keyboardInputRef.current = new KeyboardInput();
   }
+
+  const { saveSRAM, saveRTC, saveMemory, loadSRAM, loadRTC } = useLocalStorage({
+    emulatorRef,
+  });
 
   useEffect(() => {
     const emu = emulatorRef.current;
@@ -193,9 +198,9 @@ export const useGBCEmulator = () => {
     const interval = window.setInterval(() => {
       const emu = emulatorRef.current;
       if (!emu) return;
-      if (emu.hasRTC()) saveRTCToLocalStorage(emu);
+      if (emu.hasRTC()) saveRTC(emu);
       if (!emu.hasSRAMBeenWrittenTo()) return;
-      saveSRAMToLocalStorage(emu);
+      saveSRAM(emu);
       emu.clearSRAMWriteFlag();
     }, 2000);
 
@@ -204,40 +209,8 @@ export const useGBCEmulator = () => {
     };
   }, []);
 
-  const saveSRAMToLocalStorage = (emu: GBCEmulator) => {
-    const saveKey = emu.getSaveKey();
-    if (!saveKey || typeof window === "undefined") return;
-
-    try {
-      const sram = emu.getSRAMSnapshot();
-      if (!sram) return;
-
-      const encoded = btoa(String.fromCharCode(...sram));
-      window.localStorage.setItem(saveKey, encoded);
-    } catch (error) {
-      console.error("Error saving SRAM", error);
-    }
-  };
-
-  const saveRTCToLocalStorage = (emu: GBCEmulator) => {
-    const rtcKey = emu.getRTCSaveKey();
-    if (!rtcKey || typeof window === "undefined") return;
-
-    try {
-      const snapshot = emu.getRTCSnapshot();
-      if (!snapshot) return;
-
-      window.localStorage.setItem(rtcKey, JSON.stringify(snapshot));
-    } catch (error) {
-      console.error("Error saving RTC state", error);
-    }
-  };
-
   const handleSRAMSave = () => {
-    const emu = emulatorRef.current;
-    if (!emu) return;
-    saveSRAMToLocalStorage(emu);
-    if (emu.hasRTC()) saveRTCToLocalStorage(emu);
+    saveMemory();
   };
 
   const handleButtonDown = (button: JoypadButton) => {
@@ -257,40 +230,12 @@ export const useGBCEmulator = () => {
     if (!emu) return;
 
     void ensureAudioStarted();
-    saveSRAMToLocalStorage(emu);
-    if (emu.hasRTC()) saveRTCToLocalStorage(emu);
+    saveMemory();
     const ok = await emu.loadROM(file);
 
     if (ok) {
-      const saveKey = emu.getSaveKey();
-      if (saveKey && typeof window !== "undefined") {
-        try {
-          const raw = window.localStorage.getItem(saveKey);
-          if (raw) {
-            const decoded = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
-            emu.loadSRAMSnapshot(decoded);
-          }
-        } catch (error) {
-          console.error("Failed to load SRAM from localStorage", error);
-        }
-      }
-
-      if (emu.hasRTC()) {
-        const rtcKey = emu.getRTCSaveKey();
-        if (rtcKey && typeof window !== "undefined") {
-          try {
-            const raw = window.localStorage.getItem(rtcKey);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (parsed && parsed.version === 1) {
-                emu.loadRTCSnapshot(parsed);
-              }
-            }
-          } catch (error) {
-            console.error("Failed to load RTC state from localStorage", error);
-          }
-        }
-      }
+      loadSRAM();
+      loadRTC();
 
       setIsLoaded(ok);
       setSpeedMultiplier(emu.getSpeedMultiplier());
@@ -337,8 +282,8 @@ export const useGBCEmulator = () => {
   const handleReset = () => {
     const emu = emulatorRef.current;
     if (!emu) return;
-    saveSRAMToLocalStorage(emu);
-    if (emu.hasRTC()) saveRTCToLocalStorage(emu);
+    saveSRAM(emu);
+    if (emu.hasRTC()) saveRTC(emu);
 
     audioOutputRef.current?.stop();
     emu.reset();
