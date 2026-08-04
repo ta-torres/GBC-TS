@@ -2,11 +2,13 @@ import { IO_REGISTERS } from "../types/memory";
 import { Interrupts, InterruptType } from "../core/interrupts";
 import type { PpuSnapshot } from "../types/emulator";
 import {
+  DMG_COLOR_PALETTES,
   mapCGBBgPalette,
   mapCGBObjPalette,
   mapDMGPalette,
   mapOBPPalette,
 } from "./palettes";
+import type { DmgColorPalette, DmgRgbaPalette } from "./palettes";
 
 import { getSpriteTileViewerData, getTileViewerData } from "./tileView";
 
@@ -108,6 +110,7 @@ export class PPU {
   private cgbMode: boolean;
   private cgbBgPaletteRam: Uint8Array;
   private cgbObjPaletteRam: Uint8Array;
+  private dmgPalette: DmgRgbaPalette;
 
   /*
   LCD_STAT interrupt
@@ -139,6 +142,7 @@ export class PPU {
     this.cgbMode = cgbMode;
     this.cgbBgPaletteRam = cgbBgPaletteRam;
     this.cgbObjPaletteRam = cgbObjPaletteRam;
+    this.dmgPalette = DMG_COLOR_PALETTES.Gray;
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
     this.actualFramebufferDrawnToTheScreen = new Uint32Array(
       SCREEN_WIDTH * SCREEN_HEIGHT,
@@ -251,7 +255,7 @@ export class PPU {
     const dmgBgEnabled = (lcdc & 0x01) !== 0;
     if (!this.cgbMode && !dmgBgEnabled) {
       const bgPalette = this.io[IO_REGISTERS.BGP - 0xff00];
-      const backgroundColor = mapDMGPalette(bgPalette, 0);
+      const backgroundColor = mapDMGPalette(bgPalette, 0, this.dmgPalette);
       const scanlineY = this.currentScanlineLY | 0;
       const scanlineOffset = scanlineY * SCREEN_WIDTH;
       for (let screenX = 0; screenX < SCREEN_WIDTH; screenX += 1) {
@@ -328,7 +332,7 @@ export class PPU {
       );
       const pixelColor = this.cgbMode
         ? mapCGBBgPalette(this.cgbBgPaletteRam, cgbBgPaletteId, paletteIndex)
-        : mapDMGPalette(bgPalette, paletteIndex);
+        : mapDMGPalette(bgPalette, paletteIndex, this.dmgPalette);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
@@ -422,7 +426,7 @@ export class PPU {
       );
       const pixelColor = this.cgbMode
         ? mapCGBBgPalette(this.cgbBgPaletteRam, cgbBgPaletteId, paletteIndex)
-        : mapDMGPalette(bgPalette, paletteIndex);
+        : mapDMGPalette(bgPalette, paletteIndex, this.dmgPalette);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
       this.bgIndexLine[screenX] = paletteIndex;
@@ -551,7 +555,7 @@ export class PPU {
               cgbObjPaletteNumber,
               paletteIndex,
             )
-          : mapOBPPalette(obp, paletteIndex);
+          : mapOBPPalette(obp, paletteIndex, this.dmgPalette);
         const bufIndex = scanlineOffset + screenX;
 
         // don't draw over non‑transparent background colors
@@ -600,6 +604,10 @@ export class PPU {
 
   setCGBMode(enabled: boolean): void {
     this.cgbMode = enabled;
+  }
+
+  setDMGColorPalette(palette: DmgColorPalette): void {
+    this.dmgPalette = DMG_COLOR_PALETTES[palette];
   }
 
   lcdEnabled(): boolean {
@@ -769,7 +777,11 @@ export class PPU {
       for (let x = 0; x < SCREEN_WIDTH; x++) {
         const band = (Math.floor(x / 20) + tweak) % 4;
         const bgp = this.io[IO_REGISTERS.BGP - 0xff00] || 0xe4;
-        const color = mapDMGPalette(bgp, band as 0 | 1 | 2 | 3);
+        const color = mapDMGPalette(
+          bgp,
+          band as 0 | 1 | 2 | 3,
+          this.dmgPalette,
+        );
         this.framebuffer[y * SCREEN_WIDTH + x] = color;
       }
     }

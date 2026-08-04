@@ -1,15 +1,61 @@
-export const DMG_RGBA = [0xffffffff, 0xffaaaaaa, 0xff555555, 0xff000000];
+const rgbToRgba = (red: number, green: number, blue: number): number =>
+  (0xff << 24) | (blue << 16) | (green << 8) | red;
 
-export function mapDMGPalette(bgp: number, color: 0 | 1 | 2 | 3): number {
+export const DMG_COLOR_PALETTES = {
+  Gray: [
+    rgbToRgba(255, 255, 255),
+    rgbToRgba(170, 170, 170),
+    rgbToRgba(85, 85, 85),
+    rgbToRgba(0, 0, 0),
+  ],
+  "Game Boy": [
+    rgbToRgba(224, 248, 208),
+    rgbToRgba(136, 192, 112),
+    rgbToRgba(52, 104, 86),
+    rgbToRgba(8, 24, 32),
+  ],
+  "Game Boy - 2 ": [
+    rgbToRgba(155, 188, 15),
+    rgbToRgba(139, 172, 15),
+    rgbToRgba(48, 98, 48),
+    rgbToRgba(15, 56, 15),
+  ],
+  Pocket: [
+    rgbToRgba(196, 207, 161),
+    rgbToRgba(139, 149, 109),
+    rgbToRgba(77, 83, 60),
+    rgbToRgba(31, 31, 31),
+  ],
+} as const;
+
+export type DmgColorPalette = keyof typeof DMG_COLOR_PALETTES;
+
+export const DMG_COLOR_PALETTE_OPTIONS = Object.keys(
+  DMG_COLOR_PALETTES,
+) as DmgColorPalette[];
+
+export type DmgRgbaPalette = (typeof DMG_COLOR_PALETTES)[DmgColorPalette];
+
+export const DMG_DEFAULT = DMG_COLOR_PALETTES["Gray"];
+
+export function mapDMGPalette(
+  bgp: number,
+  color: 0 | 1 | 2 | 3,
+  palette: DmgRgbaPalette = DMG_DEFAULT,
+): number {
   const shift = color * 2;
   const shade = (bgp >> shift) & 0x03;
-  return DMG_RGBA[shade] ?? 0xffffffff;
+  return palette[shade] ?? 0xffffffff;
 }
 
-export function mapOBPPalette(obp: number, color: 0 | 1 | 2 | 3): number {
+export function mapOBPPalette(
+  obp: number,
+  color: 0 | 1 | 2 | 3,
+  palette: DmgRgbaPalette = DMG_DEFAULT,
+): number {
   const shift = color * 2;
   const shade = (obp >> shift) & 0x03;
-  return DMG_RGBA[shade];
+  return palette[shade] ?? 0xffffffff;
 }
 
 export const CGB_RGB555_TO_RGBA: Uint32Array = (() => {

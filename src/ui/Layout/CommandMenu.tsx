@@ -16,8 +16,17 @@ import type { LayoutOrientation } from "@/hooks/useTouchControlLayout";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { useGamepadDebugInfo } from "@/input/useGamepadDebugInfo";
 import type { InputState } from "@/input/types";
+import {
+  DMG_COLOR_PALETTE_OPTIONS,
+  type DmgColorPalette,
+} from "@/emulator/ppu/palettes";
 
-type MenuView = "main" | "emulator-settings" | "input-settings" | "about";
+type MenuView =
+  | "main"
+  | "emulator-settings"
+  | "input-settings"
+  | "display-settings"
+  | "about";
 
 const CloseButton = ({ onClose }: { onClose?: () => void }) => (
   <button
@@ -56,6 +65,7 @@ interface CommandMenuStateProps {
   slotInfo: SlotInfo[];
   isEditingLayout: boolean;
   touchControlOrientation: LayoutOrientation;
+  dmgColorPalette: DmgColorPalette;
 }
 
 interface CommandMenuActionProps {
@@ -76,6 +86,7 @@ interface CommandMenuActionProps {
   onDeleteAllSaveStates: () => void;
   onSetLayoutEditing: (isEditingLayout: boolean) => void;
   onResetTouchControls: () => void;
+  onSetDMGColorPalette: (palette: DmgColorPalette) => void;
 }
 
 interface CommandMenuProps {
@@ -190,7 +201,40 @@ const renderMenuView = (
     slotInfo,
     isEditingLayout,
     touchControlOrientation,
+    dmgColorPalette,
   } = state;
+
+  if (activeView === "display-settings") {
+    return (
+      <Card className="border-none bg-slate-400 p-0 shadow-none">
+        <div className="relative">
+          <CloseButton onClose={actions.onClose} />
+          <Command className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
+            <div className="mb-2 flex items-center gap-2 pr-6">
+              <BackButton onBack={() => setActiveView("main")} />
+              <span className="text-xs text-gray-600">/ Display</span>
+            </div>
+            <CommandList>
+              <CommandGroup heading="Game Boy Palette">
+                {DMG_COLOR_PALETTE_OPTIONS.map((palette) => (
+                  <CommandItem
+                    key={palette}
+                    value={`dmg-palette-${palette}`}
+                    onSelect={() =>
+                      handleAction(() => actions.onSetDMGColorPalette(palette))
+                    }
+                  >
+                    {palette}
+                    {palette === dmgColorPalette ? " (Active)" : ""}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </div>
+      </Card>
+    );
+  }
 
   if (activeView === "emulator-settings") {
     return (
@@ -491,6 +535,12 @@ const renderMenuView = (
               >
                 Input {">"}
               </CommandItem>
+              <CommandItem
+                value="display-settings"
+                onSelect={() => setActiveView("display-settings")}
+              >
+                Display {">"}
+              </CommandItem>
             </CommandGroup>
 
             <CommandGroup heading="About">
@@ -524,7 +574,7 @@ export const CommandMenu = ({ state, actions }: CommandMenuProps) => {
           onClick={actions.onClose}
         />
       </Dialog>
-      <div className="animate-in fade-in-0 zoom-in-95 z-50 h-[25vh] w-[25vw] max-w-sm translate-x-[-20%] translate-y-[10%] border-none bg-transparent p-0 shadow-none duration-200 max-sm:w-[90vw] max-sm:translate-x-[-15%] max-sm:translate-y-[100%] max-sm:scale-140 md:max-w-md md:min-w-sm">
+      <div className="animate-in fade-in-0 zoom-in-95 h-[25vh] w-[25vw] max-w-sm translate-x-[-20%] translate-y-[10%] border-none bg-transparent p-0 shadow-none duration-200 max-sm:w-[90vw] max-sm:translate-x-[-15%] max-sm:translate-y-[100%] max-sm:scale-140 md:max-w-md md:min-w-sm">
         {renderMenuView(
           activeView,
           state,

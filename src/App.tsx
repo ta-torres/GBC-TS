@@ -1,5 +1,5 @@
 import "./App.css";
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { GBScreen } from "./ui/Layout/Shell/GameboyScreen";
 import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
@@ -10,8 +10,19 @@ import {
   exportSRAMSavesToFile,
   importSRAMSavesFromFile,
 } from "./emulator/utils/savesTransfer";
+import {
+  DMG_COLOR_PALETTES,
+  type DmgColorPalette,
+} from "./emulator/ppu/palettes";
 
 import { Toaster } from "@/components/ui/sonner";
+
+const initializeDmgPalette = (): DmgColorPalette => {
+  const savedPalette = window.localStorage.getItem("gbc-dmg-palette");
+  return savedPalette && savedPalette in DMG_COLOR_PALETTES
+    ? (savedPalette as DmgColorPalette)
+    : "Gray";
+};
 
 function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -22,6 +33,8 @@ function App() {
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [lastFileName, setLastFileName] = useState<string | null>(null);
+  const [dmgColorPalette, setDmgColorPalette] =
+    useState<DmgColorPalette>(initializeDmgPalette);
   const {
     emulatorRef,
     isLoaded,
@@ -133,6 +146,15 @@ function App() {
     setShowCommandMenu(false);
   };
 
+  const setDisplayPalette = (palette: DmgColorPalette) => {
+    window.localStorage.setItem("gbc-dmg-palette", palette);
+    setDmgColorPalette(palette);
+  };
+
+  useEffect(() => {
+    emulatorRef.current?.setDMGColorPalette(dmgColorPalette);
+  }, [dmgColorPalette, emulatorRef]);
+
   return (
     <div className="app-emulator-container min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
       <Toaster />
@@ -181,6 +203,7 @@ function App() {
                         slotInfo,
                         isEditingLayout,
                         touchControlOrientation,
+                        dmgColorPalette,
                       }}
                       actions={{
                         onClose: closeCommandMenu,
@@ -200,6 +223,7 @@ function App() {
                         onDeleteAllSaveStates: handleDeleteAllSaveStates,
                         onSetLayoutEditing: setIsEditingLayout,
                         onResetTouchControls: resetTouchControlLayout,
+                        onSetDMGColorPalette: setDisplayPalette,
                       }}
                     />
                   }

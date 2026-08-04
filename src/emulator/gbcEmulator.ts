@@ -6,6 +6,7 @@ import { toHex16 } from "./utils/bitwise";
 import { Interrupts } from "./core/interrupts";
 import { Timer } from "./core/timer";
 import { PPU } from "./ppu/ppu";
+import type { DmgColorPalette } from "./ppu/palettes";
 import { Joypad } from "./input/joypad";
 import type { JoypadButton } from "./input/joypad";
 import { APU } from "./apu/apu";
@@ -223,6 +224,10 @@ export class GBCEmulator {
 
   hasFrameReady(): boolean {
     return this.ppu.hasFrameReady();
+  }
+
+  setDMGColorPalette(palette: DmgColorPalette): void {
+    this.ppu.setDMGColorPalette(palette);
   }
 
   /* JOYPAD */
