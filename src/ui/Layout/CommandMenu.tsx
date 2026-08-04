@@ -17,7 +17,9 @@ import { SiGithub } from "@icons-pack/react-simple-icons";
 import { useGamepadDebugInfo } from "@/input/useGamepadDebugInfo";
 import type { InputState } from "@/input/types";
 import {
+  CGB_COLOR_PALETTE_OPTIONS,
   DMG_COLOR_PALETTE_OPTIONS,
+  type CgbColorPalette,
   type DmgColorPalette,
 } from "@/emulator/ppu/palettes";
 
@@ -66,6 +68,7 @@ interface CommandMenuStateProps {
   isEditingLayout: boolean;
   touchControlOrientation: LayoutOrientation;
   dmgColorPalette: DmgColorPalette;
+  cgbColorPalette: CgbColorPalette;
 }
 
 interface CommandMenuActionProps {
@@ -87,6 +90,7 @@ interface CommandMenuActionProps {
   onSetLayoutEditing: (isEditingLayout: boolean) => void;
   onResetTouchControls: () => void;
   onSetDMGColorPalette: (palette: DmgColorPalette) => void;
+  onSetCGBColorPalette: (palette: CgbColorPalette) => void;
 }
 
 interface CommandMenuProps {
@@ -202,6 +206,7 @@ const renderMenuView = (
     isEditingLayout,
     touchControlOrientation,
     dmgColorPalette,
+    cgbColorPalette,
   } = state;
 
   if (activeView === "display-settings") {
@@ -226,6 +231,20 @@ const renderMenuView = (
                   >
                     {palette}
                     {palette === dmgColorPalette ? " (Active)" : ""}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandGroup heading="Game Boy Color">
+                {CGB_COLOR_PALETTE_OPTIONS.map((palette) => (
+                  <CommandItem
+                    key={palette}
+                    value={`cgb-palette-${palette}`}
+                    onSelect={() =>
+                      handleAction(() => actions.onSetCGBColorPalette(palette))
+                    }
+                  >
+                    {palette}
+                    {palette === cgbColorPalette ? " (Active)" : ""}
                   </CommandItem>
                 ))}
               </CommandGroup>

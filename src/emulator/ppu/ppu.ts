@@ -8,7 +8,11 @@ import {
   mapDMGPalette,
   mapOBPPalette,
 } from "./palettes";
-import type { DmgColorPalette, DmgRgbaPalette } from "./palettes";
+import type {
+  CgbColorPalette,
+  DmgColorPalette,
+  DmgRgbaPalette,
+} from "./palettes";
 
 import { getSpriteTileViewerData, getTileViewerData } from "./tileView";
 
@@ -106,11 +110,13 @@ export class PPU {
   private windowDrawnThisScanline: boolean;
   private enteredHBlank: boolean;
 
+  private dmgPalette: DmgRgbaPalette;
+
   /* GBC SPECIFIC */
   private cgbMode: boolean;
   private cgbBgPaletteRam: Uint8Array;
   private cgbObjPaletteRam: Uint8Array;
-  private dmgPalette: DmgRgbaPalette;
+  private cgbColorPalette: CgbColorPalette;
 
   /*
   LCD_STAT interrupt
@@ -143,6 +149,7 @@ export class PPU {
     this.cgbBgPaletteRam = cgbBgPaletteRam;
     this.cgbObjPaletteRam = cgbObjPaletteRam;
     this.dmgPalette = DMG_COLOR_PALETTES.Gray;
+    this.cgbColorPalette = "LCD Corrected";
     this.framebuffer = new Uint32Array(SCREEN_WIDTH * SCREEN_HEIGHT);
     this.actualFramebufferDrawnToTheScreen = new Uint32Array(
       SCREEN_WIDTH * SCREEN_HEIGHT,
@@ -331,7 +338,12 @@ export class PPU {
         pixelBitIndex,
       );
       const pixelColor = this.cgbMode
-        ? mapCGBBgPalette(this.cgbBgPaletteRam, cgbBgPaletteId, paletteIndex)
+        ? mapCGBBgPalette(
+            this.cgbBgPaletteRam,
+            cgbBgPaletteId,
+            paletteIndex,
+            this.cgbColorPalette,
+          )
         : mapDMGPalette(bgPalette, paletteIndex, this.dmgPalette);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
@@ -425,7 +437,12 @@ export class PPU {
         bitInTileRow,
       );
       const pixelColor = this.cgbMode
-        ? mapCGBBgPalette(this.cgbBgPaletteRam, cgbBgPaletteId, paletteIndex)
+        ? mapCGBBgPalette(
+            this.cgbBgPaletteRam,
+            cgbBgPaletteId,
+            paletteIndex,
+            this.cgbColorPalette,
+          )
         : mapDMGPalette(bgPalette, paletteIndex, this.dmgPalette);
 
       this.framebuffer[scanlineOffset + screenX] = pixelColor;
@@ -554,6 +571,7 @@ export class PPU {
               this.cgbObjPaletteRam,
               cgbObjPaletteNumber,
               paletteIndex,
+              this.cgbColorPalette,
             )
           : mapOBPPalette(obp, paletteIndex, this.dmgPalette);
         const bufIndex = scanlineOffset + screenX;
@@ -608,6 +626,10 @@ export class PPU {
 
   setDMGColorPalette(palette: DmgColorPalette): void {
     this.dmgPalette = DMG_COLOR_PALETTES[palette];
+  }
+
+  setCGBColorPalette(palette: CgbColorPalette): void {
+    this.cgbColorPalette = palette;
   }
 
   lcdEnabled(): boolean {

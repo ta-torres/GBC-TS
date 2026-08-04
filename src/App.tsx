@@ -13,6 +13,9 @@ import {
 import {
   DMG_COLOR_PALETTES,
   type DmgColorPalette,
+  CGB_COLOR_PALETTES,
+  type CgbColorPalette,
+  CGB_DEFAULT,
 } from "./emulator/ppu/palettes";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -22,6 +25,13 @@ const initializeDmgPalette = (): DmgColorPalette => {
   return savedPalette && savedPalette in DMG_COLOR_PALETTES
     ? (savedPalette as DmgColorPalette)
     : "Gray";
+};
+
+const initializeCgbPalette = (): CgbColorPalette => {
+  const savedPalette = window.localStorage.getItem("gbc-cgb-palette");
+  return savedPalette && savedPalette in CGB_COLOR_PALETTES
+    ? (savedPalette as CgbColorPalette)
+    : CGB_DEFAULT;
 };
 
 function App() {
@@ -35,6 +45,8 @@ function App() {
   const [lastFileName, setLastFileName] = useState<string | null>(null);
   const [dmgColorPalette, setDmgColorPalette] =
     useState<DmgColorPalette>(initializeDmgPalette);
+  const [cgbColorPalette, setCgbColorPalette] =
+    useState<CgbColorPalette>(initializeCgbPalette);
   const {
     emulatorRef,
     isLoaded,
@@ -153,7 +165,8 @@ function App() {
 
   useEffect(() => {
     emulatorRef.current?.setDMGColorPalette(dmgColorPalette);
-  }, [dmgColorPalette, emulatorRef]);
+    emulatorRef.current?.setCGBColorPalette(cgbColorPalette);
+  }, [dmgColorPalette, emulatorRef, cgbColorPalette]);
 
   return (
     <div className="app-emulator-container min-h-screen bg-slate-500 bg-linear-180 text-white sm:p-8">
@@ -204,6 +217,7 @@ function App() {
                         isEditingLayout,
                         touchControlOrientation,
                         dmgColorPalette,
+                        cgbColorPalette,
                       }}
                       actions={{
                         onClose: closeCommandMenu,
@@ -224,6 +238,7 @@ function App() {
                         onSetLayoutEditing: setIsEditingLayout,
                         onResetTouchControls: resetTouchControlLayout,
                         onSetDMGColorPalette: setDisplayPalette,
+                        onSetCGBColorPalette: setCgbColorPalette,
                       }}
                     />
                   }

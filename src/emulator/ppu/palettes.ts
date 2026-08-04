@@ -58,7 +58,7 @@ export function mapOBPPalette(
   return palette[shade] ?? 0xffffffff;
 }
 
-export const CGB_RGB555_TO_RGBA: Uint32Array = (() => {
+const buildCgbRgb555ToRgba = (useColorCorrection: boolean): Uint32Array => {
   // https://gbdev.io/pandocs/Palettes.html#rgb-translation-by-cgbs
   const rgb555ToRgbaTable = new Uint32Array(0x8000);
 
@@ -92,6 +92,14 @@ export const CGB_RGB555_TO_RGBA: Uint32Array = (() => {
     const g5 = (rgb555 >> 5) & 0x1f;
     const b5 = (rgb555 >> 10) & 0x1f;
 
+    if (!useColorCorrection) {
+      const r8 = (r5 << 3) | (r5 >> 2);
+      const g8 = (g5 << 3) | (g5 >> 2);
+      const b8 = (b5 << 3) | (b5 >> 2);
+      rgb555ToRgbaTable[rgb555] = (0xff << 24) | (b8 << 16) | (g8 << 8) | r8;
+      continue;
+    }
+
     const r = colorIntensityTable[r5] ?? 0;
     const g = colorIntensityTable[g5] ?? 0;
     const b = colorIntensityTable[b5] ?? 0;
@@ -115,35 +123,54 @@ export const CGB_RGB555_TO_RGBA: Uint32Array = (() => {
   }
 
   return rgb555ToRgbaTable;
-})();
+};
 
-export function cgbRgb555ToRgba(rgb555: number): number {
+export const CGB_COLOR_PALETTES = {
+  "LCD Corrected": buildCgbRgb555ToRgba(true),
+  Original: buildCgbRgb555ToRgba(false),
+} as const;
+
+export type CgbColorPalette = keyof typeof CGB_COLOR_PALETTES;
+
+export const CGB_COLOR_PALETTE_OPTIONS = Object.keys(
+  CGB_COLOR_PALETTES,
+) as CgbColorPalette[];
+
+export const CGB_DEFAULT: CgbColorPalette = "LCD Corrected";
+
+export function cgbRgb555ToRgba(
+  rgb555: number,
+  palette: CgbColorPalette = CGB_DEFAULT,
+): number {
   // https://gbdev.io/pandocs/Palettes.html#rgb-translation-by-cgbs
-  return CGB_RGB555_TO_RGBA[rgb555 & 0x7fff] ?? 0xff000000;
+  const table = CGB_COLOR_PALETTES[palette];
+  return table[rgb555 & 0x7fff] ?? 0xff000000;
 }
 
 export function mapCGBBgPalette(
   cgbBgPaletteRam: Uint8Array,
   paletteNumber: number,
   color: 0 | 1 | 2 | 3,
+  cgbColorPalette: CgbColorPalette = CGB_DEFAULT,
 ): number {
   const pal = paletteNumber & 0x07;
   const idx = (pal * 8 + color * 2) & 0x3f;
   const low = cgbBgPaletteRam[idx] ?? 0x00;
   const high = cgbBgPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
   const rgb555 = low | (high << 8);
-  return cgbRgb555ToRgba(rgb555);
+  return cgbRgb555ToRgba(rgb555, cgbColorPalette);
 }
 
 export function mapCGBObjPalette(
   cgbObjPaletteRam: Uint8Array,
   paletteNumber: number,
   color: 0 | 1 | 2 | 3,
+  cgbColorPalette: CgbColorPalette = CGB_DEFAULT,
 ): number {
   const pal = paletteNumber & 0x07;
   const idx = (pal * 8 + color * 2) & 0x3f;
   const low = cgbObjPaletteRam[idx] ?? 0x00;
   const high = cgbObjPaletteRam[(idx + 1) & 0x3f] ?? 0x00;
   const rgb555 = low | (high << 8);
-  return cgbRgb555ToRgba(rgb555);
+  return cgbRgb555ToRgba(rgb555, cgbColorPalette);
 }
