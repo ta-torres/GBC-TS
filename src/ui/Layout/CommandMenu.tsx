@@ -234,7 +234,7 @@ const renderMenuView = (
                   </CommandItem>
                 ))}
               </CommandGroup>
-              <CommandGroup heading="Game Boy Color">
+              <CommandGroup heading="Game Boy Color Palette">
                 {CGB_COLOR_PALETTE_OPTIONS.map((palette) => (
                   <CommandItem
                     key={palette}

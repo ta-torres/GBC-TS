@@ -5,7 +5,6 @@ import { DebugPanel } from "./ui/Layout/DebugPanel";
 import { GameBoyShell } from "./ui/Layout/GameBoyShell";
 import { CommandMenu } from "./ui/Layout/CommandMenu";
 import { useGBCEmulator } from "./hooks/useGBCEmulator";
-import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useTouchControlLayout } from "./hooks/useTouchControlLayout";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -26,6 +25,12 @@ function App() {
     speedMultiplier,
     audioEnabled,
     audioChannels,
+    dmgColorPalette,
+    cgbColorPalette,
+    setDisplayPalette,
+    setCgbColorPalette,
+    exportSRAMSaves,
+    importSRAMSave,
     handleIncreaseSpeed,
     handleDecreaseSpeed,
     toggleAudioEnabled,
@@ -43,14 +48,6 @@ function App() {
     handleLoadState,
     handleDeleteAllSaveStates,
   } = useGBCEmulator();
-  const {
-    dmgColorPalette,
-    cgbColorPalette,
-    setDisplayPalette,
-    setCgbColorPalette,
-    exportSRAMSaves,
-    importSRAMSave,
-  } = useLocalStorage({ emulatorRef });
   const {
     orientation: touchControlOrientation,
     positions: touchControlPositions,

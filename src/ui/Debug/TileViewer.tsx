@@ -4,9 +4,10 @@ import { Card } from "@/components/ui/pixelact-ui/card";
 
 interface TileViewerProps {
   emulator: GBCEmulator | null;
+  vramBank?: 0 | 1;
 }
 
-export const TileViewer = ({ emulator }: TileViewerProps) => {
+export const TileViewer = ({ emulator, vramBank = 0 }: TileViewerProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ export const TileViewer = ({ emulator }: TileViewerProps) => {
         return;
       }
 
-      const { width, height, data } = emu.getTileViewerData();
+      const { width, height, data } = emu.getTileViewerData(vramBank);
 
       if (canvas.width !== width) {
         canvas.width = width;
@@ -70,10 +71,13 @@ export const TileViewer = ({ emulator }: TileViewerProps) => {
 
     rafId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(rafId);
-  }, [emulator]);
+  }, [emulator, vramBank]);
 
   return (
     <Card className="border-r-4 border-b-4 border-slate-500 bg-slate-400 p-4">
+      <div className="font-mono text-sm text-gray-900">
+        VRAM Bank {vramBank}
+      </div>
       <Card className="m-0 p-0">
         <canvas
           ref={canvasRef}

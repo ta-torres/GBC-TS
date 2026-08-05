@@ -184,6 +184,10 @@ export class GBCEmulator {
     return this.paused;
   }
 
+  isCGBMode(): boolean {
+    return this.cgbMode;
+  }
+
   getTicks(): number {
     return this.ticks;
   }
@@ -206,8 +210,12 @@ export class GBCEmulator {
 
   /* PPU */
 
-  getTileViewerData(): { width: number; height: number; data: Uint8Array } {
-    return this.ppu.getTileViewerData();
+  getTileViewerData(vramBank: 0 | 1 = 0): {
+    width: number;
+    height: number;
+    data: Uint8Array;
+  } {
+    return this.ppu.getTileViewerData(vramBank);
   }
 
   getSpriteTileViewerData(): {

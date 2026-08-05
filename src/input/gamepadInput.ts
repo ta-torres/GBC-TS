@@ -10,6 +10,11 @@ const STICK_DEADZONE_RADIUS = 0.25;
 // 10 = -+10° 45/135/225/315 degrees
 const STICK_DIAGONAL_SLICE_WIDTH_DEG = 10;
 
+interface GamepadInputCallbacks {
+  onL2Down?: () => void;
+  onR2Down?: () => void;
+}
+
 function mapLeftStickToDirections(pad: Gamepad): JoypadButton[] {
   const deltaX = pad.axes[0] ?? 0;
   const deltaY = pad.axes[1] ?? 0;
@@ -54,7 +59,6 @@ function mapLeftStickToDirections(pad: Gamepad): JoypadButton[] {
 export function mapStandardGamepadToInputState(pad: Gamepad): InputState {
   const state = createEmptyInputState();
 
-  // In the Game Boy layout, the right button is "A" (button[1]) and the bottom button is "B" (button[0])
   state.b = pad.buttons[0]?.pressed ?? false;
   state.a = pad.buttons[1]?.pressed ?? false;
 
@@ -90,9 +94,29 @@ export function getConnectedStandardGamepad(): Gamepad | null {
 
 // poll in each frame from main loop, because navigator.getGamepads() doesn't fire events
 export class GamepadInput implements InputDevice {
+  private previousL2Pressed = false;
+  private previousR2Pressed = false;
+  private readonly callbacks: GamepadInputCallbacks;
+
+  constructor(callbacks: GamepadInputCallbacks = {}) {
+    this.callbacks = callbacks;
+  }
+
   update(): InputState {
     const pad = getConnectedStandardGamepad();
-    if (!pad) return createEmptyInputState();
+    if (!pad) {
+      this.previousL2Pressed = false;
+      this.previousR2Pressed = false;
+      return createEmptyInputState();
+    }
+
+    const l2Pressed = pad.buttons[6]?.pressed ?? false;
+    const r2Pressed = pad.buttons[7]?.pressed ?? false;
+    if (l2Pressed && !this.previousL2Pressed) this.callbacks.onL2Down?.();
+    if (r2Pressed && !this.previousR2Pressed) this.callbacks.onR2Down?.();
+    this.previousL2Pressed = l2Pressed;
+    this.previousR2Pressed = r2Pressed;
+
     return mapStandardGamepadToInputState(pad);
   }
 }

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/pixelact-ui/button";
+import titleScreenBackground from "./title-screen.png";
 
 interface TitleScreenProps {
   onLoadGame: () => void;
@@ -7,7 +8,13 @@ interface TitleScreenProps {
 
 export const TitleScreen = ({ onLoadGame, onOpenMenu }: TitleScreenProps) => {
   return (
-    <div className="absolute inset-0 flex h-full w-full flex-col items-center justify-center bg-[#8bac0f]">
+    <div
+      className="absolute inset-0 flex h-full w-full flex-col items-center justify-center bg-[#8bac0f] bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: `url(${titleScreenBackground})`,
+        imageRendering: "pixelated",
+      }}
+    >
       <div
         className="mb-3 text-[12px] text-[#0f380f]"
         style={{

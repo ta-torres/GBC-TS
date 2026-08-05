@@ -50,6 +50,7 @@ export const DebugPanel = ({ state, actions, emulator }: DebugPanelProps) => {
       {emulator && isRunning && <SpeedControl emulator={emulator} />}
       <DebugData emulator={emulator} />
       <TileViewer emulator={emulator} />
+      <TileViewer emulator={emulator} vramBank={1} />
       <SpriteViewer emulator={emulator} />
     </>
   );

@@ -113,3 +113,9 @@
     display: none;
   }
 }
+
+@media (max-width: 1024px) and (orientation: landscape) {
+  .gameboy-button label {
+    display: none;
+  }
+}

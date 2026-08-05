@@ -15,6 +15,10 @@ import {
   getSaveStateSlotInfo,
 } from "@/emulator/utils/saveStateStorage";
 import { useLocalStorage } from "./useLocalStorage";
+import {
+  CGB_COLOR_PALETTE_OPTIONS,
+  DMG_COLOR_PALETTE_OPTIONS,
+} from "@/emulator/ppu/palettes";
 
 export const useGBCEmulator = () => {
   const emulatorRef = useRef<GBCEmulator | null>(null);
@@ -42,6 +46,12 @@ export const useGBCEmulator = () => {
 
   const inputManagerRef = useRef<InputManager | null>(null);
   const keyboardInputRef = useRef<KeyboardInput | null>(null);
+  const saveStateHandlerRef = useRef<
+    ((slot: number) => Promise<void>) | null
+  >(null);
+  const loadStateHandlerRef = useRef<
+    ((slot: number) => Promise<void>) | null
+  >(null);
 
   if (!inputManagerRef.current) {
     inputManagerRef.current = new InputManager(emulatorRef.current);
@@ -51,9 +61,19 @@ export const useGBCEmulator = () => {
     keyboardInputRef.current = new KeyboardInput();
   }
 
-  const { saveSRAM, saveRTC, saveMemory, loadSRAM, loadRTC } = useLocalStorage({
-    emulatorRef,
-  });
+  const {
+    dmgColorPalette,
+    cgbColorPalette,
+    setDisplayPalette,
+    setCgbColorPalette,
+    saveSRAM,
+    saveRTC,
+    saveMemory,
+    loadSRAM,
+    loadRTC,
+    exportSRAMSaves,
+    importSRAMSave,
+  } = useLocalStorage({ emulatorRef });
 
   useEffect(() => {
     const emu = emulatorRef.current;
@@ -181,7 +201,16 @@ export const useGBCEmulator = () => {
     const keyboard = keyboardInputRef.current;
     if (!inputManager || !keyboard) return;
 
-    const gamepad = new GamepadInput();
+    const gamepad = new GamepadInput({
+      onL2Down: () => {
+        const saveState = saveStateHandlerRef.current;
+        if (saveState) void saveState(1);
+      },
+      onR2Down: () => {
+        const loadState = loadStateHandlerRef.current;
+        if (loadState) void loadState(1);
+      },
+    });
 
     keyboard.start();
     inputManager.addDevice(keyboard);
@@ -350,6 +379,53 @@ export const useGBCEmulator = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) return;
 
+      if (event.code === "KeyR") {
+        event.preventDefault();
+        const saveState = saveStateHandlerRef.current;
+        if (saveState) void saveState(1);
+        return;
+      }
+
+      if (event.code === "KeyT") {
+        event.preventDefault();
+        const loadState = loadStateHandlerRef.current;
+        if (loadState) void loadState(1);
+        return;
+      }
+
+      if (event.code === "KeyP") {
+        const emu = emulatorRef.current;
+        if (!emu) return;
+
+        event.preventDefault();
+        if (emu.isCGBMode()) {
+          const currentIndex =
+            CGB_COLOR_PALETTE_OPTIONS.indexOf(cgbColorPalette);
+          const nextPalette =
+            CGB_COLOR_PALETTE_OPTIONS[
+              (currentIndex + 1) % CGB_COLOR_PALETTE_OPTIONS.length
+            ];
+
+          if (nextPalette) {
+            setCgbColorPalette(nextPalette);
+            emu.setCGBColorPalette(nextPalette);
+          }
+        } else {
+          const currentIndex =
+            DMG_COLOR_PALETTE_OPTIONS.indexOf(dmgColorPalette);
+          const nextPalette =
+            DMG_COLOR_PALETTE_OPTIONS[
+              (currentIndex + 1) % DMG_COLOR_PALETTE_OPTIONS.length
+            ];
+
+          if (nextPalette) {
+            setDisplayPalette(nextPalette);
+            emu.setDMGColorPalette(nextPalette);
+          }
+        }
+        return;
+      }
+
       if (event.key === "+" || event.code === "KeyW") {
         event.preventDefault();
         handleIncreaseSpeed();
@@ -364,7 +440,15 @@ export const useGBCEmulator = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleDecreaseSpeed, handleIncreaseSpeed]);
+  }, [
+    cgbColorPalette,
+    dmgColorPalette,
+    emulatorRef,
+    handleDecreaseSpeed,
+    handleIncreaseSpeed,
+    setCgbColorPalette,
+    setDisplayPalette,
+  ]);
 
   const [slotInfo, setSlotInfo] = useState<SlotInfo[]>([]);
 
@@ -454,6 +538,9 @@ export const useGBCEmulator = () => {
     [isLoaded, ensureAudioStarted],
   );
 
+  saveStateHandlerRef.current = handleSaveState;
+  loadStateHandlerRef.current = handleLoadState;
+
   const handleDeleteAllSaveStates = useCallback(async () => {
     await deleteAllSaveStates();
     await refreshSlotInfo();
@@ -467,6 +554,12 @@ export const useGBCEmulator = () => {
     speedMultiplier,
     audioEnabled: audioConfig.enabled,
     audioChannels: audioConfig.channels,
+    dmgColorPalette,
+    cgbColorPalette,
+    setDisplayPalette,
+    setCgbColorPalette,
+    exportSRAMSaves,
+    importSRAMSave,
     handleIncreaseSpeed,
     handleDecreaseSpeed,
     toggleAudioEnabled,

@@ -685,8 +685,15 @@ export class PPU {
     this.io[statIdx] = (this.io[statIdx] & 0xfc) | (this.mode & 0x03);
   }
 
-  getTileViewerData(): { width: number; height: number; data: Uint8Array } {
-    return getTileViewerData(this.io, this.vram);
+  getTileViewerData(vramBank: 0 | 1 = 0): {
+    width: number;
+    height: number;
+    data: Uint8Array;
+  } {
+    return getTileViewerData(
+      this.io,
+      vramBank === 1 ? this.vramBank1 : this.vram,
+    );
   }
 
   getSpriteTileViewerData(): {

@@ -4,11 +4,12 @@ GBC-TS is a Game Boy and Game Boy Color emulator written in TypeScript and React
 
 ## Features
 
-- Compatible with ROM-Only, MBC1, MBC3 and MBC5 cartridges
+- Compatible with ROM-Only, MBC1, MBC3 (+RTC) and MBC5 cartridges
 - Game Boy Color support
 - Sound
 - Save States
-- Mobile-friendly: Draggable d-pad, haptic feedback, slide controls and custom fullscreen mode
+- Controller support
+- Mobile-friendly: Resizable controls, pointer d-pad, haptic feedback, slide controls and custom fullscreen mode
 - Emulation speed controls
 - Save data and states persistance (localStorage/indexedDB)
 - Debug features: VRAM & Sprites viewer, D-pad pointer position, performance overlay and frame/instruction stepping
@@ -18,7 +19,7 @@ GBC-TS is a Game Boy and Game Boy Color emulator written in TypeScript and React
 
 Visit https://gbc-ts.vercel.app and load your own game backup in a .gb, .gbc or .zip format.
 
-On desktop, use Z/X for B/A buttons, Shift/Enter for Start/Select, arrow keys for D-pad. Q/W (or +/-) for speed controls.
+On desktop, use Z/X for B/A buttons, Shift/Enter for Select/Start, arrow keys for D-pad. Q/W (or -/+) for speed controls. R/T to Save/Load state and P to swap color pallete. Or just plug a controller. L2/R2 to Save/Load state.
 
 To run the emulator on a dev environment read below
 
@@ -26,7 +27,7 @@ To run the emulator on a dev environment read below
 
 Most Game Boy games rely on a Memory Bank Controller (MBC), a chip inside the cartridge that controls which parts of the game's assets are mapped into the Game Boy’s limited memory at any given time. This allows for larger ROM sizes, and in some cases provides additional on-cartridge RAM
 
-This emulator supports MBC1, MBC3, and MBC5 chips, which cover ~95%+ of the console’s library. While not every game has been tested, most titles using these mappers should work. Games that rely on precise timing or hardware quirks (like memory timing, mid-scanline PPU changes, or DMA edge cases) may show graphical/audio glitches or occasionally fail to boot.
+This emulator supports MBC1, MBC3, and MBC5 chips, which cover ~95%+ of the console’s library. While not every game has been tested, most titles using these mappers should work. Games that rely on precise timing or hardware quirks (like memory timing, mid-scanline PPU changes, or DMA edge cases) may show graphical/audio glitches or occasionally fail to boot. Real-Time clock on MBC3 works and catches up time passed since last session, but it may de-sync slightly over time.
 
 Game Boy Color (CGB) mode is supported. Audio (APU) is implemented, but not all hardware edge cases are emulated, so output may differ slightly from original hardware.
 
@@ -120,11 +121,12 @@ npm run test
   - [x] HDMA registers + H-Blank VRAM DMA transfers (HDMA1-5)
   - [x] MBC5 support
 - [x] Save states
-- [ ] MBC3 RTC persistance
-- [ ] Controller support
+- [x] MBC3 RTC persistance
+- [x] Controller support
+- [ ] .SAV support (export/import)
 - [ ] Custom button mapping
 - [ ] MBC1M multi-game compilation carts
-- [ ] MBC1 odd size roms
+- [x] MBC1 odd size roms
 
 ## Testing
 
@@ -163,12 +165,12 @@ MBC1 (Mooneye-test-suite)
 | multicart_rom_8Mb | ❌     |
 | ram_64kb          | ✔️     |
 | ram_256kb         | ✔️     |
-| rom_1Mb           | ❌     |
-| rom_2Mb           | ❌     |
+| rom_1Mb           | ✔️     |
+| rom_2Mb           | ✔️     |
 | rom_4Mb           | ✔️     |
 | rom_8Mb           | ✔️     |
 | rom_16Mb          | ✔️     |
-| rom_512kb         | ❌     |
+| rom_512kb         | ✔️     |
 
 PPU
 

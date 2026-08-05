@@ -64,3 +64,13 @@
     transform: translate(-2px, 20px);
   }
 }
+
+@media (max-width: 1024px) and (orientation: landscape) {
+  .gameboy-pill label {
+    display: none;
+  }
+
+  .gameboy-pill span {
+    transform: translate(-2px, 20px);
+  }
+}
